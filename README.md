@@ -6,6 +6,7 @@ A small CLI project for checking the SEO state of a URL set. The tool crawls pag
 
 - read URLs from `config/targets.txt`, local sitemap XML dumps, and/or from `config/seo-snapshot.config.mjs`
 - support `baseUrl` for relative paths
+- compare the same target path across two domains and show SEO differences
 - follow redirects and store the redirect chain
 - check title, description, canonical, H1, `lang`, OpenGraph, Twitter Card, and JSON-LD
 - detect page-level issues and produce an overall issue breakdown
@@ -63,6 +64,14 @@ SEO_SNAPSHOT_BASE_URL=https://example.com
 SEO_SNAPSHOT_TARGETS=/,/news,/about
 ```
 
+Compare mode via env:
+
+```bash
+SEO_SNAPSHOT_BASE_URL=https://www.example.com
+SEO_SNAPSHOT_COMPARE_BASE_URL=https://stage.example.com
+SEO_SNAPSHOT_TARGETS=/,/news
+```
+
 See `.env.example` for all available variables.
 
 Alternatively, pass variables inline in two ways.
@@ -90,6 +99,7 @@ Supported overrides:
 - `SEO_SNAPSHOT_CONFIG_PATH`
 - `SEO_SNAPSHOT_CONFIG`
 - `SEO_SNAPSHOT_BASE_URL`
+- `SEO_SNAPSHOT_COMPARE_BASE_URL` as URL string or `{ "url": "...", "label": "..." }` JSON object
 - `SEO_SNAPSHOT_TARGETS_FILE`
 - `SEO_SNAPSHOT_TARGETS` as JSON array or comma/newline-separated list
 - `SEO_SNAPSHOT_OUTPUT_DIR`
@@ -135,6 +145,24 @@ export default {
   },
 }
 ```
+
+Comparison mode example:
+
+```js
+export default {
+  baseUrl: 'https://www.example.com',
+  compare: {
+    baseUrl: { label: 'stage', url: 'https://stage.example.com' },
+  },
+  targets: [
+    '/',
+    '/news',
+    '/catalog?page=2',
+  ],
+}
+```
+
+When `compare.baseUrl` is set, the tool uses `baseUrl` as the primary domain and the compare URL as the secondary one. The same target path is fetched on both domains and the report adds a dedicated diff section for status, title, description, canonical, robots, H1, OpenGraph, Twitter, JSON-LD, and issue-code differences.
 
 Recommended local setup for targets:
 

@@ -93,6 +93,61 @@ const parseEnvList = (value, envName) => {
     .filter(Boolean)
 }
 
+const parseEnvCompareBaseUrl = (value, envName) => {
+  const normalizedValue = String(value ?? '').trim()
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  if (!normalizedValue.startsWith('{')) {
+    return normalizedValue
+  }
+
+  try {
+    const parsed = JSON.parse(normalizedValue)
+
+    if (isPlainObject(parsed) && isNonEmptyString(parsed.url)) {
+      return {
+        url: parsed.url.trim(),
+        ...(isNonEmptyString(parsed.label) ? { label: parsed.label.trim() } : {}),
+      }
+    }
+
+    exitWithError(`Expected ${ envName } to contain a URL string or { url, label? } JSON object.`)
+  } catch (error) {
+    exitWithError(`Failed to parse ${ envName }: ${ error instanceof Error ? error.message : String(error) }`)
+  }
+}
+
+const normalizeCompareSource = (value, index) => {
+  if (isNonEmptyString(value)) {
+    const url = toAbsoluteUrl(value.trim())
+    const label = new URL(url).host || `domain-${ index + 1 }`
+
+    return {
+      label,
+      url,
+    }
+  }
+
+  if (isPlainObject(value) && isNonEmptyString(value.url)) {
+    const url = toAbsoluteUrl(value.url.trim())
+    const label = isNonEmptyString(value.label)
+      ? value.label.trim()
+      : (new URL(url).host || `domain-${ index + 1 }`)
+
+    return {
+      label,
+      url,
+    }
+  }
+
+  const compareKey = index === 1 ? 'compare.baseUrl' : 'baseUrl'
+
+  exitWithError(`Expected ${ compareKey } to be a string URL or { url, label? } object.`)
+}
+
 const assignNestedValue = (target, pathParts, value) => {
   let cursor = target
 
@@ -143,6 +198,7 @@ const readEnvJsonConfig = (env) => {
 
 const ENV_OVERRIDE_MAPPINGS = [
   [ 'SEO_SNAPSHOT_BASE_URL', [ 'baseUrl' ], parseEnvString ],
+  [ 'SEO_SNAPSHOT_COMPARE_BASE_URL', [ 'compare', 'baseUrl' ], parseEnvCompareBaseUrl ],
   [ 'SEO_SNAPSHOT_TARGETS_FILE', [ 'targetsFile' ], parseEnvString ],
   [ 'SEO_SNAPSHOT_TARGETS', [ 'targets' ], parseEnvList ],
   [ 'SEO_SNAPSHOT_OUTPUT_DIR', [ 'output', 'dir' ], parseEnvString ],
@@ -296,6 +352,48 @@ const readTargetsFromFile = async (filePath) => {
   return readTargetsFromText(raw)
 }
 
+export const resolveComparisonSources = (config) => {
+  const rawSource = config?.compare?.baseUrl
+
+  if (rawSource === undefined) {
+    return null
+  }
+
+  if (!isNonEmptyString(config?.baseUrl)) {
+    exitWithError('compare.baseUrl requires baseUrl (or SEO_SNAPSHOT_BASE_URL) for the primary domain.')
+  }
+
+  const sources = [
+    normalizeCompareSource(config.baseUrl, 0),
+    normalizeCompareSource(rawSource, 1),
+  ]
+  const uniqueUrls = new Set(sources.map(source => source.url))
+
+  if (uniqueUrls.size !== sources.length) {
+    exitWithError('compare.baseUrl must differ from baseUrl.')
+  }
+
+  return sources
+}
+
+const normalizeComparableTargetPath = (target) => {
+  const normalizedTarget = String(target ?? '').trim()
+
+  if (!normalizedTarget) {
+    return null
+  }
+
+  try {
+    const absoluteUrl = new URL(normalizedTarget)
+
+    return `${ absoluteUrl.pathname }${ absoluteUrl.search }${ absoluteUrl.hash }` || '/'
+  } catch {
+    const relativeUrl = new URL(normalizedTarget, 'https://seo-snapshot.local')
+
+    return `${ relativeUrl.pathname }${ relativeUrl.search }${ relativeUrl.hash }` || '/'
+  }
+}
+
 export const resolveTargets = async (config, configDir) => {
   const targetsFile = normalizePathLikeValue(config.targetsFile, configDir)
   const fileTargets = targetsFile
@@ -315,6 +413,37 @@ export const resolveTargets = async (config, configDir) => {
 
   const normalizedTargets = []
   const seenTargets = new Set()
+  const compareSources = resolveComparisonSources(config)
+
+  if (compareSources) {
+    for (const target of mergedTargets) {
+      const comparisonPath = normalizeComparableTargetPath(target)
+
+      if (!comparisonPath) {
+        continue
+      }
+
+      for (const source of compareSources) {
+        const absoluteUrl = toAbsoluteUrl(comparisonPath, source.url)
+        const targetKey = `${ source.url }::${ absoluteUrl }`
+
+        if (seenTargets.has(targetKey)) {
+          continue
+        }
+
+        seenTargets.add(targetKey)
+        normalizedTargets.push({
+          input: target,
+          path: comparisonPath,
+          url: absoluteUrl,
+          source,
+        })
+      }
+    }
+
+    return normalizedTargets
+  }
+
   const baseUrl = isNonEmptyString(config.baseUrl)
     ? config.baseUrl.trim()
     : null
@@ -368,6 +497,7 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions }) => {
   const request = config.request ?? {}
   const output = config.output ?? {}
   const audit = config.audit ?? {}
+  const compareSources = resolveComparisonSources(config)
 
   const timeoutMs = cliOptions.timeoutMs ?? request.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const maxRedirects = cliOptions.maxRedirects ?? request.maxRedirects ?? DEFAULT_MAX_REDIRECTS
@@ -387,6 +517,11 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions }) => {
       dir: outputDir,
       formats,
     },
+    compare: compareSources
+      ? {
+        sources: compareSources,
+      }
+      : null,
     audit: {
       ...DEFAULT_AUDIT_RULES,
       ...(audit && typeof audit === 'object' ? audit : {}),

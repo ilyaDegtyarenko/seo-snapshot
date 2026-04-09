@@ -108,6 +108,27 @@ test('readSeoConfig loads config path from env', async (context) => {
   assert.deepEqual(result.config.targets, [ '/' ])
 })
 
+test('readSeoConfig supports single compare domain from env override', async () => {
+  const tempDir = await createTempDir()
+
+  try {
+    const result = await readSeoConfig(undefined, tempDir, {
+      SEO_SNAPSHOT_BASE_URL: 'https://www.example.com',
+      SEO_SNAPSHOT_COMPARE_BASE_URL: 'https://stage.example.com',
+      SEO_SNAPSHOT_TARGETS: '/news',
+    })
+
+    assert.equal(result.absoluteConfigPath, null)
+    assert.deepEqual(result.config.compare, {
+      baseUrl: 'https://stage.example.com',
+    })
+    assert.equal(result.config.baseUrl, 'https://www.example.com')
+    assert.deepEqual(result.config.targets, [ '/news' ])
+  } finally {
+    await rm(tempDir, { recursive: true, force: true })
+  }
+})
+
 test('resolveTargets reads plain-text targets files and deduplicates merged targets', async (context) => {
   const tempDir = await createTempDir()
 
@@ -160,4 +181,99 @@ test('resolveTargets reads sitemap XML dumps from targetsFile', async (context) 
     { input: 'https://example.com/', url: 'https://example.com/' },
     { input: 'https://example.com/search?tab=movies&page=2', url: 'https://example.com/search?tab=movies&page=2' },
   ])
+})
+
+test('resolveTargets expands the same target path across compare domains', async () => {
+  const tempDir = await createTempDir()
+
+  try {
+    const targets = await resolveTargets({
+      baseUrl: 'https://www.example.com',
+      compare: {
+        baseUrl: {
+          label: 'stage',
+          url: 'https://stage.example.com',
+        },
+      },
+      targets: [ '/news', 'https://legacy.example.com/catalog?page=2' ],
+    }, tempDir)
+
+    assert.deepEqual(targets, [
+      {
+        input: '/news',
+        path: '/news',
+        url: 'https://www.example.com/news',
+        source: {
+          label: 'www.example.com',
+          url: 'https://www.example.com/',
+        },
+      },
+      {
+        input: '/news',
+        path: '/news',
+        url: 'https://stage.example.com/news',
+        source: {
+          label: 'stage',
+          url: 'https://stage.example.com/',
+        },
+      },
+      {
+        input: 'https://legacy.example.com/catalog?page=2',
+        path: '/catalog?page=2',
+        url: 'https://www.example.com/catalog?page=2',
+        source: {
+          label: 'www.example.com',
+          url: 'https://www.example.com/',
+        },
+      },
+      {
+        input: 'https://legacy.example.com/catalog?page=2',
+        path: '/catalog?page=2',
+        url: 'https://stage.example.com/catalog?page=2',
+        source: {
+          label: 'stage',
+          url: 'https://stage.example.com/',
+        },
+      },
+    ])
+  } finally {
+    await rm(tempDir, { recursive: true, force: true })
+  }
+})
+
+test('resolveTargets uses baseUrl as the primary compare domain when one compare URL is configured', async () => {
+  const tempDir = await createTempDir()
+
+  try {
+    const targets = await resolveTargets({
+      baseUrl: 'https://www.example.com',
+      compare: {
+        baseUrl: 'https://stage.example.com',
+      },
+      targets: [ '/news' ],
+    }, tempDir)
+
+    assert.deepEqual(targets, [
+      {
+        input: '/news',
+        path: '/news',
+        url: 'https://www.example.com/news',
+        source: {
+          label: 'www.example.com',
+          url: 'https://www.example.com/',
+        },
+      },
+      {
+        input: '/news',
+        path: '/news',
+        url: 'https://stage.example.com/news',
+        source: {
+          label: 'stage.example.com',
+          url: 'https://stage.example.com/',
+        },
+      },
+    ])
+  } finally {
+    await rm(tempDir, { recursive: true, force: true })
+  }
 })

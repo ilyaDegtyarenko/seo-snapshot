@@ -56,6 +56,112 @@ const renderIssueBreakdown = (summary) => {
   return `<ul class="inline-list">${ summary.issueBreakdown.map(issue => `<li><strong>${ escapeHtml(issue.code) }</strong> (${ escapeHtml(issue.count) })</li>`).join('') }</ul>`
 }
 
+const renderComparisonBreakdown = (comparison) => {
+  if (!comparison || comparison.differenceBreakdown.length === 0) {
+    return '<p class="muted">No field-level differences detected.</p>'
+  }
+
+  return `<ul class="inline-list">${ comparison.differenceBreakdown.map(entry => `<li><strong>${ escapeHtml(entry.label) }</strong> (${ escapeHtml(entry.count) })</li>`).join('') }</ul>`
+}
+
+const renderValue = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return '<span class="muted">-</span>'
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return '<span class="muted">-</span>'
+    }
+
+    return `<ul class="stack-list">${ value.map(item => `<li>${ escapeHtml(item) }</li>`).join('') }</ul>`
+  }
+
+  return escapeHtml(value)
+}
+
+const renderIssueDelta = (issueDelta, comparison) => {
+  if (!issueDelta || (!issueDelta.onlyOnLeft.length && !issueDelta.onlyOnRight.length)) {
+    return ''
+  }
+
+  return `
+    <div class="subsection">
+      <h3>Issue Delta</h3>
+      <div class="diff-columns">
+        <div class="diff-column">
+          <span class="diff-column-label">${ escapeHtml(comparison.left.label) } only</span>
+          ${ renderValue(issueDelta.onlyOnLeft) }
+        </div>
+        <div class="diff-column">
+          <span class="diff-column-label">${ escapeHtml(comparison.right.label) } only</span>
+          ${ renderValue(issueDelta.onlyOnRight) }
+        </div>
+      </div>
+    </div>
+  `
+}
+
+const renderComparisonDifferences = (comparison) => {
+  if (comparison.differences.length === 0) {
+    return '<p class="muted">No SEO differences detected for this path.</p>'
+  }
+
+  return `<div class="diff-list">${ comparison.differences.map(difference => `
+    <article class="diff-row">
+      <strong>${ escapeHtml(difference.label) }</strong>
+      <div class="diff-columns">
+        <div class="diff-column">
+          <span class="diff-column-label">${ escapeHtml(comparison.left.label) }</span>
+          <div>${ renderValue(difference.left) }</div>
+        </div>
+        <div class="diff-column">
+          <span class="diff-column-label">${ escapeHtml(comparison.right.label) }</span>
+          <div>${ renderValue(difference.right) }</div>
+        </div>
+      </div>
+    </article>
+  `).join('')}</div>`
+}
+
+const renderComparisonCard = (comparison) => {
+  return `
+    <section class="page-card">
+      <header class="page-card-header">
+        <div class="page-card-title">
+          <h2>${ escapeHtml(comparison.targetPath) }</h2>
+          <p class="page-url"><code>${ escapeHtml(comparison.left.label) }</code> vs <code>${ escapeHtml(comparison.right.label) }</code></p>
+        </div>
+        <div class="badge-row">
+          ${ comparison.differences.length > 0 ? renderBadge(`differences ${ comparison.differences.length }`, 'warning') : renderBadge('matching', 'success') }
+        </div>
+      </header>
+
+      <div class="comparison-grid">
+        <div class="comparison-side">
+          <strong>${ escapeHtml(comparison.left.label) }</strong>
+          <p><code>${ escapeHtml(comparison.left.requestedUrl) }</code></p>
+          <p class="muted">Status: ${ escapeHtml(comparison.left.status ?? 'n/a') }</p>
+          <p class="muted">Final: ${ comparison.left.finalUrl ? `<code>${ escapeHtml(comparison.left.finalUrl) }</code>` : '<span class="muted">-</span>' }</p>
+        </div>
+        <div class="comparison-side">
+          <strong>${ escapeHtml(comparison.right.label) }</strong>
+          <p><code>${ escapeHtml(comparison.right.requestedUrl) }</code></p>
+          <p class="muted">Status: ${ escapeHtml(comparison.right.status ?? 'n/a') }</p>
+          <p class="muted">Final: ${ comparison.right.finalUrl ? `<code>${ escapeHtml(comparison.right.finalUrl) }</code>` : '<span class="muted">-</span>' }</p>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <h3>Field Differences</h3>
+        ${ renderComparisonDifferences(comparison) }
+      </div>
+
+      ${ renderIssueDelta(comparison.issueDelta, comparison) }
+    </section>
+  `
+}
+
 const getStatusTone = (page) => {
   if (page.error) {
     return 'error'
@@ -97,6 +203,7 @@ const renderPageCard = (page) => {
           <p class="page-url"><code>${ escapeHtml(page.finalUrl || page.requestedUrl) }</code></p>
         </div>
         <div class="badge-row">
+          ${ page.source ? renderBadge(page.source.label, 'info') : '' }
           ${ renderBadge(page.error ? 'error' : `status ${ page.status ?? 'n/a' }`, statusTone) }
           ${ page.redirectChain.length > 1 ? renderBadge(`redirects ${ page.redirectChain.length - 1 }`, 'neutral') : '' }
           ${ page.issues.length > 0 ? renderBadge(`issues ${ page.issues.length }`, issuesTone) : renderBadge('clean', 'success') }
@@ -113,6 +220,8 @@ const renderPageCard = (page) => {
       </div>
 
       <dl class="kv-grid">
+        ${ renderKeyValueRow('Target Path', page.targetPath) }
+        ${ renderKeyValueRow('Source', page.source ? `${ page.source.label } (${ page.source.baseUrl })` : null) }
         ${ renderKeyValueRow('Requested URL', page.requestedUrl) }
         ${ renderKeyValueRow('Final URL', page.finalUrl) }
         ${ renderKeyValueRow('Title', page.seo?.document.title) }
@@ -157,6 +266,7 @@ const renderPageCard = (page) => {
 
 export const renderHtmlReport = (report) => {
   const summary = report.summary ?? buildSummary(report.pages)
+  const comparison = report.comparison ?? null
   const generatedAtLabel = new Date(report.generatedAt).toLocaleString('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'medium',
@@ -278,6 +388,24 @@ export const renderHtmlReport = (report) => {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 12px;
+    }
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .comparison-side,
+    .diff-column {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--bg-muted);
+      display: grid;
+      gap: 6px;
+    }
+    .comparison-side strong {
+      font-size: 15px;
+      letter-spacing: -0.01em;
     }
     .summary-card, .page-card {
       border: 1px solid var(--border);
@@ -451,6 +579,29 @@ export const renderHtmlReport = (report) => {
     .raw-details {
       margin-top: 16px;
     }
+    .diff-list {
+      display: grid;
+      gap: 12px;
+    }
+    .diff-row {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--bg-muted);
+    }
+    .diff-columns {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .diff-column-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
     .raw-details summary {
       cursor: pointer;
       color: var(--muted);
@@ -489,11 +640,11 @@ export const renderHtmlReport = (report) => {
           <code>${ escapeHtml(report.options.configPath) }</code>
         </div>
         <div class="header-meta-item">
-          <strong>Base URL</strong>
-          <code>${ escapeHtml(report.options.baseUrl || '-') }</code>
+          <strong>${ comparison ? 'Compare' : 'Base URL' }</strong>
+          <code>${ comparison ? escapeHtml(comparison.sources.map(source => source.label).join(' vs ')) : escapeHtml(report.options.baseUrl || '-') }</code>
         </div>
         <div class="header-meta-item">
-          <strong>Targets</strong>
+          <strong>${ comparison ? 'Requests' : 'Targets' }</strong>
           <code>${ escapeHtml(report.options.targetCount) }</code>
         </div>
         <div class="header-meta-item">
@@ -513,6 +664,25 @@ export const renderHtmlReport = (report) => {
       <article class="summary-card"><strong>${ escapeHtml(summary.severityCounts.error) }</strong><span>Error issues</span></article>
       <article class="summary-card"><strong>${ escapeHtml(summary.severityCounts.warning) }</strong><span>Warning issues</span></article>
     </section>
+
+    ${ comparison ? `
+      <section class="summary-grid">
+        <article class="summary-card"><strong>${ escapeHtml(comparison.targetCount) }</strong><span>Compared paths</span></article>
+        <article class="summary-card"><strong>${ escapeHtml(comparison.targetsWithDifferences) }</strong><span>Paths with differences</span></article>
+        <article class="summary-card"><strong>${ escapeHtml(comparison.totalDifferences) }</strong><span>Total field differences</span></article>
+      </section>
+
+      <section class="page-card">
+        <div class="subsection">
+          <h3>Difference Breakdown</h3>
+          ${ renderComparisonBreakdown(comparison) }
+        </div>
+      </section>
+
+      <section class="page-list">
+        ${ comparison.comparisons.map(renderComparisonCard).join('') }
+      </section>
+    ` : '' }
 
     <section class="page-card">
       <div class="subsection">

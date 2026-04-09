@@ -108,6 +108,10 @@ export const runCli = async (argv = process.argv.slice(2)) => {
 
   process.stdout.write(`SEO snapshot completed: ${ result.summary.total } pages checked, ${ result.summary.pagesWithIssues } with issues, ${ result.summary.failedPages } failed.\n`)
 
+  if (result.report.comparison) {
+    process.stdout.write(`Compared paths: ${ result.report.comparison.targetCount }, differences on ${ result.report.comparison.targetsWithDifferences }.\n`)
+  }
+
   if (primaryOutputPath) {
     const primaryLabel = result.htmlOutputPath ? 'Open report' : 'Open output'
     process.stdout.write(`${ primaryLabel }: ${ pathToFileURL(primaryOutputPath).href }\n`)

@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { buildPageIssues, buildSummary } from './audit.mjs'
+import { buildComparisonReport } from './compare.mjs'
 import { buildRuntimeOptions, readSeoConfig, resolveTargets } from './config.mjs'
 import { extractSeoInfoFromHtml } from './extract-seo.mjs'
 import { fetchWithRedirects, isHtmlResponse } from './fetch-page.mjs'
@@ -34,6 +35,8 @@ const buildPageReport = async (target, requestOptions) => {
     const xRobotsTag = fetched.response.headers.get('x-robots-tag')
     const report = {
       input: target.input,
+      targetPath: target.path ?? target.input,
+      source: target.source ?? null,
       requestedUrl: target.url,
       finalUrl: fetched.finalUrl,
       status: fetched.response.status,
@@ -61,6 +64,8 @@ const buildPageReport = async (target, requestOptions) => {
   } catch (error) {
     return {
       input: target.input,
+      targetPath: target.path ?? target.input,
+      source: target.source ?? null,
       requestedUrl: target.url,
       finalUrl: null,
       status: null,
@@ -122,12 +127,14 @@ export const runAudit = async (cliOptions, runtime = {}) => {
     }
   })
   const summary = buildSummary(pages)
+  const comparison = buildComparisonReport(pages, runtimeOptions.compare)
 
   const report = {
     generatedAt: new Date().toISOString(),
     options: {
       configPath: configLabel,
       baseUrl: typeof config.baseUrl === 'string' ? config.baseUrl : null,
+      compare: runtimeOptions.compare,
       timeoutMs: runtimeOptions.request.timeoutMs,
       maxRedirects: runtimeOptions.request.maxRedirects,
       concurrency: runtimeOptions.request.concurrency,
@@ -136,6 +143,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
       outputDir: runtimeOptions.output.dir,
     },
     summary,
+    comparison,
     pages,
   }
   const outputPaths = await writeReports(report, runtimeOptions.output)
