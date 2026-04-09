@@ -28,6 +28,20 @@ const normalizeList = (items, { sort = false } = {}) => {
   return [ ...normalizedItems ].sort((left, right) => String(left).localeCompare(String(right)))
 }
 
+const normalizeUrlPath = (url) => {
+  if (!url) {
+    return null
+  }
+
+  try {
+    const parsed = new URL(String(url))
+
+    return `${ parsed.pathname }${ parsed.search }${ parsed.hash }` || '/'
+  } catch {
+    return normalizeScalar(url)
+  }
+}
+
 const normalizeAlternateLinks = (links) => {
   if (!Array.isArray(links)) {
     return []
@@ -35,7 +49,7 @@ const normalizeAlternateLinks = (links) => {
 
   return normalizeList(links.map((link) => {
     const hreflang = normalizeScalar(link?.hreflang) ?? '-'
-    const href = normalizeScalar(link?.href) ?? '-'
+    const href = normalizeUrlPath(link?.href) ?? '-'
 
     return `${ hreflang }: ${ href }`
   }), { sort: true })
@@ -84,7 +98,7 @@ const DIFFERENCE_SPECS = [
   {
     key: 'finalUrl',
     label: 'Final URL',
-    getValue: page => normalizeScalar(page.finalUrl),
+    getValue: page => normalizeUrlPath(page.finalUrl),
   },
   {
     key: 'title',
@@ -99,7 +113,7 @@ const DIFFERENCE_SPECS = [
   {
     key: 'canonical',
     label: 'Canonical',
-    getValue: page => normalizeScalar(page.seo?.links.canonical),
+    getValue: page => normalizeUrlPath(page.seo?.links.canonical),
   },
   {
     key: 'robots',
@@ -134,12 +148,12 @@ const DIFFERENCE_SPECS = [
   {
     key: 'ogUrl',
     label: 'OpenGraph URL',
-    getValue: page => normalizeScalar(page.seo?.meta.openGraph?.url),
+    getValue: page => normalizeUrlPath(page.seo?.meta.openGraph?.url),
   },
   {
     key: 'ogImage',
     label: 'OpenGraph image',
-    getValue: page => normalizeScalar(page.seo?.meta.openGraph?.image),
+    getValue: page => normalizeUrlPath(page.seo?.meta.openGraph?.image),
   },
   {
     key: 'twitterCard',
@@ -159,7 +173,7 @@ const DIFFERENCE_SPECS = [
   {
     key: 'twitterImage',
     label: 'Twitter image',
-    getValue: page => normalizeScalar(page.seo?.meta.twitter?.image),
+    getValue: page => normalizeUrlPath(page.seo?.meta.twitter?.image),
   },
   {
     key: 'jsonLdTypes',

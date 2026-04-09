@@ -61,6 +61,116 @@ const renderSummaryCard = (value, label, tone = 'neutral') => {
   return `<article class="summary-card${ toneClass }"><strong>${ escapeHtml(value) }</strong><span>${ escapeHtml(label) }</span></article>`
 }
 
+const getHostname = (value) => {
+  if (!value) {
+    return null
+  }
+
+  try {
+    return new URL(value).host || null
+  } catch {
+    return null
+  }
+}
+
+const slugifyAnchorPart = (value) => {
+  return String(value ?? '')
+    .normalize('NFKD')
+    .replaceAll(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, '-')
+    .replaceAll(/^-+|-+$/g, '')
+}
+
+const getPageTitle = (page) => {
+  return page.seo?.document.title
+    || page.targetPath
+    || page.input
+    || page.finalUrl
+    || page.requestedUrl
+    || 'Untitled page'
+}
+
+const getPageNavLabel = (page) => {
+  return page.targetPath
+    || page.input
+    || page.finalUrl
+    || page.requestedUrl
+    || getPageTitle(page)
+}
+
+const getPageSourceMeta = (page) => {
+  const sourceUrl = page.source?.url ?? null
+  const sourceLabel = page.source?.label ?? null
+  const host = getHostname(sourceUrl || page.finalUrl || page.requestedUrl)
+  const badge = host || sourceLabel || null
+  const display = host && sourceLabel && sourceLabel !== host
+    ? `${ sourceLabel } (${ host })`
+    : (host || sourceLabel || sourceUrl || null)
+
+  return {
+    key: sourceUrl || host || 'primary',
+    url: sourceUrl,
+    label: sourceLabel,
+    host,
+    badge,
+    display,
+  }
+}
+
+const getPageSourceDetails = (sourceMeta) => {
+  if (!sourceMeta.display) {
+    return null
+  }
+
+  if (sourceMeta.url && sourceMeta.display !== sourceMeta.url) {
+    return `${ sourceMeta.display } · ${ sourceMeta.url }`
+  }
+
+  return sourceMeta.display
+}
+
+const buildPageAnchorId = (page, index) => {
+  const slug = slugifyAnchorPart(getPageNavLabel(page))
+  return slug
+    ? `page-${ index + 1 }-${ slug }`
+    : `page-${ index + 1 }`
+}
+
+const buildPageEntries = (pages) => {
+  return pages.map((page, index) => {
+    const source = getPageSourceMeta(page)
+
+    return {
+      anchorId: buildPageAnchorId(page, index),
+      index,
+      navLabel: getPageNavLabel(page),
+      source,
+      title: getPageTitle(page),
+      page,
+    }
+  })
+}
+
+const buildPageSourceFilters = (pageEntries) => {
+  const filters = new Map()
+
+  for (const entry of pageEntries) {
+    if (filters.has(entry.source.key)) {
+      filters.get(entry.source.key).count += 1
+      continue
+    }
+
+    filters.set(entry.source.key, {
+      key: entry.source.key,
+      label: entry.source.display || entry.source.badge || 'Primary source',
+      count: 1,
+    })
+  }
+
+  return [ ...filters.values() ]
+}
+
 const renderComparisonBreakdown = (comparison) => {
   if (!comparison || comparison.differenceBreakdown.length === 0) {
     return '<p class="muted">No field-level differences detected.</p>'
@@ -184,24 +294,52 @@ const getStatusTone = (page) => {
   return 'neutral'
 }
 
-const renderPageCard = (page) => {
+const renderPageIndexItem = (entry) => {
+  const statusLabel = entry.page.error ? 'error' : `status ${ entry.page.status ?? 'n/a' }`
+  const metaParts = [
+    entry.source.badge,
+    statusLabel,
+  ].filter(Boolean)
+
+  return `
+    <a
+      class="page-index-link"
+      href="#${ escapeHtml(entry.anchorId) }"
+      data-page-link
+      data-page-anchor="${ escapeHtml(entry.anchorId) }"
+      data-source-key="${ escapeHtml(entry.source.key) }"
+      title="${ escapeHtml(entry.title) }"
+    >
+      <strong>${ escapeHtml(entry.navLabel) }</strong>
+      ${ entry.title !== entry.navLabel ? `<span class="page-index-title">${ escapeHtml(entry.title) }</span>` : '' }
+      <span class="page-index-meta">${ escapeHtml(metaParts.join(' · ')) }</span>
+    </a>
+  `
+}
+
+const renderPageCard = (entry) => {
+  const { page, anchorId, source, title } = entry
   const statusTone = getStatusTone(page)
   const issuesTone = page.issues.length > 0
     ? getHighestSeverity(page.issues)
     : 'success'
-  const title = page.seo?.document.title || page.input
   const robotsValue = page.seo?.meta.robots || page.headers.xRobotsTag || null
   const rawJson = escapeHtml(JSON.stringify(page, null, 2))
 
   return `
-    <section class="page-card">
+    <section
+      class="page-card report-page-card"
+      id="${ escapeHtml(anchorId) }"
+      data-page-card
+      data-source-key="${ escapeHtml(source.key) }"
+    >
       <header class="page-card-header">
         <div class="page-card-title">
           <h2>${ escapeHtml(title) }</h2>
           <p class="page-url"><code>${ escapeHtml(page.finalUrl || page.requestedUrl) }</code></p>
         </div>
         <div class="badge-row">
-          ${ page.source ? renderBadge(page.source.label, 'info') : '' }
+          ${ source.badge ? renderBadge(source.badge, 'info') : '' }
           ${ renderBadge(page.error ? 'error' : `status ${ page.status ?? 'n/a' }`, statusTone) }
           ${ page.redirectChain.length > 1 ? renderBadge(`redirects ${ page.redirectChain.length - 1 }`, 'neutral') : '' }
           ${ page.issues.length > 0 ? renderBadge(`issues ${ page.issues.length }`, issuesTone) : renderBadge('clean', 'success') }
@@ -219,7 +357,7 @@ const renderPageCard = (page) => {
 
       <dl class="kv-grid">
         ${ renderKeyValueRow('Target Path', page.targetPath) }
-        ${ renderKeyValueRow('Source', page.source ? `${ page.source.label } (${ page.source.baseUrl })` : null) }
+        ${ renderKeyValueRow('Source', getPageSourceDetails(source)) }
         ${ renderKeyValueRow('Requested URL', page.requestedUrl) }
         ${ renderKeyValueRow('Final URL', page.finalUrl) }
         ${ renderKeyValueRow('Title', page.seo?.document.title) }
@@ -289,9 +427,48 @@ const renderComparisonTab = (comparison) => {
   `
 }
 
+const renderPagesTab = (pageEntries, comparison) => {
+  const sourceFilters = comparison ? buildPageSourceFilters(pageEntries) : []
+
+  return `
+    <section class="pages-shell">
+      <aside class="page-card pages-sidebar">
+        <div class="pages-sidebar-header">
+          <h3>Page Index</h3>
+          <p class="muted">Jump to any page card. ${ comparison ? 'Comparison mode also lets you filter by source domain.' : 'Use the anchor list to move through long reports faster.' }</p>
+        </div>
+
+        ${ sourceFilters.length > 0 ? `
+          <label class="field-group">
+            <span class="field-label">Domain</span>
+            <select class="field-select" data-page-domain-filter aria-label="Filter pages by domain">
+              <option value="all">All domains (${ pageEntries.length })</option>
+              ${ sourceFilters.map(filter => `<option value="${ escapeHtml(filter.key) }">${ escapeHtml(filter.label) } (${ escapeHtml(filter.count) })</option>`).join('') }
+            </select>
+          </label>
+        ` : '' }
+
+        <p class="pages-counter muted"><span data-pages-visible-count>${ pageEntries.length }</span> of ${ pageEntries.length } pages shown</p>
+
+        <nav class="page-index-nav" aria-label="Pages navigation">
+          ${ pageEntries.map(renderPageIndexItem).join('') }
+        </nav>
+      </aside>
+
+      <div class="pages-content">
+        <p class="page-index-empty muted hidden" data-pages-empty>No pages match the selected domain.</p>
+        <section class="page-list">
+          ${ pageEntries.map(renderPageCard).join('') }
+        </section>
+      </div>
+    </section>
+  `
+}
+
 export const renderHtmlReport = (report) => {
   const summary = report.summary ?? buildSummary(report.pages)
   const comparison = report.comparison ?? null
+  const pageEntries = buildPageEntries(report.pages)
   const generatedAtLabel = new Date(report.generatedAt).toLocaleString('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'medium',
@@ -322,6 +499,7 @@ export const renderHtmlReport = (report) => {
       --info: #60a5fa;
       --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
     }
+    html { scroll-behavior: smooth; }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -433,8 +611,8 @@ export const renderHtmlReport = (report) => {
       border-bottom-color: var(--info);
       font-weight: 600;
     }
+    .hidden { display: none !important; }
     .tab-panel { display: contents; }
-    .tab-panel.hidden { display: none; }
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -467,6 +645,9 @@ export const renderHtmlReport = (report) => {
     .page-list {
       display: grid;
       gap: 14px;
+    }
+    .report-page-card {
+      scroll-margin-top: 24px;
     }
     .page-card {
       padding: 22px;
@@ -538,6 +719,90 @@ export const renderHtmlReport = (report) => {
       background: #181818;
       border-color: var(--border-strong);
       color: var(--tone-strong);
+    }
+    .pages-shell {
+      display: grid;
+      grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .pages-sidebar {
+      position: sticky;
+      top: 20px;
+      display: grid;
+      gap: 16px;
+      padding: 18px;
+    }
+    .pages-sidebar-header {
+      display: grid;
+      gap: 8px;
+    }
+    .field-group {
+      display: grid;
+      gap: 8px;
+    }
+    .field-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .field-select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--bg-muted);
+      color: var(--text);
+      font: inherit;
+    }
+    .pages-counter {
+      font-size: 13px;
+    }
+    .page-index-nav {
+      display: grid;
+      gap: 8px;
+      max-height: calc(100vh - 220px);
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .page-index-link {
+      display: grid;
+      gap: 4px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--bg-muted);
+      color: inherit;
+      text-decoration: none;
+      transition: border-color 120ms ease, transform 120ms ease, background 120ms ease;
+    }
+    .page-index-link:hover {
+      border-color: var(--border-strong);
+      transform: translateY(-1px);
+    }
+    .page-index-link.active {
+      border-color: rgba(96, 165, 250, 0.38);
+      background: rgba(96, 165, 250, 0.08);
+    }
+    .page-index-link strong {
+      font-size: 14px;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+    .page-index-title,
+    .page-index-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .pages-content {
+      display: grid;
+      gap: 14px;
+    }
+    .page-index-empty {
+      padding: 12px 2px 0;
     }
     .kv-grid {
       display: grid;
@@ -690,6 +955,17 @@ export const renderHtmlReport = (report) => {
       border-color: rgba(248, 113, 113, 0.2);
       color: var(--error);
     }
+    @media (max-width: 1040px) {
+      .pages-shell {
+        grid-template-columns: 1fr;
+      }
+      .pages-sidebar {
+        position: static;
+      }
+      .page-index-nav {
+        max-height: 320px;
+      }
+    }
     @media (max-width: 720px) {
       main { padding: 16px 14px 40px; }
       .page-card-header { flex-direction: column; }
@@ -697,6 +973,9 @@ export const renderHtmlReport = (report) => {
       .page-header { padding: 20px; }
       .diff-inline-row { grid-template-columns: 1fr; }
       .diff-issue-badges { grid-column: 1; }
+      .page-index-nav {
+        max-height: none;
+      }
     }
   </style>
 </head>
@@ -787,24 +1066,195 @@ export const renderHtmlReport = (report) => {
     ` : '' }
 
     <div class="tab-panel${ defaultTab !== 'pages' ? ' hidden' : '' }" id="tab-pages">
-      <section class="page-list">
-        ${ report.pages.map(renderPageCard).join('') }
-      </section>
+      ${ renderPagesTab(pageEntries, comparison) }
     </div>
   </main>
 
   <script>
     (function () {
-      var btns = document.querySelectorAll('.tab-btn')
-      var panels = document.querySelectorAll('.tab-panel')
-      function activate(name) {
+      var defaultTab = ${ JSON.stringify(defaultTab) }
+      var btns = Array.from(document.querySelectorAll('.tab-btn'))
+      var panels = Array.from(document.querySelectorAll('.tab-panel'))
+      var pageFilter = document.querySelector('[data-page-domain-filter]')
+      var pageCards = Array.from(document.querySelectorAll('[data-page-card]'))
+      var pageLinks = Array.from(document.querySelectorAll('[data-page-link]'))
+      var visibleCount = document.querySelector('[data-pages-visible-count]')
+      var emptyState = document.querySelector('[data-pages-empty]')
+
+      function activate(name, updateHash) {
         btns.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name) })
         panels.forEach(function (p) { p.classList.toggle('hidden', p.id !== 'tab-' + name) })
-        location.hash = name
+        if (updateHash) {
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', '#tab-' + name)
+          } else {
+            location.hash = 'tab-' + name
+          }
+        }
       }
-      btns.forEach(function (b) { b.addEventListener('click', function () { activate(b.dataset.tab) }) })
-      var hash = location.hash.replace('#', '')
-      if (hash && document.getElementById('tab-' + hash)) { activate(hash) }
+
+      function syncPageFilter() {
+        if (!pageCards.length) {
+          return
+        }
+
+        var selectedSource = pageFilter ? pageFilter.value : 'all'
+        var count = 0
+
+        pageCards.forEach(function (card) {
+          var matches = selectedSource === 'all' || card.dataset.sourceKey === selectedSource
+          card.classList.toggle('hidden', !matches)
+          if (matches) {
+            count += 1
+          }
+        })
+
+        pageLinks.forEach(function (link) {
+          var matches = selectedSource === 'all' || link.dataset.sourceKey === selectedSource
+          link.classList.toggle('hidden', !matches)
+        })
+
+        if (visibleCount) {
+          visibleCount.textContent = String(count)
+        }
+
+        if (emptyState) {
+          emptyState.classList.toggle('hidden', count > 0)
+        }
+      }
+
+      function setActivePageLink(anchorId) {
+        pageLinks.forEach(function (link) {
+          var isActive = Boolean(anchorId) && link.dataset.pageAnchor === anchorId
+          link.classList.toggle('active', isActive)
+          if (isActive) {
+            link.setAttribute('aria-current', 'location')
+          } else {
+            link.removeAttribute('aria-current')
+          }
+        })
+      }
+
+      function isPagesTabActive() {
+        var pagesTab = document.getElementById('tab-pages')
+
+        return Boolean(pagesTab) && !pagesTab.classList.contains('hidden')
+      }
+
+      function getVisiblePageCards() {
+        return pageCards.filter(function (card) {
+          return !card.classList.contains('hidden')
+        })
+      }
+
+      function syncActivePageLinkFromScroll() {
+        if (!pageCards.length || !isPagesTabActive()) {
+          return
+        }
+
+        var visibleCards = getVisiblePageCards()
+
+        if (!visibleCards.length) {
+          setActivePageLink('')
+          return
+        }
+
+        var threshold = Math.min(window.innerHeight * 0.35, 220)
+        var activeCard = visibleCards[0]
+
+        visibleCards.forEach(function (card) {
+          if (card.getBoundingClientRect().top <= threshold) {
+            activeCard = card
+          }
+        })
+
+        setActivePageLink(activeCard.id)
+      }
+
+      var scrollTicking = false
+
+      function requestScrollSync() {
+        if (scrollTicking) {
+          return
+        }
+
+        scrollTicking = true
+        window.requestAnimationFrame(function () {
+          scrollTicking = false
+          syncActivePageLinkFromScroll()
+        })
+      }
+
+      function readHashState() {
+        var hash = location.hash.replace(/^#/, '')
+
+        if (!hash) {
+          return { tab: defaultTab, anchorId: '' }
+        }
+
+        if (hash.indexOf('tab-') === 0 && document.getElementById(hash)) {
+          return { tab: hash.slice(4), anchorId: '' }
+        }
+
+        if (document.getElementById(hash)) {
+          return { tab: 'pages', anchorId: hash }
+        }
+
+        if (document.getElementById('tab-' + hash)) {
+          return { tab: hash, anchorId: '' }
+        }
+
+        return { tab: defaultTab, anchorId: '' }
+      }
+
+      function syncFromHash() {
+        var state = readHashState()
+
+        activate(state.tab, false)
+
+        if (state.anchorId) {
+          setActivePageLink(state.anchorId)
+          window.requestAnimationFrame(function () {
+            var target = document.getElementById(state.anchorId)
+
+            if (target && !target.classList.contains('hidden')) {
+              target.scrollIntoView({ block: 'start' })
+            }
+          })
+          return
+        }
+
+        syncActivePageLinkFromScroll()
+      }
+
+      btns.forEach(function (b) {
+        b.addEventListener('click', function () {
+          activate(b.dataset.tab, true)
+
+          if (b.dataset.tab !== 'pages') {
+            setActivePageLink('')
+          }
+        })
+      })
+
+      if (pageFilter) {
+        pageFilter.addEventListener('change', function () {
+          syncPageFilter()
+          var currentAnchor = location.hash.replace(/^#/, '')
+          var currentTarget = document.getElementById(currentAnchor)
+
+          if (currentTarget && currentTarget.classList.contains('hidden')) {
+            setActivePageLink('')
+          }
+        })
+      }
+
+      window.addEventListener('hashchange', syncFromHash)
+      window.addEventListener('scroll', requestScrollSync, { passive: true })
+      window.addEventListener('resize', requestScrollSync)
+
+      syncPageFilter()
+      syncFromHash()
     })()
   </script>
 </body>
