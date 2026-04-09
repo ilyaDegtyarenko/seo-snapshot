@@ -6,6 +6,8 @@ export const DEFAULT_CONCURRENCY = 4
 export const DEFAULT_USER_AGENT = 'Mozilla/5.0 (compatible; SEO-Snapshot/1.0)'
 export const DEFAULT_FORMATS = [ 'html', 'json' ]
 export const HTML_CONTENT_TYPE_PATTERN = /^(text\/html|application\/xhtml\+xml)\b/i
+export const ENV_CONFIG_PATH_VAR = 'SEO_SNAPSHOT_CONFIG_PATH'
+export const ENV_CONFIG_JSON_VAR = 'SEO_SNAPSHOT_CONFIG'
 
 export const DEFAULT_AUDIT_RULES = {
   minTitleLength: 15,
@@ -32,6 +34,24 @@ Options:
   --concurrency <n>       Maximum parallel requests. Default: ${ DEFAULT_CONCURRENCY }.
   --user-agent <value>    Override the request User-Agent.
   --help                  Show this help.
+
+Environment:
+  ${ ENV_CONFIG_PATH_VAR }     Config file path alternative to --config.
+  ${ ENV_CONFIG_JSON_VAR }          JSON object with the full config.
+  SEO_SNAPSHOT_BASE_URL       Override config.baseUrl.
+  SEO_SNAPSHOT_TARGETS_FILE   Override config.targetsFile.
+  SEO_SNAPSHOT_TARGETS        Override config.targets. Accepts JSON array or comma/newline list.
+  SEO_SNAPSHOT_OUTPUT_DIR     Override config.output.dir.
+  SEO_SNAPSHOT_OUTPUT_FORMATS Override config.output.formats.
+  SEO_SNAPSHOT_REQUEST_TIMEOUT_MS
+  SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS
+  SEO_SNAPSHOT_REQUEST_CONCURRENCY
+  SEO_SNAPSHOT_REQUEST_USER_AGENT
+  SEO_SNAPSHOT_AUDIT_MIN_TITLE_LENGTH
+  SEO_SNAPSHOT_AUDIT_MAX_TITLE_LENGTH
+  SEO_SNAPSHOT_AUDIT_MIN_DESCRIPTION_LENGTH
+  SEO_SNAPSHOT_AUDIT_MAX_DESCRIPTION_LENGTH
+  SEO_SNAPSHOT_AUDIT_MIN_BODY_TEXT_LENGTH
 
 Config file format:
   export default {

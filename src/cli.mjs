@@ -33,7 +33,7 @@ const parseFormats = (value) => {
 export const parseArgs = (argv) => {
   const options = {
     help: false,
-    configPath: DEFAULT_CONFIG_PATH,
+    configPath: undefined,
     outputDir: undefined,
     timeoutMs: undefined,
     maxRedirects: undefined,
@@ -84,7 +84,7 @@ export const parseArgs = (argv) => {
           exitWithError(`Unknown flag "${ arg }".\n\n${ buildHelpText() }`)
         }
 
-        exitWithError(`Unexpected positional argument "${ arg }". Configure targets in ${ options.configPath }.`)
+        exitWithError(`Unexpected positional argument "${ arg }". Configure targets in ${ options.configPath ?? process.env.SEO_SNAPSHOT_CONFIG_PATH ?? DEFAULT_CONFIG_PATH }.`)
     }
   }
 

@@ -52,6 +52,56 @@ pnpm run snapshot -- \
   --concurrency 4
 ```
 
+## Environment Config
+
+You can pass config through environment variables. Place them in a `.env` file at the project root — `pnpm run snapshot` loads it automatically:
+
+```bash
+SEO_SNAPSHOT_BASE_URL=https://example.com
+SEO_SNAPSHOT_TARGETS=/,/news,/about
+```
+
+See `.env.example` for all available variables.
+
+Alternatively, pass variables inline in two ways.
+
+Full config as JSON:
+
+```bash
+SEO_SNAPSHOT_CONFIG='{"baseUrl":"http://127.0.0.1:3000","targets":["/","/news"],"output":{"dir":"./reports","formats":["html","json"]}}' \
+node ./bin/seo-snapshot.mjs
+```
+
+File config plus env overrides:
+
+```bash
+SEO_SNAPSHOT_CONFIG_PATH=./config/seo-snapshot.config.mjs \
+SEO_SNAPSHOT_BASE_URL=http://127.0.0.1:3000 \
+SEO_SNAPSHOT_TARGETS="/,/news,/movies" \
+SEO_SNAPSHOT_OUTPUT_FORMATS=html,json \
+SEO_SNAPSHOT_REQUEST_CONCURRENCY=8 \
+node ./bin/seo-snapshot.mjs
+```
+
+Supported overrides:
+
+- `SEO_SNAPSHOT_CONFIG_PATH`
+- `SEO_SNAPSHOT_CONFIG`
+- `SEO_SNAPSHOT_BASE_URL`
+- `SEO_SNAPSHOT_TARGETS_FILE`
+- `SEO_SNAPSHOT_TARGETS` as JSON array or comma/newline-separated list
+- `SEO_SNAPSHOT_OUTPUT_DIR`
+- `SEO_SNAPSHOT_OUTPUT_FORMATS`
+- `SEO_SNAPSHOT_REQUEST_TIMEOUT_MS`
+- `SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS`
+- `SEO_SNAPSHOT_REQUEST_CONCURRENCY`
+- `SEO_SNAPSHOT_REQUEST_USER_AGENT`
+- `SEO_SNAPSHOT_AUDIT_MIN_TITLE_LENGTH`
+- `SEO_SNAPSHOT_AUDIT_MAX_TITLE_LENGTH`
+- `SEO_SNAPSHOT_AUDIT_MIN_DESCRIPTION_LENGTH`
+- `SEO_SNAPSHOT_AUDIT_MAX_DESCRIPTION_LENGTH`
+- `SEO_SNAPSHOT_AUDIT_MIN_BODY_TEXT_LENGTH`
+
 ## Config
 
 Example `config/seo-snapshot.config.mjs`:

@@ -1,6 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { DEFAULT_CONFIG_PATH } from './constants.mjs'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { buildPageIssues } from './audit.mjs'
 import { buildRuntimeOptions, readSeoConfig, resolveTargets } from './config.mjs'
 import { extractSeoInfoFromHtml } from './extract-seo.mjs'
@@ -103,8 +102,11 @@ const writeReports = async (report, outputOptions) => {
 
 export const runAudit = async (cliOptions, runtime = {}) => {
   const cwd = runtime.cwd ?? process.cwd()
-  const { absoluteConfigPath, config } = await readSeoConfig(cliOptions.configPath ?? DEFAULT_CONFIG_PATH, cwd)
-  const configDir = path.dirname(absoluteConfigPath)
+  const {
+    config,
+    configDir,
+    configLabel,
+  } = await readSeoConfig(cliOptions.configPath, cwd, runtime.env ?? process.env)
   const runtimeOptions = buildRuntimeOptions({
     config,
     configDir,
@@ -123,7 +125,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
   const report = {
     generatedAt: new Date().toISOString(),
     options: {
-      configPath: absoluteConfigPath,
+      configPath: configLabel,
       baseUrl: typeof config.baseUrl === 'string' ? config.baseUrl : null,
       timeoutMs: runtimeOptions.request.timeoutMs,
       maxRedirects: runtimeOptions.request.maxRedirects,

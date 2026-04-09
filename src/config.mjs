@@ -1,13 +1,18 @@
-import { readFile } from 'node:fs/promises'
+import { access, readFile } from 'node:fs/promises'
+import path from 'node:path'
+import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 import {
   DEFAULT_AUDIT_RULES,
   DEFAULT_CONCURRENCY,
+  DEFAULT_CONFIG_PATH,
   DEFAULT_FORMATS,
   DEFAULT_MAX_REDIRECTS,
   DEFAULT_REPORTS_DIR,
   DEFAULT_TIMEOUT_MS,
   DEFAULT_USER_AGENT,
+  ENV_CONFIG_JSON_VAR,
+  ENV_CONFIG_PATH_VAR,
   SUPPORTED_FORMATS,
 } from './constants.mjs'
 import {
@@ -17,9 +22,156 @@ import {
   toAbsoluteUrl,
 } from './utils.mjs'
 
-export const readSeoConfig = async (configPath, cwd) => {
-  const absoluteConfigPath = normalizePathLikeValue(configPath, cwd)
+const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 
+const fileExists = async (filePath) => {
+  try {
+    await access(filePath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const parseJsonObjectEnv = (value, envName) => {
+  try {
+    const parsed = JSON.parse(String(value))
+
+    if (!isPlainObject(parsed)) {
+      exitWithError(`Expected ${ envName } to contain a JSON object.`)
+    }
+
+    return parsed
+  } catch (error) {
+    exitWithError(`Failed to parse ${ envName }: ${ error instanceof Error ? error.message : String(error) }`)
+  }
+}
+
+const parseJsonArrayEnv = (value, envName) => {
+  try {
+    const parsed = JSON.parse(String(value))
+
+    if (!Array.isArray(parsed)) {
+      exitWithError(`Expected ${ envName } to contain a JSON array.`)
+    }
+
+    return parsed.map(item => String(item || '').trim()).filter(Boolean)
+  } catch (error) {
+    exitWithError(`Failed to parse ${ envName }: ${ error instanceof Error ? error.message : String(error) }`)
+  }
+}
+
+const parseEnvString = (value) => String(value ?? '').trim()
+
+const parseEnvPositiveInt = (value, envName) => {
+  const parsed = Number.parseInt(String(value), 10)
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    exitWithError(`Expected ${ envName } to be a positive integer, received "${ value }".`)
+  }
+
+  return parsed
+}
+
+const parseEnvList = (value, envName) => {
+  const normalizedValue = String(value ?? '').trim()
+
+  if (!normalizedValue) {
+    return []
+  }
+
+  if (normalizedValue.startsWith('[')) {
+    return parseJsonArrayEnv(normalizedValue, envName)
+  }
+
+  return normalizedValue
+    .split(/\r?\n|,/)
+    .map(item => item.trim())
+    .filter(Boolean)
+}
+
+const assignNestedValue = (target, pathParts, value) => {
+  let cursor = target
+
+  for (let index = 0; index < pathParts.length - 1; index += 1) {
+    const key = pathParts[index]
+
+    if (!isPlainObject(cursor[key])) {
+      cursor[key] = {}
+    }
+
+    cursor = cursor[key]
+  }
+
+  cursor[pathParts[pathParts.length - 1]] = value
+}
+
+const mergeSeoConfig = (baseConfig, overrideConfig) => {
+  const mergedConfig = isPlainObject(baseConfig)
+    ? { ...baseConfig }
+    : {}
+
+  if (!isPlainObject(overrideConfig)) {
+    return mergedConfig
+  }
+
+  for (const [ key, value ] of Object.entries(overrideConfig)) {
+    if (isPlainObject(mergedConfig[key]) && isPlainObject(value)) {
+      mergedConfig[key] = {
+        ...mergedConfig[key],
+        ...value,
+      }
+      continue
+    }
+
+    mergedConfig[key] = value
+  }
+
+  return mergedConfig
+}
+
+const readEnvJsonConfig = (env) => {
+  if (!isNonEmptyString(env[ENV_CONFIG_JSON_VAR])) {
+    return null
+  }
+
+  return parseJsonObjectEnv(env[ENV_CONFIG_JSON_VAR], ENV_CONFIG_JSON_VAR)
+}
+
+const ENV_OVERRIDE_MAPPINGS = [
+  [ 'SEO_SNAPSHOT_BASE_URL', [ 'baseUrl' ], parseEnvString ],
+  [ 'SEO_SNAPSHOT_TARGETS_FILE', [ 'targetsFile' ], parseEnvString ],
+  [ 'SEO_SNAPSHOT_TARGETS', [ 'targets' ], parseEnvList ],
+  [ 'SEO_SNAPSHOT_OUTPUT_DIR', [ 'output', 'dir' ], parseEnvString ],
+  [ 'SEO_SNAPSHOT_OUTPUT_FORMATS', [ 'output', 'formats' ], parseEnvList ],
+  [ 'SEO_SNAPSHOT_REQUEST_TIMEOUT_MS', [ 'request', 'timeoutMs' ], parseEnvPositiveInt ],
+  [ 'SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS', [ 'request', 'maxRedirects' ], parseEnvPositiveInt ],
+  [ 'SEO_SNAPSHOT_REQUEST_CONCURRENCY', [ 'request', 'concurrency' ], parseEnvPositiveInt ],
+  [ 'SEO_SNAPSHOT_REQUEST_USER_AGENT', [ 'request', 'userAgent' ], parseEnvString ],
+  [ 'SEO_SNAPSHOT_AUDIT_MIN_TITLE_LENGTH', [ 'audit', 'minTitleLength' ], parseEnvPositiveInt ],
+  [ 'SEO_SNAPSHOT_AUDIT_MAX_TITLE_LENGTH', [ 'audit', 'maxTitleLength' ], parseEnvPositiveInt ],
+  [ 'SEO_SNAPSHOT_AUDIT_MIN_DESCRIPTION_LENGTH', [ 'audit', 'minDescriptionLength' ], parseEnvPositiveInt ],
+  [ 'SEO_SNAPSHOT_AUDIT_MAX_DESCRIPTION_LENGTH', [ 'audit', 'maxDescriptionLength' ], parseEnvPositiveInt ],
+  [ 'SEO_SNAPSHOT_AUDIT_MIN_BODY_TEXT_LENGTH', [ 'audit', 'minBodyTextLength' ], parseEnvPositiveInt ],
+]
+
+const readEnvOverrideConfig = (env) => {
+  const overrideConfig = {}
+  let hasOverrides = false
+
+  for (const [ envName, pathParts, parser ] of ENV_OVERRIDE_MAPPINGS) {
+    if (env[envName] === undefined) {
+      continue
+    }
+
+    assignNestedValue(overrideConfig, pathParts, parser(env[envName], envName))
+    hasOverrides = true
+  }
+
+  return hasOverrides ? overrideConfig : null
+}
+
+const loadConfigFromFile = async (absoluteConfigPath) => {
   if (!absoluteConfigPath) {
     exitWithError('Config path is not defined.')
   }
@@ -38,6 +190,57 @@ export const readSeoConfig = async (configPath, cwd) => {
     }
   } catch (error) {
     exitWithError(`Failed to load config ${ absoluteConfigPath }: ${ error instanceof Error ? error.message : String(error) }`)
+  }
+}
+
+export const readSeoConfig = async (configPath, cwd, env = process.env) => {
+  const envConfigPath = isNonEmptyString(env[ENV_CONFIG_PATH_VAR])
+    ? env[ENV_CONFIG_PATH_VAR].trim()
+    : null
+  const requestedConfigPath = isNonEmptyString(configPath)
+    ? configPath.trim()
+    : envConfigPath
+  const envJsonConfig = readEnvJsonConfig(env)
+  const envOverrideConfig = readEnvOverrideConfig(env)
+  let absoluteConfigPath = null
+  let configDir = cwd
+  let config = {}
+
+  if (requestedConfigPath) {
+    absoluteConfigPath = normalizePathLikeValue(requestedConfigPath, cwd)
+    const fileConfig = await loadConfigFromFile(absoluteConfigPath)
+
+    config = fileConfig.config
+    configDir = path.dirname(absoluteConfigPath)
+
+    if (envJsonConfig) {
+      config = mergeSeoConfig(config, envJsonConfig)
+    }
+  } else if (envJsonConfig) {
+    config = envJsonConfig
+  } else {
+    const defaultConfigPath = normalizePathLikeValue(DEFAULT_CONFIG_PATH, cwd)
+
+    if (await fileExists(defaultConfigPath)) {
+      absoluteConfigPath = defaultConfigPath
+      configDir = path.dirname(defaultConfigPath)
+      config = (await loadConfigFromFile(defaultConfigPath)).config
+    } else if (!envOverrideConfig) {
+      exitWithError(`Config is not defined. Provide ${ DEFAULT_CONFIG_PATH }, --config, ${ ENV_CONFIG_PATH_VAR }, or ${ ENV_CONFIG_JSON_VAR }.`)
+    }
+  }
+
+  if (envOverrideConfig) {
+    config = mergeSeoConfig(config, envOverrideConfig)
+  }
+
+  return {
+    absoluteConfigPath,
+    configDir,
+    configLabel: absoluteConfigPath
+      ? (envJsonConfig || envOverrideConfig ? `${ absoluteConfigPath } + env` : absoluteConfigPath)
+      : (envJsonConfig ? ENV_CONFIG_JSON_VAR : 'env'),
+    config,
   }
 }
 

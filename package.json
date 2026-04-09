@@ -7,11 +7,11 @@
     "seo-snapshot": "./bin/seo-snapshot.mjs"
   },
   "scripts": {
-    "snapshot": "node ./bin/seo-snapshot.mjs",
+    "snapshot": "node --env-file-if-exists .env ./bin/seo-snapshot.mjs",
     "test": "node --test"
   },
   "engines": {
-    "node": ">=18.17"
+    "node": ">=22.9"
   },
   "keywords": [
     "seo",
