@@ -56,6 +56,11 @@ const renderIssueBreakdown = (summary) => {
   return `<ul class="inline-list">${ summary.issueBreakdown.map(issue => `<li><strong>${ escapeHtml(issue.code) }</strong> (${ escapeHtml(issue.count) })</li>`).join('') }</ul>`
 }
 
+const renderSummaryCard = (value, label, tone = 'neutral') => {
+  const toneClass = tone !== 'neutral' ? ` tone-${ tone }` : ''
+  return `<article class="summary-card${ toneClass }"><strong>${ escapeHtml(value) }</strong><span>${ escapeHtml(label) }</span></article>`
+}
+
 const renderComparisonBreakdown = (comparison) => {
   if (!comparison || comparison.differenceBreakdown.length === 0) {
     return '<p class="muted">No field-level differences detected.</p>'
@@ -80,84 +85,77 @@ const renderValue = (value) => {
   return escapeHtml(value)
 }
 
+const renderDiffValue = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return '<span class="muted">—</span>'
+  }
+  if (Array.isArray(value)) {
+    return value.length === 0 ? '<span class="muted">—</span>' : escapeHtml(value.join(', '))
+  }
+  return escapeHtml(String(value))
+}
+
 const renderIssueDelta = (issueDelta, comparison) => {
   if (!issueDelta || (!issueDelta.onlyOnLeft.length && !issueDelta.onlyOnRight.length)) {
     return ''
   }
 
+  const leftBadges = issueDelta.onlyOnLeft.map(code =>
+    `<span class="diff-issue-badge diff-issue-left">${ escapeHtml(code) } (${ escapeHtml(comparison.left.label) } only)</span>`
+  )
+  const rightBadges = issueDelta.onlyOnRight.map(code =>
+    `<span class="diff-issue-badge diff-issue-right">${ escapeHtml(code) } (${ escapeHtml(comparison.right.label) } only)</span>`
+  )
+
   return `
-    <div class="subsection">
-      <h3>Issue Delta</h3>
-      <div class="diff-columns">
-        <div class="diff-column">
-          <span class="diff-column-label">${ escapeHtml(comparison.left.label) } only</span>
-          ${ renderValue(issueDelta.onlyOnLeft) }
-        </div>
-        <div class="diff-column">
-          <span class="diff-column-label">${ escapeHtml(comparison.right.label) } only</span>
-          ${ renderValue(issueDelta.onlyOnRight) }
-        </div>
-      </div>
+    <div class="diff-inline-row">
+      <span class="diff-inline-label">Issues delta</span>
+      <div class="diff-issue-badges">${ [...leftBadges, ...rightBadges].join('') }</div>
     </div>
   `
 }
 
 const renderComparisonDifferences = (comparison) => {
-  if (comparison.differences.length === 0) {
-    return '<p class="muted">No SEO differences detected for this path.</p>'
-  }
+  return comparison.differences.map(difference => `
+    <div class="diff-inline-row">
+      <span class="diff-inline-label">${ escapeHtml(difference.label) }</span>
+      <span class="diff-inline-old">${ renderDiffValue(difference.left) }</span>
+      <span class="diff-arrow">→</span>
+      <span class="diff-inline-new">${ renderDiffValue(difference.right) }</span>
+    </div>
+  `).join('')
+}
 
-  return `<div class="diff-list">${ comparison.differences.map(difference => `
-    <article class="diff-row">
-      <strong>${ escapeHtml(difference.label) }</strong>
-      <div class="diff-columns">
-        <div class="diff-column">
-          <span class="diff-column-label">${ escapeHtml(comparison.left.label) }</span>
-          <div>${ renderValue(difference.left) }</div>
-        </div>
-        <div class="diff-column">
-          <span class="diff-column-label">${ escapeHtml(comparison.right.label) }</span>
-          <div>${ renderValue(difference.right) }</div>
-        </div>
-      </div>
-    </article>
-  `).join('')}</div>`
+const getComparisonSideTone = (side) => {
+  if (!side.status) return 'neutral'
+  if (side.status >= 500) return 'error'
+  if (side.status >= 400) return 'warning'
+  if (side.status >= 300) return 'info'
+  return 'success'
 }
 
 const renderComparisonCard = (comparison) => {
+  const totalDiff = comparison.differences.length +
+    (comparison.issueDelta?.onlyOnLeft?.length ?? 0) +
+    (comparison.issueDelta?.onlyOnRight?.length ?? 0)
+
   return `
     <section class="page-card">
       <header class="page-card-header">
         <div class="page-card-title">
           <h2>${ escapeHtml(comparison.targetPath) }</h2>
-          <p class="page-url"><code>${ escapeHtml(comparison.left.label) }</code> vs <code>${ escapeHtml(comparison.right.label) }</code></p>
         </div>
         <div class="badge-row">
-          ${ comparison.differences.length > 0 ? renderBadge(`differences ${ comparison.differences.length }`, 'warning') : renderBadge('matching', 'success') }
+          ${ renderBadge(`${ comparison.left.label } ${ comparison.left.status ?? 'n/a' }`, getComparisonSideTone(comparison.left)) }
+          ${ renderBadge(`${ comparison.right.label } ${ comparison.right.status ?? 'n/a' }`, getComparisonSideTone(comparison.right)) }
+          ${ renderBadge(`${ totalDiff } difference${ totalDiff !== 1 ? 's' : '' }`, 'warning') }
         </div>
       </header>
 
-      <div class="comparison-grid">
-        <div class="comparison-side">
-          <strong>${ escapeHtml(comparison.left.label) }</strong>
-          <p><code>${ escapeHtml(comparison.left.requestedUrl) }</code></p>
-          <p class="muted">Status: ${ escapeHtml(comparison.left.status ?? 'n/a') }</p>
-          <p class="muted">Final: ${ comparison.left.finalUrl ? `<code>${ escapeHtml(comparison.left.finalUrl) }</code>` : '<span class="muted">-</span>' }</p>
-        </div>
-        <div class="comparison-side">
-          <strong>${ escapeHtml(comparison.right.label) }</strong>
-          <p><code>${ escapeHtml(comparison.right.requestedUrl) }</code></p>
-          <p class="muted">Status: ${ escapeHtml(comparison.right.status ?? 'n/a') }</p>
-          <p class="muted">Final: ${ comparison.right.finalUrl ? `<code>${ escapeHtml(comparison.right.finalUrl) }</code>` : '<span class="muted">-</span>' }</p>
-        </div>
-      </div>
-
-      <div class="subsection">
-        <h3>Field Differences</h3>
+      <div class="diff-inline-list">
         ${ renderComparisonDifferences(comparison) }
+        ${ renderIssueDelta(comparison.issueDelta, comparison) }
       </div>
-
-      ${ renderIssueDelta(comparison.issueDelta, comparison) }
     </section>
   `
 }
@@ -264,6 +262,33 @@ const renderPageCard = (page) => {
   `
 }
 
+const renderComparisonTab = (comparison) => {
+  const withDiffs = comparison.comparisons.filter(c =>
+    c.differences.length > 0 ||
+    (c.issueDelta && (c.issueDelta.onlyOnLeft.length || c.issueDelta.onlyOnRight.length))
+  )
+
+  return `
+    <section class="summary-grid">
+      ${ renderSummaryCard(comparison.targetCount, 'Compared paths') }
+      ${ renderSummaryCard(comparison.targetsWithDifferences, 'Paths with differences', comparison.targetsWithDifferences > 0 ? 'warning' : 'neutral') }
+      ${ renderSummaryCard(comparison.totalDifferences, 'Total field differences', comparison.totalDifferences > 0 ? 'warning' : 'neutral') }
+    </section>
+
+    <section class="page-card">
+      <div class="subsection">
+        <h3>Difference Breakdown</h3>
+        ${ renderComparisonBreakdown(comparison) }
+      </div>
+    </section>
+
+    ${ withDiffs.length > 0
+      ? `<section class="page-list">${ withDiffs.map(renderComparisonCard).join('') }</section>`
+      : '<p class="muted" style="padding: 8px 0;">No differences found between the two sources.</p>'
+    }
+  `
+}
+
 export const renderHtmlReport = (report) => {
   const summary = report.summary ?? buildSummary(report.pages)
   const comparison = report.comparison ?? null
@@ -271,6 +296,7 @@ export const renderHtmlReport = (report) => {
     dateStyle: 'medium',
     timeStyle: 'medium',
   })
+  const defaultTab = comparison ? 'comparison' : 'overview'
 
   return `<!doctype html>
 <html lang="en">
@@ -384,28 +410,35 @@ export const renderHtmlReport = (report) => {
       text-transform: uppercase;
       letter-spacing: 0.08em;
     }
+    .tab-nav {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-btn {
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active {
+      color: var(--text);
+      border-bottom-color: var(--info);
+      font-weight: 600;
+    }
+    .tab-panel { display: contents; }
+    .tab-panel.hidden { display: none; }
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 12px;
-    }
-    .comparison-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 12px;
-    }
-    .comparison-side,
-    .diff-column {
-      padding: 14px;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: var(--bg-muted);
-      display: grid;
-      gap: 6px;
-    }
-    .comparison-side strong {
-      font-size: 15px;
-      letter-spacing: -0.01em;
     }
     .summary-card, .page-card {
       border: 1px solid var(--border);
@@ -427,6 +460,10 @@ export const renderHtmlReport = (report) => {
     .summary-card span {
       color: var(--muted);
     }
+    .summary-card.tone-error strong { color: var(--error); }
+    .summary-card.tone-warning strong { color: var(--warning); }
+    .summary-card.tone-success strong { color: var(--success); }
+    .summary-card.tone-info strong { color: var(--info); }
     .page-list {
       display: grid;
       gap: 14px;
@@ -579,29 +616,6 @@ export const renderHtmlReport = (report) => {
     .raw-details {
       margin-top: 16px;
     }
-    .diff-list {
-      display: grid;
-      gap: 12px;
-    }
-    .diff-row {
-      display: grid;
-      gap: 12px;
-      padding: 14px;
-      border-radius: 16px;
-      border: 1px solid var(--border);
-      background: var(--bg-muted);
-    }
-    .diff-columns {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 12px;
-    }
-    .diff-column-label {
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
     .raw-details summary {
       cursor: pointer;
       color: var(--muted);
@@ -617,11 +631,72 @@ export const renderHtmlReport = (report) => {
       color: var(--tone-strong);
       font-size: 12px;
     }
+    .diff-inline-list {
+      display: grid;
+    }
+    .diff-inline-row {
+      display: grid;
+      grid-template-columns: 130px 1fr auto 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .diff-inline-row:first-child { border-top: none; }
+    .diff-inline-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      padding-top: 3px;
+    }
+    .diff-inline-old {
+      text-decoration: line-through;
+      color: var(--muted);
+      word-break: break-word;
+    }
+    .diff-arrow {
+      color: var(--muted);
+      padding-top: 2px;
+      font-size: 12px;
+    }
+    .diff-inline-new {
+      background: rgba(52, 211, 153, 0.1);
+      color: var(--success);
+      padding: 2px 8px;
+      border-radius: 4px;
+      word-break: break-word;
+    }
+    .diff-issue-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      grid-column: 2 / -1;
+    }
+    .diff-issue-badge {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+    .diff-issue-left {
+      background: rgba(96, 165, 250, 0.1);
+      border-color: rgba(96, 165, 250, 0.2);
+      color: var(--info);
+    }
+    .diff-issue-right {
+      background: rgba(248, 113, 113, 0.1);
+      border-color: rgba(248, 113, 113, 0.2);
+      color: var(--error);
+    }
     @media (max-width: 720px) {
       main { padding: 16px 14px 40px; }
       .page-card-header { flex-direction: column; }
       .badge-row { justify-content: flex-start; }
       .page-header { padding: 20px; }
+      .diff-inline-row { grid-template-columns: 1fr; }
+      .diff-issue-badges { grid-column: 1; }
     }
   </style>
 </head>
@@ -671,47 +746,67 @@ export const renderHtmlReport = (report) => {
       </details>
     </header>
 
-    <section class="summary-grid">
-      <article class="summary-card"><strong>${ escapeHtml(summary.total) }</strong><span>Total pages</span></article>
-      <article class="summary-card"><strong>${ escapeHtml(summary.pagesWithIssues) }</strong><span>Pages with issues</span></article>
-      <article class="summary-card"><strong>${ escapeHtml(summary.totalIssues) }</strong><span>Total issues</span></article>
-      <article class="summary-card"><strong>${ escapeHtml(summary.failedPages) }</strong><span>Failed pages</span></article>
-      <article class="summary-card"><strong>${ escapeHtml(summary.redirected) }</strong><span>Redirected</span></article>
-      <article class="summary-card"><strong>${ escapeHtml(summary.noindex) }</strong><span>Noindex</span></article>
-      <article class="summary-card"><strong>${ escapeHtml(summary.severityCounts.error) }</strong><span>Error issues</span></article>
-      <article class="summary-card"><strong>${ escapeHtml(summary.severityCounts.warning) }</strong><span>Warning issues</span></article>
-    </section>
+    <nav class="tab-nav">
+      <button class="${ defaultTab === 'overview' ? 'tab-btn active' : 'tab-btn' }" data-tab="overview">Overview</button>
+      ${ comparison ? `<button class="${ defaultTab === 'comparison' ? 'tab-btn active' : 'tab-btn' }" data-tab="comparison">Comparison</button>` : '' }
+      <button class="tab-btn" data-tab="pages">Pages</button>
+    </nav>
 
-    ${ comparison ? `
+    <div class="tab-panel${ defaultTab !== 'overview' ? ' hidden' : '' }" id="tab-overview">
       <section class="summary-grid">
-        <article class="summary-card"><strong>${ escapeHtml(comparison.targetCount) }</strong><span>Compared paths</span></article>
-        <article class="summary-card"><strong>${ escapeHtml(comparison.targetsWithDifferences) }</strong><span>Paths with differences</span></article>
-        <article class="summary-card"><strong>${ escapeHtml(comparison.totalDifferences) }</strong><span>Total field differences</span></article>
+        ${ renderSummaryCard(summary.total, 'Total pages') }
+        ${ renderSummaryCard(summary.pagesWithIssues, 'Pages with issues', summary.pagesWithIssues > 0 ? 'error' : 'success') }
+        ${ renderSummaryCard(summary.totalIssues, 'Total issues', summary.totalIssues > 0 ? 'error' : 'success') }
+        ${ renderSummaryCard(summary.failedPages, 'Failed pages', summary.failedPages > 0 ? 'error' : 'neutral') }
+        ${ renderSummaryCard(summary.redirected, 'Redirected', summary.redirected > 0 ? 'info' : 'neutral') }
+        ${ renderSummaryCard(summary.noindex, 'Noindex', summary.noindex > 0 ? 'warning' : 'neutral') }
+        ${ renderSummaryCard(summary.severityCounts.error, 'Error issues', summary.severityCounts.error > 0 ? 'error' : 'neutral') }
+        ${ renderSummaryCard(summary.severityCounts.warning, 'Warning issues', summary.severityCounts.warning > 0 ? 'warning' : 'neutral') }
       </section>
+
+      ${ comparison ? `
+        <section class="summary-grid">
+          ${ renderSummaryCard(comparison.targetCount, 'Compared paths') }
+          ${ renderSummaryCard(comparison.targetsWithDifferences, 'Paths with differences', comparison.targetsWithDifferences > 0 ? 'warning' : 'neutral') }
+          ${ renderSummaryCard(comparison.totalDifferences, 'Total field differences', comparison.totalDifferences > 0 ? 'warning' : 'neutral') }
+        </section>
+      ` : '' }
 
       <section class="page-card">
         <div class="subsection">
-          <h3>Difference Breakdown</h3>
-          ${ renderComparisonBreakdown(comparison) }
+          <h3>Issue Breakdown</h3>
+          ${ renderIssueBreakdown(summary) }
         </div>
       </section>
+    </div>
 
-      <section class="page-list">
-        ${ comparison.comparisons.map(renderComparisonCard).join('') }
-      </section>
+    ${ comparison ? `
+      <div class="tab-panel${ defaultTab !== 'comparison' ? ' hidden' : '' }" id="tab-comparison">
+        ${ renderComparisonTab(comparison) }
+      </div>
     ` : '' }
 
-    <section class="page-card">
-      <div class="subsection">
-        <h3>Issue Breakdown</h3>
-        ${ renderIssueBreakdown(summary) }
-      </div>
-    </section>
-
-    <section class="page-list">
-      ${ report.pages.map(renderPageCard).join('') }
-    </section>
+    <div class="tab-panel${ defaultTab !== 'pages' ? ' hidden' : '' }" id="tab-pages">
+      <section class="page-list">
+        ${ report.pages.map(renderPageCard).join('') }
+      </section>
+    </div>
   </main>
+
+  <script>
+    (function () {
+      var btns = document.querySelectorAll('.tab-btn')
+      var panels = document.querySelectorAll('.tab-panel')
+      function activate(name) {
+        btns.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name) })
+        panels.forEach(function (p) { p.classList.toggle('hidden', p.id !== 'tab-' + name) })
+        location.hash = name
+      }
+      btns.forEach(function (b) { b.addEventListener('click', function () { activate(b.dataset.tab) }) })
+      var hash = location.hash.replace('#', '')
+      if (hash && document.getElementById('tab-' + hash)) { activate(hash) }
+    })()
+  </script>
 </body>
 </html>
 `

@@ -9,7 +9,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       targetPath: '/news',
       source: {
         label: 'prod',
-        baseUrl: 'https://www.example.com/',
+        url: 'https://www.example.com/',
       },
       requestedUrl: 'https://www.example.com/news',
       finalUrl: 'https://www.example.com/news',
@@ -61,7 +61,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       targetPath: '/news',
       source: {
         label: 'stage',
-        baseUrl: 'https://stage.example.com/',
+        url: 'https://stage.example.com/',
       },
       requestedUrl: 'https://stage.example.com/news',
       finalUrl: 'https://stage.example.com/latest-news',

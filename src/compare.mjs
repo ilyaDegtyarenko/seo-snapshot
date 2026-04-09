@@ -234,8 +234,8 @@ export const buildComparisonReport = (pages, compareOptions) => {
   const comparisons = []
 
   for (const [ targetPath, targetPages ] of groupedPages.entries()) {
-    const leftPage = targetPages.find(page => page.source?.baseUrl === leftSource.url) ?? null
-    const rightPage = targetPages.find(page => page.source?.baseUrl === rightSource.url) ?? null
+    const leftPage = targetPages.find(page => page.source?.url === leftSource.url) ?? null
+    const rightPage = targetPages.find(page => page.source?.url === rightSource.url) ?? null
 
     if (!leftPage || !rightPage) {
       continue
