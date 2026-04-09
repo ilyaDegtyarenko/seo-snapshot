@@ -652,6 +652,23 @@ export const renderHtmlReport = (report) => {
           <code>${ escapeHtml(report.options.formats.join(', ')) }</code>
         </div>
       </div>
+      <details class="raw-details">
+        <summary>Full config</summary>
+        <dl class="kv-grid" style="margin-top: 12px;">
+          <div class="kv-row"><dt>Timeout</dt><dd>${ escapeHtml(report.options.timeoutMs) } ms</dd></div>
+          <div class="kv-row"><dt>Max redirects</dt><dd>${ escapeHtml(report.options.maxRedirects) }</dd></div>
+          <div class="kv-row"><dt>Concurrency</dt><dd>${ escapeHtml(report.options.concurrency) }</dd></div>
+          <div class="kv-row"><dt>User-Agent</dt><dd><code>${ escapeHtml(report.options.userAgent || '-') }</code></dd></div>
+          <div class="kv-row"><dt>Output dir</dt><dd><code>${ escapeHtml(report.options.outputDir) }</code></dd></div>
+          ${ report.options.audit ? `
+          <div class="kv-row"><dt>Min title length</dt><dd>${ escapeHtml(report.options.audit.minTitleLength) }</dd></div>
+          <div class="kv-row"><dt>Max title length</dt><dd>${ escapeHtml(report.options.audit.maxTitleLength) }</dd></div>
+          <div class="kv-row"><dt>Min description length</dt><dd>${ escapeHtml(report.options.audit.minDescriptionLength) }</dd></div>
+          <div class="kv-row"><dt>Max description length</dt><dd>${ escapeHtml(report.options.audit.maxDescriptionLength) }</dd></div>
+          <div class="kv-row"><dt>Min body text length</dt><dd>${ escapeHtml(report.options.audit.minBodyTextLength) }</dd></div>
+          ` : '' }
+        </dl>
+      </details>
     </header>
 
     <section class="summary-grid">
