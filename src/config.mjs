@@ -93,6 +93,24 @@ const parseEnvList = (value, envName) => {
     .filter(Boolean)
 }
 
+const parseEnvCookies = (value, envName) => {
+  const normalizedValue = String(value ?? '').trim()
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  if (!normalizedValue.startsWith('{')) {
+    return normalizedValue
+  }
+
+  const parsed = parseJsonObjectEnv(normalizedValue, envName)
+
+  return Object.entries(parsed)
+    .map(([ k, v ]) => `${ k }=${ v }`)
+    .join('; ') || null
+}
+
 const parseEnvCompareBaseUrl = (value, envName) => {
   const normalizedValue = String(value ?? '').trim()
 
@@ -207,6 +225,7 @@ const ENV_OVERRIDE_MAPPINGS = [
   [ 'SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS', [ 'request', 'maxRedirects' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_CONCURRENCY', [ 'request', 'concurrency' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_USER_AGENT', [ 'request', 'userAgent' ], parseEnvString ],
+  [ 'SEO_SNAPSHOT_REQUEST_COOKIES', [ 'request', 'cookies' ], parseEnvCookies ],
   [ 'SEO_SNAPSHOT_AUDIT_MIN_TITLE_LENGTH', [ 'audit', 'minTitleLength' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_AUDIT_MAX_TITLE_LENGTH', [ 'audit', 'maxTitleLength' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_AUDIT_MIN_DESCRIPTION_LENGTH', [ 'audit', 'minDescriptionLength' ], parseEnvPositiveInt ],
@@ -493,6 +512,24 @@ const normalizeFormats = (formats) => {
   return uniqueFormats
 }
 
+const normalizeCookies = (value) => {
+  if (!value) {
+    return null
+  }
+
+  if (typeof value === 'string') {
+    return value.trim() || null
+  }
+
+  if (isPlainObject(value)) {
+    return Object.entries(value)
+      .map(([ k, v ]) => `${ k }=${ v }`)
+      .join('; ') || null
+  }
+
+  return null
+}
+
 export const buildRuntimeOptions = ({ config, configDir, cliOptions }) => {
   const request = config.request ?? {}
   const output = config.output ?? {}
@@ -503,6 +540,7 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions }) => {
   const maxRedirects = cliOptions.maxRedirects ?? request.maxRedirects ?? DEFAULT_MAX_REDIRECTS
   const concurrency = cliOptions.concurrency ?? request.concurrency ?? DEFAULT_CONCURRENCY
   const userAgent = cliOptions.userAgent ?? request.userAgent ?? DEFAULT_USER_AGENT
+  const cookies = normalizeCookies(request.cookies ?? null)
   const outputDir = normalizePathLikeValue(cliOptions.outputDir ?? output.dir ?? DEFAULT_REPORTS_DIR, configDir)
   const formats = normalizeFormats(cliOptions.formats ?? output.formats ?? DEFAULT_FORMATS)
 
@@ -512,6 +550,7 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions }) => {
       maxRedirects,
       concurrency,
       userAgent,
+      ...(cookies !== null ? { cookies } : {}),
     },
     output: {
       dir: outputDir,

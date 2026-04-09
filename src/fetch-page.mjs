@@ -23,6 +23,7 @@ export const fetchWithRedirects = async (url, options) => {
       headers: {
         'user-agent': options.userAgent,
         'accept': 'text/html,application/xhtml+xml',
+        ...(options.cookies ? { cookie: options.cookies } : {}),
       },
       signal: AbortSignal.timeout(options.timeoutMs),
     })

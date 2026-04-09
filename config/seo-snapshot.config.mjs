@@ -14,6 +14,7 @@ export default {
     maxRedirects: 10,
     concurrency: 4,
     userAgent: 'Mozilla/5.0 (compatible; SEO-Snapshot/1.0)',
+    // cookies: 'session=abc123; token=xyz',  // Or: { session: 'abc123', token: 'xyz' }
   },
   audit: {
     minTitleLength: 15,
