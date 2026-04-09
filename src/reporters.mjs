@@ -99,10 +99,8 @@ const getPageNavLabel = (page) => {
     || getPageTitle(page)
 }
 
-const getPageSourceMeta = (page) => {
-  const sourceUrl = page.source?.url ?? null
-  const sourceLabel = page.source?.label ?? null
-  const host = getHostname(sourceUrl || page.finalUrl || page.requestedUrl)
+const getSourceMeta = (sourceUrl, sourceLabel, fallbackUrl = null) => {
+  const host = getHostname(sourceUrl || fallbackUrl)
   const badge = host || sourceLabel || null
   const display = host && sourceLabel && sourceLabel !== host
     ? `${ sourceLabel } (${ host })`
@@ -116,6 +114,14 @@ const getPageSourceMeta = (page) => {
     badge,
     display,
   }
+}
+
+const getPageSourceMeta = (page) => {
+  return getSourceMeta(
+    page.source?.url ?? null,
+    page.source?.label ?? null,
+    page.finalUrl || page.requestedUrl,
+  )
 }
 
 const getPageSourceDetails = (sourceMeta) => {
@@ -152,23 +158,63 @@ const buildPageEntries = (pages) => {
   })
 }
 
-const buildPageSourceFilters = (pageEntries) => {
+const buildSourceFilters = (entries, getSource) => {
   const filters = new Map()
 
-  for (const entry of pageEntries) {
-    if (filters.has(entry.source.key)) {
-      filters.get(entry.source.key).count += 1
+  for (const entry of entries) {
+    const source = getSource(entry)
+
+    if (filters.has(source.key)) {
+      filters.get(source.key).count += 1
       continue
     }
 
-    filters.set(entry.source.key, {
-      key: entry.source.key,
-      label: entry.source.display || entry.source.badge || 'Primary source',
+    filters.set(source.key, {
+      key: source.key,
+      label: source.display || source.badge || 'Primary source',
       count: 1,
     })
   }
 
   return [ ...filters.values() ]
+}
+
+const getComparisonNavLabel = (comparison) => {
+  return comparison.targetPath
+    || comparison.left?.finalUrl
+    || comparison.left?.requestedUrl
+    || comparison.right?.finalUrl
+    || comparison.right?.requestedUrl
+    || 'Untitled path'
+}
+
+const getComparisonDifferenceCount = (comparison) => {
+  return comparison.differences.length +
+    (comparison.issueDelta?.onlyOnLeft?.length ?? 0) +
+    (comparison.issueDelta?.onlyOnRight?.length ?? 0)
+}
+
+const buildComparisonAnchorId = (comparison, index) => {
+  const slug = slugifyAnchorPart(getComparisonNavLabel(comparison))
+
+  return slug
+    ? `comparison-${ index + 1 }-${ slug }`
+    : `comparison-${ index + 1 }`
+}
+
+const buildComparisonEntries = (comparisons) => {
+  return comparisons.map((comparison, index) => {
+    const navLabel = getComparisonNavLabel(comparison)
+    const diffCount = getComparisonDifferenceCount(comparison)
+
+    return {
+      anchorId: buildComparisonAnchorId(comparison, index),
+      comparison,
+      diffCount,
+      index,
+      navLabel,
+    }
+  })
 }
 
 const renderComparisonBreakdown = (comparison) => {
@@ -220,7 +266,7 @@ const renderIssueDelta = (issueDelta, comparison) => {
   return `
     <div class="diff-inline-row">
       <span class="diff-inline-label">Issues delta</span>
-      <div class="diff-issue-badges">${ [...leftBadges, ...rightBadges].join('') }</div>
+      <div class="diff-issue-badges">${ [ ...leftBadges, ...rightBadges ].join('') }</div>
     </div>
   `
 }
@@ -244,21 +290,54 @@ const getComparisonSideTone = (side) => {
   return 'success'
 }
 
-const renderComparisonCard = (comparison) => {
-  const totalDiff = comparison.differences.length +
-    (comparison.issueDelta?.onlyOnLeft?.length ?? 0) +
-    (comparison.issueDelta?.onlyOnRight?.length ?? 0)
+const renderComparisonIndexItem = (entry) => {
+  const leftUrl = entry.comparison.left.finalUrl || entry.comparison.left.requestedUrl || '-'
+  const rightUrl = entry.comparison.right.finalUrl || entry.comparison.right.requestedUrl || '-'
+  const metaParts = [
+    `${ entry.comparison.left.label } → ${ entry.comparison.right.label }`,
+    `status ${ entry.comparison.left.status ?? 'n/a' } → ${ entry.comparison.right.status ?? 'n/a' }`,
+    `${ entry.diffCount } difference${ entry.diffCount !== 1 ? 's' : '' }`,
+  ].filter(Boolean)
 
   return `
-    <section class="page-card">
+    <a
+      class="page-index-link"
+      href="#${ escapeHtml(entry.anchorId) }"
+      data-comparison-link
+      data-nav-link
+      data-nav-tab="comparison"
+      data-nav-anchor="${ escapeHtml(entry.anchorId) }"
+      title="${ escapeHtml(`${ leftUrl } → ${ rightUrl }`) }"
+    >
+      <strong>${ escapeHtml(entry.navLabel) }</strong>
+      <span class="page-index-title">${ escapeHtml(`${ leftUrl } → ${ rightUrl }`) }</span>
+      <span class="page-index-meta">${ escapeHtml(metaParts.join(' · ')) }</span>
+    </a>
+  `
+}
+
+const renderComparisonCard = (entry) => {
+  const { comparison, anchorId, diffCount, navLabel } = entry
+  const leftUrl = comparison.left.finalUrl || comparison.left.requestedUrl || '-'
+  const rightUrl = comparison.right.finalUrl || comparison.right.requestedUrl || '-'
+
+  return `
+    <section
+      class="page-card"
+      id="${ escapeHtml(anchorId) }"
+      data-comparison-card
+      data-nav-card
+      data-nav-tab="comparison"
+    >
       <header class="page-card-header">
         <div class="page-card-title">
-          <h2>${ escapeHtml(comparison.targetPath) }</h2>
+          <h2>${ escapeHtml(navLabel) }</h2>
+          <p class="page-url"><code>${ escapeHtml(leftUrl) }</code> → <code>${ escapeHtml(rightUrl) }</code></p>
         </div>
         <div class="badge-row">
           ${ renderBadge(`${ comparison.left.label } ${ comparison.left.status ?? 'n/a' }`, getComparisonSideTone(comparison.left)) }
           ${ renderBadge(`${ comparison.right.label } ${ comparison.right.status ?? 'n/a' }`, getComparisonSideTone(comparison.right)) }
-          ${ renderBadge(`${ totalDiff } difference${ totalDiff !== 1 ? 's' : '' }`, 'warning') }
+          ${ renderBadge(`${ diffCount } difference${ diffCount !== 1 ? 's' : '' }`, 'warning') }
         </div>
       </header>
 
@@ -306,7 +385,10 @@ const renderPageIndexItem = (entry) => {
       class="page-index-link"
       href="#${ escapeHtml(entry.anchorId) }"
       data-page-link
+      data-nav-link
+      data-nav-tab="pages"
       data-page-anchor="${ escapeHtml(entry.anchorId) }"
+      data-nav-anchor="${ escapeHtml(entry.anchorId) }"
       data-source-key="${ escapeHtml(entry.source.key) }"
       title="${ escapeHtml(entry.title) }"
     >
@@ -331,6 +413,8 @@ const renderPageCard = (entry) => {
       class="page-card report-page-card"
       id="${ escapeHtml(anchorId) }"
       data-page-card
+      data-nav-card
+      data-nav-tab="pages"
       data-source-key="${ escapeHtml(source.key) }"
     >
       <header class="page-card-header">
@@ -400,11 +484,85 @@ const renderPageCard = (entry) => {
   `
 }
 
+const renderIndexFilter = ({
+  filters,
+  totalCount,
+  allLabel,
+  fieldLabel = 'Domain',
+  filterDataAttr,
+  filterAriaLabel,
+}) => {
+  if (!filters.length) {
+    return ''
+  }
+
+  return `
+    <label class="field-group">
+      <span class="field-label">${ escapeHtml(fieldLabel) }</span>
+      <select class="field-select" ${ filterDataAttr } aria-label="${ escapeHtml(filterAriaLabel) }">
+        <option value="all">${ escapeHtml(allLabel) } (${ totalCount })</option>
+        ${ filters.map(filter => `<option value="${ escapeHtml(filter.key) }">${ escapeHtml(filter.label) } (${ escapeHtml(filter.count) })</option>`).join('') }
+      </select>
+    </label>
+  `
+}
+
+const renderIndexedSection = ({
+  cardsHtml,
+  description,
+  emptyDataAttr,
+  emptyHidden = true,
+  emptyMessage,
+  filterAriaLabel,
+  filterDataAttr,
+  filters = [],
+  itemsHtml,
+  navAriaLabel,
+  title,
+  totalCount,
+  visibleCountDataAttr,
+  visibleLabel,
+}) => {
+  return `
+    <section class="pages-shell">
+      <aside class="page-card pages-sidebar">
+        <div class="pages-sidebar-header">
+          <h3>${ escapeHtml(title) }</h3>
+          <p class="muted">${ escapeHtml(description) }</p>
+        </div>
+
+        ${ renderIndexFilter({
+          filters,
+          totalCount,
+          allLabel: visibleLabel.all,
+          filterDataAttr,
+          filterAriaLabel,
+        }) }
+
+        <div class="pages-counter-row">
+          <p class="pages-counter muted"><span ${ visibleCountDataAttr }>${ totalCount }</span> of ${ totalCount } ${ escapeHtml(visibleLabel.items) } shown</p>
+          <button class="nav-active-btn" type="button" data-nav-active-btn aria-label="Scroll navigation to active item">To active</button>
+        </div>
+
+        <nav class="page-index-nav" aria-label="${ escapeHtml(navAriaLabel) }">
+          ${ itemsHtml }
+        </nav>
+      </aside>
+
+      <div class="pages-content">
+        <p class="page-index-empty muted${ emptyHidden ? ' hidden' : '' }" ${ emptyDataAttr }>${ escapeHtml(emptyMessage) }</p>
+        ${ cardsHtml }
+      </div>
+    </section>
+  `
+}
+
 const renderComparisonTab = (comparison) => {
   const withDiffs = comparison.comparisons.filter(c =>
     c.differences.length > 0 ||
     (c.issueDelta && (c.issueDelta.onlyOnLeft.length || c.issueDelta.onlyOnRight.length))
   )
+  const comparisonEntries = buildComparisonEntries(withDiffs)
 
   return `
     <section class="summary-grid">
@@ -420,49 +578,51 @@ const renderComparisonTab = (comparison) => {
       </div>
     </section>
 
-    ${ withDiffs.length > 0
-      ? `<section class="page-list">${ withDiffs.map(renderComparisonCard).join('') }</section>`
-      : '<p class="muted" style="padding: 8px 0;">No differences found between the two sources.</p>'
-    }
+    ${ renderIndexedSection({
+      cardsHtml: comparisonEntries.length > 0
+        ? `<section class="page-list">${ comparisonEntries.map(renderComparisonCard).join('') }</section>`
+        : '',
+      description: 'Jump to any changed path. Each card shows the concrete left and right URL for that page.',
+      emptyDataAttr: 'data-comparison-empty',
+      emptyHidden: comparisonEntries.length > 0,
+      emptyMessage: 'No differences found between the two sources.',
+      itemsHtml: comparisonEntries.map(renderComparisonIndexItem).join(''),
+      navAriaLabel: 'Comparison navigation',
+      title: 'Comparison Index',
+      totalCount: comparisonEntries.length,
+      visibleCountDataAttr: 'data-comparison-visible-count',
+      visibleLabel: {
+        all: 'All paths',
+        items: 'changed paths',
+      },
+    }) }
   `
 }
 
 const renderPagesTab = (pageEntries, comparison) => {
-  const sourceFilters = comparison ? buildPageSourceFilters(pageEntries) : []
+  const sourceFilters = comparison ? buildSourceFilters(pageEntries, entry => entry.source) : []
 
-  return `
-    <section class="pages-shell">
-      <aside class="page-card pages-sidebar">
-        <div class="pages-sidebar-header">
-          <h3>Page Index</h3>
-          <p class="muted">Jump to any page card. ${ comparison ? 'Comparison mode also lets you filter by source domain.' : 'Use the anchor list to move through long reports faster.' }</p>
-        </div>
-
-        ${ sourceFilters.length > 0 ? `
-          <label class="field-group">
-            <span class="field-label">Domain</span>
-            <select class="field-select" data-page-domain-filter aria-label="Filter pages by domain">
-              <option value="all">All domains (${ pageEntries.length })</option>
-              ${ sourceFilters.map(filter => `<option value="${ escapeHtml(filter.key) }">${ escapeHtml(filter.label) } (${ escapeHtml(filter.count) })</option>`).join('') }
-            </select>
-          </label>
-        ` : '' }
-
-        <p class="pages-counter muted"><span data-pages-visible-count>${ pageEntries.length }</span> of ${ pageEntries.length } pages shown</p>
-
-        <nav class="page-index-nav" aria-label="Pages navigation">
-          ${ pageEntries.map(renderPageIndexItem).join('') }
-        </nav>
-      </aside>
-
-      <div class="pages-content">
-        <p class="page-index-empty muted hidden" data-pages-empty>No pages match the selected domain.</p>
-        <section class="page-list">
-          ${ pageEntries.map(renderPageCard).join('') }
-        </section>
-      </div>
-    </section>
-  `
+  return renderIndexedSection({
+    cardsHtml: `<section class="page-list">${ pageEntries.map(renderPageCard).join('') }</section>`,
+    description: comparison
+      ? 'Jump to any page card. Comparison mode also lets you filter by source domain.'
+      : 'Jump to any page card. Use the anchor list to move through long reports faster.',
+    emptyDataAttr: 'data-pages-empty',
+    emptyHidden: true,
+    emptyMessage: 'No pages match the selected domain.',
+    filterAriaLabel: 'Filter pages by domain',
+    filterDataAttr: 'data-page-domain-filter',
+    filters: sourceFilters,
+    itemsHtml: pageEntries.map(renderPageIndexItem).join(''),
+    navAriaLabel: 'Pages navigation',
+    title: 'Page Index',
+    totalCount: pageEntries.length,
+    visibleCountDataAttr: 'data-pages-visible-count',
+    visibleLabel: {
+      all: 'All domains',
+      items: 'pages',
+    },
+  })
 }
 
 export const renderHtmlReport = (report) => {
@@ -759,6 +919,32 @@ export const renderHtmlReport = (report) => {
     .pages-counter {
       font-size: 13px;
     }
+    .pages-counter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .nav-active-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-muted);
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: border-color 120ms ease, color 120ms ease, transform 120ms ease;
+      white-space: nowrap;
+    }
+    .nav-active-btn:hover {
+      color: var(--text);
+      border-color: var(--border-strong);
+      transform: translateY(-1px);
+    }
     .page-index-nav {
       display: grid;
       gap: 8px;
@@ -955,6 +1141,34 @@ export const renderHtmlReport = (report) => {
       border-color: rgba(248, 113, 113, 0.2);
       color: var(--error);
     }
+    .scroll-top-btn {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 20;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
+      min-height: 48px;
+      padding: 0 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(96, 165, 250, 0.32);
+      background: rgba(17, 17, 17, 0.92);
+      color: var(--text);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      font: inherit;
+      transition: transform 120ms ease, opacity 120ms ease, border-color 120ms ease;
+    }
+    .scroll-top-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(96, 165, 250, 0.48);
+    }
+    .scroll-top-btn.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
     @media (max-width: 1040px) {
       .pages-shell {
         grid-template-columns: 1fr;
@@ -1070,16 +1284,47 @@ export const renderHtmlReport = (report) => {
     </div>
   </main>
 
+  <button class="scroll-top-btn hidden" type="button" data-scroll-top aria-label="Back to top">Top</button>
+
   <script>
     (function () {
       var defaultTab = ${ JSON.stringify(defaultTab) }
       var btns = Array.from(document.querySelectorAll('.tab-btn'))
       var panels = Array.from(document.querySelectorAll('.tab-panel'))
-      var pageFilter = document.querySelector('[data-page-domain-filter]')
-      var pageCards = Array.from(document.querySelectorAll('[data-page-card]'))
-      var pageLinks = Array.from(document.querySelectorAll('[data-page-link]'))
-      var visibleCount = document.querySelector('[data-pages-visible-count]')
-      var emptyState = document.querySelector('[data-pages-empty]')
+      var scrollTopBtn = document.querySelector('[data-scroll-top]')
+
+      function createNavGroup(config) {
+        return {
+          activeButton: document.querySelector(config.activeButtonSelector),
+          cards: Array.from(document.querySelectorAll(config.cardSelector)),
+          emptyState: document.querySelector(config.emptySelector),
+          filter: config.filterSelector ? document.querySelector(config.filterSelector) : null,
+          links: Array.from(document.querySelectorAll(config.linkSelector)),
+          tabName: config.tabName,
+          visibleCount: document.querySelector(config.visibleCountSelector),
+        }
+      }
+
+      var navGroups = [
+        createNavGroup({
+          activeButtonSelector: '#tab-pages [data-nav-active-btn]',
+          cardSelector: '[data-page-card]',
+          emptySelector: '[data-pages-empty]',
+          filterSelector: '[data-page-domain-filter]',
+          linkSelector: '[data-page-link]',
+          tabName: 'pages',
+          visibleCountSelector: '[data-pages-visible-count]',
+        }),
+        createNavGroup({
+          activeButtonSelector: '#tab-comparison [data-nav-active-btn]',
+          cardSelector: '[data-comparison-card]',
+          emptySelector: '[data-comparison-empty]',
+          filterSelector: '[data-comparison-domain-filter]',
+          linkSelector: '[data-comparison-link]',
+          tabName: 'comparison',
+          visibleCountSelector: '[data-comparison-visible-count]',
+        }),
+      ]
 
       function activate(name, updateHash) {
         btns.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name) })
@@ -1093,15 +1338,15 @@ export const renderHtmlReport = (report) => {
         }
       }
 
-      function syncPageFilter() {
-        if (!pageCards.length) {
+      function syncNavGroupFilter(group) {
+        if (!group || !group.cards.length) {
           return
         }
 
-        var selectedSource = pageFilter ? pageFilter.value : 'all'
+        var selectedSource = group.filter ? group.filter.value : 'all'
         var count = 0
 
-        pageCards.forEach(function (card) {
+        group.cards.forEach(function (card) {
           var matches = selectedSource === 'all' || card.dataset.sourceKey === selectedSource
           card.classList.toggle('hidden', !matches)
           if (matches) {
@@ -1109,23 +1354,31 @@ export const renderHtmlReport = (report) => {
           }
         })
 
-        pageLinks.forEach(function (link) {
+        group.links.forEach(function (link) {
           var matches = selectedSource === 'all' || link.dataset.sourceKey === selectedSource
           link.classList.toggle('hidden', !matches)
         })
 
-        if (visibleCount) {
-          visibleCount.textContent = String(count)
+        if (group.visibleCount) {
+          group.visibleCount.textContent = String(count)
         }
 
-        if (emptyState) {
-          emptyState.classList.toggle('hidden', count > 0)
+        if (group.emptyState) {
+          group.emptyState.classList.toggle('hidden', count > 0)
         }
       }
 
-      function setActivePageLink(anchorId) {
-        pageLinks.forEach(function (link) {
-          var isActive = Boolean(anchorId) && link.dataset.pageAnchor === anchorId
+      function scrollNavLinkIntoView(link) {
+        if (!link || link.classList.contains('hidden')) {
+          return
+        }
+
+        link.scrollIntoView({ block: 'nearest' })
+      }
+
+      function setActiveLinkState(links, anchorId) {
+        links.forEach(function (link) {
+          var isActive = Boolean(anchorId) && link.dataset.navAnchor === anchorId
           link.classList.toggle('active', isActive)
           if (isActive) {
             link.setAttribute('aria-current', 'location')
@@ -1135,27 +1388,69 @@ export const renderHtmlReport = (report) => {
         })
       }
 
-      function isPagesTabActive() {
-        var pagesTab = document.getElementById('tab-pages')
+      function setActiveGroupLink(group, anchorId) {
+        if (!group) {
+          return
+        }
 
-        return Boolean(pagesTab) && !pagesTab.classList.contains('hidden')
+        setActiveLinkState(group.links, anchorId)
       }
 
-      function getVisiblePageCards() {
-        return pageCards.filter(function (card) {
+      function getNavGroupByTab(tabName) {
+        return navGroups.find(function (group) {
+          return group.tabName === tabName
+        }) || null
+      }
+
+      function getActiveNavLink(group) {
+        if (!group) {
+          return null
+        }
+
+        return group.links.find(function (link) {
+          return link.classList.contains('active') && !link.classList.contains('hidden')
+        }) || null
+      }
+
+      function clearInactiveNavLinks(activeTab) {
+        navGroups.forEach(function (group) {
+          if (group.tabName !== activeTab) {
+            setActiveGroupLink(group, '')
+          }
+        })
+      }
+
+      function isNavGroupActive(group) {
+        var tab = document.getElementById('tab-' + group.tabName)
+
+        return Boolean(tab) && !tab.classList.contains('hidden')
+      }
+
+      function getVisibleCards(group) {
+        return group.cards.filter(function (card) {
           return !card.classList.contains('hidden')
         })
       }
 
-      function syncActivePageLinkFromScroll() {
-        if (!pageCards.length || !isPagesTabActive()) {
+      function getActiveNavGroup() {
+        return navGroups.find(function (group) {
+          return isNavGroupActive(group)
+        }) || null
+      }
+
+      function syncActiveNavLinkFromScroll() {
+        var activeGroup = getActiveNavGroup()
+
+        if (!activeGroup) {
+          clearInactiveNavLinks('')
           return
         }
 
-        var visibleCards = getVisiblePageCards()
+        var visibleCards = getVisibleCards(activeGroup)
 
         if (!visibleCards.length) {
-          setActivePageLink('')
+          setActiveGroupLink(activeGroup, '')
+          clearInactiveNavLinks(activeGroup.tabName)
           return
         }
 
@@ -1168,7 +1463,8 @@ export const renderHtmlReport = (report) => {
           }
         })
 
-        setActivePageLink(activeCard.id)
+        setActiveGroupLink(activeGroup, activeCard.id)
+        clearInactiveNavLinks(activeGroup.tabName)
       }
 
       var scrollTicking = false
@@ -1181,8 +1477,16 @@ export const renderHtmlReport = (report) => {
         scrollTicking = true
         window.requestAnimationFrame(function () {
           scrollTicking = false
-          syncActivePageLinkFromScroll()
+          syncActiveNavLinkFromScroll()
         })
+      }
+
+      function syncScrollTopButton() {
+        if (!scrollTopBtn) {
+          return
+        }
+
+        scrollTopBtn.classList.toggle('hidden', window.scrollY < 320)
       }
 
       function readHashState() {
@@ -1197,7 +1501,11 @@ export const renderHtmlReport = (report) => {
         }
 
         if (document.getElementById(hash)) {
-          return { tab: 'pages', anchorId: hash }
+          var anchorTab = getTabForAnchorId(hash)
+
+          if (anchorTab) {
+            return { tab: anchorTab, anchorId: hash }
+          }
         }
 
         if (document.getElementById('tab-' + hash)) {
@@ -1207,13 +1515,33 @@ export const renderHtmlReport = (report) => {
         return { tab: defaultTab, anchorId: '' }
       }
 
+      function getTabForAnchorId(anchorId) {
+        var anchorTarget = document.getElementById(anchorId)
+
+        if (!anchorTarget) {
+          return ''
+        }
+
+        if (anchorTarget.hasAttribute('data-comparison-card')) {
+          return 'comparison'
+        }
+
+        if (anchorTarget.hasAttribute('data-page-card')) {
+          return 'pages'
+        }
+
+        return ''
+      }
+
       function syncFromHash() {
         var state = readHashState()
+        var navGroup = getNavGroupByTab(state.tab)
 
         activate(state.tab, false)
 
         if (state.anchorId) {
-          setActivePageLink(state.anchorId)
+          setActiveGroupLink(navGroup, state.anchorId)
+          clearInactiveNavLinks(state.tab)
           window.requestAnimationFrame(function () {
             var target = document.getElementById(state.anchorId)
 
@@ -1224,37 +1552,63 @@ export const renderHtmlReport = (report) => {
           return
         }
 
-        syncActivePageLinkFromScroll()
+        syncActiveNavLinkFromScroll()
       }
 
       btns.forEach(function (b) {
         b.addEventListener('click', function () {
           activate(b.dataset.tab, true)
 
-          if (b.dataset.tab !== 'pages') {
-            setActivePageLink('')
+          if (getNavGroupByTab(b.dataset.tab)) {
+            requestScrollSync()
+          } else {
+            clearInactiveNavLinks('')
           }
         })
       })
 
-      if (pageFilter) {
-        pageFilter.addEventListener('change', function () {
-          syncPageFilter()
+      navGroups.forEach(function (group) {
+        if (!group.filter) {
+          return
+        }
+
+        group.filter.addEventListener('change', function () {
+          syncNavGroupFilter(group)
           var currentAnchor = location.hash.replace(/^#/, '')
           var currentTarget = document.getElementById(currentAnchor)
 
           if (currentTarget && currentTarget.classList.contains('hidden')) {
-            setActivePageLink('')
+            setActiveGroupLink(group, '')
+          } else {
+            requestScrollSync()
           }
+        })
+      })
+
+      navGroups.forEach(function (group) {
+        if (!group.activeButton) {
+          return
+        }
+
+        group.activeButton.addEventListener('click', function () {
+          scrollNavLinkIntoView(getActiveNavLink(group))
+        })
+      })
+
+      if (scrollTopBtn) {
+        scrollTopBtn.addEventListener('click', function () {
+          window.scrollTo({ top: 0, behavior: 'smooth' })
         })
       }
 
       window.addEventListener('hashchange', syncFromHash)
       window.addEventListener('scroll', requestScrollSync, { passive: true })
+      window.addEventListener('scroll', syncScrollTopButton, { passive: true })
       window.addEventListener('resize', requestScrollSync)
 
-      syncPageFilter()
+      navGroups.forEach(syncNavGroupFilter)
       syncFromHash()
+      syncScrollTopButton()
     })()
   </script>
 </body>

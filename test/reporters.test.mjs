@@ -129,8 +129,14 @@ test('renderHtmlReport adds Pages sidebar anchors and comparison domain filter',
   assert.match(html, /id="page-1-home"/)
   assert.match(html, /data-source-key="https:\/\/www\.example\.com\/"/)
   assert.match(html, /'#tab-' \+ name/)
-  assert.match(html, /function syncActivePageLinkFromScroll\(\)/)
+  assert.match(html, /function createNavGroup\(config\)/)
+  assert.match(html, /function syncNavGroupFilter\(group\)/)
+  assert.match(html, /function syncActiveNavLinkFromScroll\(\)/)
+  assert.match(html, /data-nav-active-btn/)
+  assert.match(html, /function scrollNavLinkIntoView\(link\)/)
+  assert.match(html, /function getActiveNavLink\(group\)/)
   assert.match(html, /window\.addEventListener\('scroll', requestScrollSync, \{ passive: true \}\)/)
+  assert.match(html, /data-scroll-top/)
   assert.match(html, /link\.setAttribute\('aria-current', 'location'\)/)
 })
 
@@ -151,4 +157,82 @@ test('renderHtmlReport keeps page index without comparison filter', () => {
   assert.doesNotMatch(html, /<select class="field-select" data-page-domain-filter/)
   assert.match(html, /href="#page-1-pricing"/)
   assert.match(html, /Use the anchor list to move through long reports faster\./)
+})
+
+test('renderHtmlReport adds Comparison sidebar anchors and routes hashes to the comparison tab', () => {
+  const comparison = {
+    sources: [
+      { label: 'prod', url: 'https://www.example.com/' },
+      { label: 'stage', url: 'https://stage.example.com/' },
+    ],
+    targetCount: 1,
+    targetsWithDifferences: 1,
+    totalDifferences: 1,
+    differenceBreakdown: [
+      { key: 'title', label: 'Title', count: 1 },
+    ],
+    comparisons: [
+      {
+        targetPath: '/home',
+        left: {
+          label: 'prod',
+          baseUrl: 'https://www.example.com/',
+          requestedUrl: 'https://www.example.com/home',
+          finalUrl: 'https://www.example.com/home',
+          status: 200,
+        },
+        right: {
+          label: 'stage',
+          baseUrl: 'https://stage.example.com/',
+          requestedUrl: 'https://stage.example.com/home',
+          finalUrl: 'https://stage.example.com/home',
+          status: 200,
+        },
+        differences: [
+          { key: 'title', label: 'Title', left: 'Prod Home', right: 'Stage Home' },
+        ],
+        issueDelta: {
+          onlyOnLeft: [],
+          onlyOnRight: [],
+        },
+      },
+    ],
+  }
+
+  const html = renderHtmlReport(createReport({
+    comparison,
+    pages: [
+      createPage({
+        input: '/home',
+        targetPath: '/home',
+        requestedUrl: 'https://www.example.com/home',
+        finalUrl: 'https://www.example.com/home',
+        source: comparison.sources[0],
+        title: 'Prod Home',
+      }),
+      createPage({
+        input: '/home',
+        targetPath: '/home',
+        requestedUrl: 'https://stage.example.com/home',
+        finalUrl: 'https://stage.example.com/home',
+        source: comparison.sources[1],
+        title: 'Stage Home',
+      }),
+    ],
+  }))
+
+  assert.match(html, /<h3>Comparison Index<\/h3>/)
+  assert.match(html, /aria-label="Comparison navigation"/)
+  assert.doesNotMatch(html, /<select class="field-select" data-comparison-domain-filter/)
+  assert.match(html, /data-comparison-visible-count>1<\/span> of 1 changed paths shown/)
+  assert.match(html, /href="#comparison-1-home"/)
+  assert.match(html, /id="comparison-1-home"/)
+  assert.match(html, /https:\/\/www\.example\.com\/home<\/code> → <code>https:\/\/stage\.example\.com\/home/)
+  assert.match(html, /data-comparison-card/)
+  assert.match(html, /data-nav-tab="comparison"/)
+  assert.match(html, /data-nav-active-btn/)
+  assert.match(html, /function syncNavGroupFilter\(group\)/)
+  assert.match(html, /function scrollNavLinkIntoView\(link\)/)
+  assert.match(html, /function getTabForAnchorId\(anchorId\)/)
+  assert.match(html, /anchorTarget\.hasAttribute\('data-comparison-card'\)/)
 })
