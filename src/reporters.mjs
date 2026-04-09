@@ -206,10 +206,12 @@ const buildComparisonEntries = (comparisons) => {
   return comparisons.map((comparison, index) => {
     const navLabel = getComparisonNavLabel(comparison)
     const diffCount = getComparisonDifferenceCount(comparison)
+    const differenceKeys = [ ...new Set(comparison.differences.map(difference => difference.key)) ]
 
     return {
       anchorId: buildComparisonAnchorId(comparison, index),
       comparison,
+      differenceKeys,
       diffCount,
       index,
       navLabel,
@@ -307,6 +309,7 @@ const renderComparisonIndexItem = (entry) => {
       data-nav-link
       data-nav-tab="comparison"
       data-nav-anchor="${ escapeHtml(entry.anchorId) }"
+      data-difference-keys="${ escapeHtml(entry.differenceKeys.join('|')) }"
       title="${ escapeHtml(`${ leftUrl } → ${ rightUrl }`) }"
     >
       <strong>${ escapeHtml(entry.navLabel) }</strong>
@@ -328,6 +331,7 @@ const renderComparisonCard = (entry) => {
       data-comparison-card
       data-nav-card
       data-nav-tab="comparison"
+      data-difference-keys="${ escapeHtml(entry.differenceKeys.join('|')) }"
     >
       <header class="page-card-header">
         <div class="page-card-title">
@@ -563,6 +567,14 @@ const renderComparisonTab = (comparison) => {
     (c.issueDelta && (c.issueDelta.onlyOnLeft.length || c.issueDelta.onlyOnRight.length))
   )
   const comparisonEntries = buildComparisonEntries(withDiffs)
+  const comparisonProblemFilter = renderIndexFilter({
+    filters: comparison.differenceBreakdown,
+    totalCount: comparisonEntries.length,
+    allLabel: 'All problems',
+    fieldLabel: 'Problem',
+    filterDataAttr: 'data-comparison-difference-filter',
+    filterAriaLabel: 'Filter changed paths by problem',
+  })
 
   return `
     <section class="summary-grid">
@@ -576,6 +588,12 @@ const renderComparisonTab = (comparison) => {
         <h3>Difference Breakdown</h3>
         ${ renderComparisonBreakdown(comparison) }
       </div>
+      ${ comparisonProblemFilter ? `
+        <div class="subsection">
+          ${ comparisonProblemFilter }
+          <p class="muted">Show only paths affected by the selected problem.</p>
+        </div>
+      ` : '' }
     </section>
 
     ${ renderIndexedSection({
@@ -585,7 +603,9 @@ const renderComparisonTab = (comparison) => {
       description: 'Jump to any changed path. Each card shows the concrete left and right URL for that page.',
       emptyDataAttr: 'data-comparison-empty',
       emptyHidden: comparisonEntries.length > 0,
-      emptyMessage: 'No differences found between the two sources.',
+      emptyMessage: comparisonEntries.length > 0
+        ? 'No changed paths match the selected problem.'
+        : 'No differences found between the two sources.',
       itemsHtml: comparisonEntries.map(renderComparisonIndexItem).join(''),
       navAriaLabel: 'Comparison navigation',
       title: 'Comparison Index',
@@ -1299,6 +1319,8 @@ export const renderHtmlReport = (report) => {
           cards: Array.from(document.querySelectorAll(config.cardSelector)),
           emptyState: document.querySelector(config.emptySelector),
           filter: config.filterSelector ? document.querySelector(config.filterSelector) : null,
+          filterAttr: config.filterAttr || '',
+          filterMatchMode: config.filterMatchMode || 'single',
           links: Array.from(document.querySelectorAll(config.linkSelector)),
           tabName: config.tabName,
           visibleCount: document.querySelector(config.visibleCountSelector),
@@ -1311,6 +1333,7 @@ export const renderHtmlReport = (report) => {
           cardSelector: '[data-page-card]',
           emptySelector: '[data-pages-empty]',
           filterSelector: '[data-page-domain-filter]',
+          filterAttr: 'sourceKey',
           linkSelector: '[data-page-link]',
           tabName: 'pages',
           visibleCountSelector: '[data-pages-visible-count]',
@@ -1319,7 +1342,9 @@ export const renderHtmlReport = (report) => {
           activeButtonSelector: '#tab-comparison [data-nav-active-btn]',
           cardSelector: '[data-comparison-card]',
           emptySelector: '[data-comparison-empty]',
-          filterSelector: '[data-comparison-domain-filter]',
+          filterSelector: '[data-comparison-difference-filter]',
+          filterAttr: 'differenceKeys',
+          filterMatchMode: 'multi',
           linkSelector: '[data-comparison-link]',
           tabName: 'comparison',
           visibleCountSelector: '[data-comparison-visible-count]',
@@ -1343,11 +1368,11 @@ export const renderHtmlReport = (report) => {
           return
         }
 
-        var selectedSource = group.filter ? group.filter.value : 'all'
+        var selectedFilter = group.filter ? group.filter.value : 'all'
         var count = 0
 
         group.cards.forEach(function (card) {
-          var matches = selectedSource === 'all' || card.dataset.sourceKey === selectedSource
+          var matches = matchesNavGroupFilter(card, group, selectedFilter)
           card.classList.toggle('hidden', !matches)
           if (matches) {
             count += 1
@@ -1355,7 +1380,7 @@ export const renderHtmlReport = (report) => {
         })
 
         group.links.forEach(function (link) {
-          var matches = selectedSource === 'all' || link.dataset.sourceKey === selectedSource
+          var matches = matchesNavGroupFilter(link, group, selectedFilter)
           link.classList.toggle('hidden', !matches)
         })
 
@@ -1366,6 +1391,24 @@ export const renderHtmlReport = (report) => {
         if (group.emptyState) {
           group.emptyState.classList.toggle('hidden', count > 0)
         }
+      }
+
+      function matchesNavGroupFilter(element, group, selectedFilter) {
+        if (selectedFilter === 'all' || !group.filterAttr) {
+          return true
+        }
+
+        var rawValue = element.dataset[group.filterAttr] || ''
+
+        if (!rawValue) {
+          return false
+        }
+
+        if (group.filterMatchMode === 'multi') {
+          return rawValue.split('|').indexOf(selectedFilter) !== -1
+        }
+
+        return rawValue === selectedFilter
       }
 
       function scrollNavLinkIntoView(link) {
