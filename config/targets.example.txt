@@ -1,0 +1,9 @@
+# Copy this file to ./targets.txt for local plain-text targets
+# or switch targetsFile to ./targets.local.xml for a sitemap export.
+
+# Main routes
+/
+/tv
+/movie
+/cartoons
+/collections

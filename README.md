@@ -4,7 +4,7 @@ A small CLI project for checking the SEO state of a URL set. The tool crawls pag
 
 ## Features
 
-- read URLs from `config/targets.txt` and/or from `config/seo-snapshot.config.mjs`
+- read URLs from `config/targets.txt`, local sitemap XML dumps, and/or from `config/seo-snapshot.config.mjs`
 - support `baseUrl` for relative paths
 - follow redirects and store the redirect chain
 - check title, description, canonical, H1, `lang`, OpenGraph, Twitter Card, and JSON-LD
@@ -27,6 +27,8 @@ A small CLI project for checking the SEO state of a URL set. The tool crawls pag
 ```bash
 pnpm run snapshot
 ```
+
+After each run the CLI now prints a short English summary and a `file://` link to the main report.
 
 Direct CLI usage:
 
@@ -109,7 +111,7 @@ Example `config/seo-snapshot.config.mjs`:
 ```js
 export default {
   baseUrl: 'http://127.0.0.1:3000',
-  targetsFile: './targets.txt',
+  targetsFile: './targets.txt', // or './targets.local.xml' for a sitemap export
   targets: [
     '/',
     '/news',
@@ -133,6 +135,12 @@ export default {
   },
 }
 ```
+
+Recommended local setup for targets:
+
+- keep `config/targets.txt` ignored and local-only
+- commit `config/targets.example.txt` as the shared template
+- for sitemap exports, point `targetsFile` to a local XML file such as `./targets.local.xml`
 
 ## What The Audit Includes
 
@@ -163,3 +171,8 @@ After running the tool, files like these are created in `reports/`:
 reports/seo-report-20260409-110000-000.html
 reports/seo-report-20260409-110000-000.json
 ```
+
+Supported targets file inputs:
+
+- plain text lists with one target per line
+- sitemap XML dumps with `<url><loc>...</loc></url>` entries

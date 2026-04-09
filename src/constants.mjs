@@ -78,7 +78,6 @@ Config file format:
   }
 
 Targets file format:
-  - one target per line
-  - empty lines are ignored
-  - lines starting with # are ignored
+  - plain text: one target per line, empty lines and lines starting with # are ignored
+  - XML sitemap dump: <url><loc>https://example.com/page</loc></url>
 `.trim()

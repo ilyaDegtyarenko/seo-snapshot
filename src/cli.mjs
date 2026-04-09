@@ -1,4 +1,5 @@
 import process from 'node:process'
+import { pathToFileURL } from 'node:url'
 import {
   DEFAULT_CONFIG_PATH,
   DEFAULT_FORMATS,
@@ -103,9 +104,13 @@ export const runCli = async (argv = process.argv.slice(2)) => {
   const result = await runAudit(options, {
     cwd: process.cwd(),
   })
+  const primaryOutputPath = result.htmlOutputPath ?? result.outputPaths[0] ?? null
 
-  for (const outputPath of result.outputPaths) {
-    process.stdout.write(`${ outputPath }\n`)
+  process.stdout.write(`SEO snapshot completed: ${ result.summary.total } pages checked, ${ result.summary.pagesWithIssues } with issues, ${ result.summary.failedPages } failed.\n`)
+
+  if (primaryOutputPath) {
+    const primaryLabel = result.htmlOutputPath ? 'Open report' : 'Open output'
+    process.stdout.write(`${ primaryLabel }: ${ pathToFileURL(primaryOutputPath).href }\n`)
   }
 
   if (result.hasFailures) {

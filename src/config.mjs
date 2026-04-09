@@ -16,6 +16,7 @@ import {
   SUPPORTED_FORMATS,
 } from './constants.mjs'
 import {
+  decodeXmlEntities,
   exitWithError,
   isNonEmptyString,
   normalizePathLikeValue,
@@ -23,6 +24,8 @@ import {
 } from './utils.mjs'
 
 const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+const SITEMAP_URL_ENTRY_PATTERN = /<(?:[\w-]+:)?url\b[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?url>/gi
+const SITEMAP_LOC_PATTERN = /<(?:[\w-]+:)?loc\b[^>]*>([\s\S]*?)<\/(?:[\w-]+:)?loc>/i
 
 const fileExists = async (filePath) => {
   try {
@@ -193,6 +196,44 @@ const loadConfigFromFile = async (absoluteConfigPath) => {
   }
 }
 
+const readTargetsFromText = (raw) => {
+  return String(raw)
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => Boolean(line) && !line.startsWith('#'))
+}
+
+const unwrapXmlValue = (value) => {
+  return String(value ?? '')
+    .replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/u, '$1')
+    .trim()
+}
+
+const readTargetsFromSitemapXml = (raw, filePath) => {
+  const targets = []
+
+  for (const match of String(raw).matchAll(SITEMAP_URL_ENTRY_PATTERN)) {
+    const urlEntry = match[1]
+    const locMatch = urlEntry.match(SITEMAP_LOC_PATTERN)
+
+    if (!locMatch) {
+      continue
+    }
+
+    const target = decodeXmlEntities(unwrapXmlValue(locMatch[1]))
+
+    if (target) {
+      targets.push(target)
+    }
+  }
+
+  if (targets.length === 0) {
+    exitWithError(`No sitemap URLs found in ${ filePath }. Expected <url><loc>...</loc></url> entries.`)
+  }
+
+  return targets
+}
+
 export const readSeoConfig = async (configPath, cwd, env = process.env) => {
   const envConfigPath = isNonEmptyString(env[ENV_CONFIG_PATH_VAR])
     ? env[ENV_CONFIG_PATH_VAR].trim()
@@ -246,11 +287,13 @@ export const readSeoConfig = async (configPath, cwd, env = process.env) => {
 
 const readTargetsFromFile = async (filePath) => {
   const raw = await readFile(filePath, 'utf8')
+  const normalizedRaw = String(raw).trimStart()
 
-  return raw
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(line => Boolean(line) && !line.startsWith('#'))
+  if (normalizedRaw.startsWith('<')) {
+    return readTargetsFromSitemapXml(raw, filePath)
+  }
+
+  return readTargetsFromText(raw)
 }
 
 export const resolveTargets = async (config, configDir) => {
@@ -267,7 +310,7 @@ export const resolveTargets = async (config, configDir) => {
   ]
 
   if (mergedTargets.length === 0) {
-    exitWithError('No targets configured. Add URLs to config/targets.txt or config.targets.')
+    exitWithError('No targets configured. Add URLs to config/targets.txt, provide a sitemap XML dump, or set config.targets.')
   }
 
   const normalizedTargets = []

@@ -67,6 +67,15 @@ test('buildSummary aggregates issue and severity counts', () => {
       ],
     },
     {
+      error: null,
+      status: 404,
+      redirectChain: [ { url: 'https://example.com/missing', status: 404, location: null } ],
+      parseSkippedReason: null,
+      issues: [
+        { code: 'http_4xx', severity: 'warning' },
+      ],
+    },
+    {
       error: 'timeout',
       status: null,
       redirectChain: [],
@@ -79,15 +88,17 @@ test('buildSummary aggregates issue and severity counts', () => {
 
   const summary = buildSummary(pages)
 
-  assert.equal(summary.total, 2)
-  assert.equal(summary.totalIssues, 3)
-  assert.equal(summary.pagesWithIssues, 2)
+  assert.equal(summary.total, 3)
+  assert.equal(summary.totalIssues, 4)
+  assert.equal(summary.pagesWithIssues, 3)
   assert.equal(summary.errors, 1)
+  assert.equal(summary.failedPages, 2)
   assert.equal(summary.severityCounts.error, 1)
-  assert.equal(summary.severityCounts.warning, 1)
+  assert.equal(summary.severityCounts.warning, 2)
   assert.equal(summary.severityCounts.info, 1)
   assert.deepEqual(summary.issueBreakdown, [
     { code: 'fetch_error', count: 1 },
+    { code: 'http_4xx', count: 1 },
     { code: 'missing_description', count: 1 },
     { code: 'missing_og_image', count: 1 },
   ])

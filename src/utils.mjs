@@ -54,6 +54,52 @@ export const escapeHtml = (value) => {
     .replaceAll('\'', '&#39;')
 }
 
+export const decodeXmlEntities = (value) => {
+  return String(value ?? '').replaceAll(/&(#x?[0-9a-f]+|amp|lt|gt|quot|apos);/gi, (match, entity) => {
+    const normalizedEntity = String(entity).toLowerCase()
+
+    if (normalizedEntity === 'amp') {
+      return '&'
+    }
+
+    if (normalizedEntity === 'lt') {
+      return '<'
+    }
+
+    if (normalizedEntity === 'gt') {
+      return '>'
+    }
+
+    if (normalizedEntity === 'quot') {
+      return '"'
+    }
+
+    if (normalizedEntity === 'apos') {
+      return '\''
+    }
+
+    if (!normalizedEntity.startsWith('#')) {
+      return match
+    }
+
+    const isHex = normalizedEntity[1] === 'x'
+    const codePoint = Number.parseInt(
+      normalizedEntity.slice(isHex ? 2 : 1),
+      isHex ? 16 : 10,
+    )
+
+    if (!Number.isFinite(codePoint)) {
+      return match
+    }
+
+    try {
+      return String.fromCodePoint(codePoint)
+    } catch {
+      return match
+    }
+  })
+}
+
 export const resolveMaybeUrl = (value, baseUrl) => {
   const normalizedValue = String(value || '').trim()
 

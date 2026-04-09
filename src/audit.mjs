@@ -126,6 +126,10 @@ export const buildSummary = (pages) => {
       accumulator.errors += 1
     }
 
+    if (page.error || (page.status && page.status >= 400)) {
+      accumulator.failedPages += 1
+    }
+
     if (page.redirectChain.length > 1) {
       accumulator.redirected += 1
     }
@@ -151,6 +155,7 @@ export const buildSummary = (pages) => {
   }, {
     total: 0,
     errors: 0,
+    failedPages: 0,
     redirected: 0,
     httpErrors: 0,
     noindex: 0,

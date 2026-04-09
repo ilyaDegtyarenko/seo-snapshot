@@ -56,12 +56,35 @@ const renderIssueBreakdown = (summary) => {
   return `<ul class="inline-list">${ summary.issueBreakdown.map(issue => `<li><strong>${ escapeHtml(issue.code) }</strong> (${ escapeHtml(issue.count) })</li>`).join('') }</ul>`
 }
 
+const getStatusTone = (page) => {
+  if (page.error) {
+    return 'error'
+  }
+
+  if (!page.status) {
+    return 'neutral'
+  }
+
+  if (page.status >= 500) {
+    return 'error'
+  }
+
+  if (page.status >= 400) {
+    return 'warning'
+  }
+
+  if (page.status >= 300) {
+    return 'info'
+  }
+
+  return 'neutral'
+}
+
 const renderPageCard = (page) => {
-  const tone = page.error
-    ? 'error'
-    : page.status && page.status >= 400
-      ? 'warning'
-      : getHighestSeverity(page.issues)
+  const statusTone = getStatusTone(page)
+  const issuesTone = page.issues.length > 0
+    ? getHighestSeverity(page.issues)
+    : 'success'
   const title = page.seo?.document.title || page.input
   const robotsValue = page.seo?.meta.robots || page.headers.xRobotsTag || null
   const rawJson = escapeHtml(JSON.stringify(page, null, 2))
@@ -74,9 +97,9 @@ const renderPageCard = (page) => {
           <p class="page-url"><code>${ escapeHtml(page.finalUrl || page.requestedUrl) }</code></p>
         </div>
         <div class="badge-row">
-          ${ renderBadge(page.error ? 'error' : `status ${ page.status ?? 'n/a' }`, tone) }
+          ${ renderBadge(page.error ? 'error' : `status ${ page.status ?? 'n/a' }`, statusTone) }
           ${ page.redirectChain.length > 1 ? renderBadge(`redirects ${ page.redirectChain.length - 1 }`, 'neutral') : '' }
-          ${ page.issues.length > 0 ? renderBadge(`issues ${ page.issues.length }`, tone) : renderBadge('clean', 'success') }
+          ${ page.issues.length > 0 ? renderBadge(`issues ${ page.issues.length }`, issuesTone) : renderBadge('clean', 'success') }
           ${ robotsValue ? renderBadge(robotsValue, robotsValue.toLowerCase().includes('noindex') ? 'warning' : 'neutral') : '' }
         </div>
       </header>
@@ -133,7 +156,7 @@ const renderPageCard = (page) => {
 }
 
 export const renderHtmlReport = (report) => {
-  const summary = buildSummary(report.pages)
+  const summary = report.summary ?? buildSummary(report.pages)
   const generatedAtLabel = new Date(report.generatedAt).toLocaleString('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'medium',
@@ -147,70 +170,119 @@ export const renderHtmlReport = (report) => {
   <title>SEO Snapshot ${ escapeHtml(generatedAtLabel) }</title>
   <style>
     :root {
-      --bg: #f3efe7;
-      --bg-accent: #dbe7df;
-      --panel: rgba(255, 252, 247, 0.86);
-      --panel-strong: #fffaf2;
-      --panel-border: rgba(47, 63, 51, 0.15);
-      --text: #1d2a1f;
-      --muted: #5d6d60;
-      --success: #2f7d4a;
-      --warning: #b75d14;
-      --error: #b23a34;
-      --info: #2c698d;
-      --shadow: 0 24px 80px rgba(51, 58, 47, 0.12);
+      --bg: #0a0a0a;
+      --bg-elevated: #111111;
+      --bg-muted: #151515;
+      --bg-code: #0f0f0f;
+      --border: #2a2a2a;
+      --border-strong: #3a3a3a;
+      --text: #f1f1f1;
+      --muted: #a1a1a1;
+      --tone-strong: #d4d4d4;
+      --tone-soft: #b8b8b8;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --error: #f87171;
+      --info: #60a5fa;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       color: var(--text);
-      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
       line-height: 1.55;
-      background:
-        radial-gradient(circle at top left, rgba(205, 225, 214, 0.9), transparent 38%),
-        radial-gradient(circle at top right, rgba(246, 217, 179, 0.7), transparent 30%),
-        linear-gradient(180deg, var(--bg-accent) 0%, var(--bg) 22%, #efe5d8 100%);
+      background: linear-gradient(180deg, #0d0d0d 0%, var(--bg) 100%);
       min-height: 100vh;
     }
     main {
-      max-width: 1440px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 1280px;
       margin: 0 auto;
-      padding: 32px 24px 64px;
+      padding: 28px 20px 56px;
     }
     h1, h2, h3, p { margin: 0; }
     code {
       word-break: break-word;
-      font-family: "SFMono-Regular", "Consolas", monospace;
+      font-family: "IBM Plex Mono", "SFMono-Regular", "Consolas", monospace;
     }
     .page-header {
-      padding: 28px;
-      border: 1px solid var(--panel-border);
+      padding: 24px;
+      border: 1px solid var(--border);
       border-radius: 24px;
-      background: linear-gradient(135deg, rgba(255, 250, 242, 0.95), rgba(246, 241, 230, 0.82));
+      background: rgba(17, 17, 17, 0.92);
       box-shadow: var(--shadow);
       display: grid;
-      gap: 10px;
+      gap: 12px;
+    }
+    .page-header-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--tone-soft);
     }
     .page-header h1 {
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(34px, 4vw, 56px);
-      line-height: 0.96;
-      letter-spacing: -0.03em;
+      font-size: clamp(34px, 5vw, 54px);
+      line-height: 0.94;
+      letter-spacing: -0.05em;
+      font-weight: 650;
     }
-    .page-header p {
+    .page-header p,
+    .header-time {
       color: var(--muted);
+    }
+    .page-header-description {
+      max-width: 760px;
+    }
+    .header-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .header-meta-item {
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--bg-muted);
+      display: grid;
+      gap: 4px;
+    }
+    .header-meta-item strong {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-      gap: 14px;
-      margin: 22px 0 28px;
+      gap: 12px;
     }
     .summary-card, .page-card {
-      border: 1px solid var(--panel-border);
-      border-radius: 22px;
-      background: var(--panel);
-      backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(17, 17, 17, 0.94);
       box-shadow: var(--shadow);
     }
     .summary-card {
@@ -220,12 +292,16 @@ export const renderHtmlReport = (report) => {
       display: block;
       font-size: 30px;
       line-height: 1;
-      margin-bottom: 6px;
-      font-family: Georgia, "Times New Roman", serif;
+      margin-bottom: 8px;
+      font-weight: 650;
+      letter-spacing: -0.04em;
+    }
+    .summary-card span {
+      color: var(--muted);
     }
     .page-list {
       display: grid;
-      gap: 18px;
+      gap: 14px;
     }
     .page-card {
       padding: 22px;
@@ -242,13 +318,17 @@ export const renderHtmlReport = (report) => {
       gap: 6px;
     }
     .page-card-header h2 {
-      font-size: 24px;
-      line-height: 1.1;
+      font-size: 22px;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
       word-break: break-word;
     }
     .page-url {
       color: var(--muted);
       word-break: break-word;
+    }
+    .page-url code {
+      color: var(--tone-strong);
     }
     .badge-row {
       display: flex;
@@ -262,25 +342,49 @@ export const renderHtmlReport = (report) => {
       padding: 6px 10px;
       border-radius: 999px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 600;
       letter-spacing: 0.03em;
       white-space: nowrap;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-muted);
+      color: var(--tone-strong);
     }
-    .badge-success { background: rgba(47, 125, 74, 0.14); color: var(--success); }
-    .badge-warning { background: rgba(183, 93, 20, 0.14); color: var(--warning); }
-    .badge-error { background: rgba(178, 58, 52, 0.14); color: var(--error); }
-    .badge-info, .badge-neutral { background: rgba(44, 105, 141, 0.12); color: var(--info); }
+    .badge-success {
+      background: rgba(52, 211, 153, 0.12);
+      border-color: rgba(52, 211, 153, 0.28);
+      color: var(--success);
+    }
+    .badge-warning {
+      background: rgba(251, 191, 36, 0.12);
+      border-color: rgba(251, 191, 36, 0.28);
+      color: var(--warning);
+    }
+    .badge-error {
+      background: rgba(248, 113, 113, 0.12);
+      border-color: rgba(248, 113, 113, 0.28);
+      color: var(--error);
+    }
+    .badge-info {
+      background: rgba(96, 165, 250, 0.12);
+      border-color: rgba(96, 165, 250, 0.28);
+      color: var(--info);
+    }
+    .badge-neutral {
+      background: #181818;
+      border-color: var(--border-strong);
+      color: var(--tone-strong);
+    }
     .kv-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 12px;
       margin: 16px 0;
     }
     .kv-row {
       padding: 14px;
-      border: 1px solid var(--panel-border);
+      border: 1px solid var(--border);
       border-radius: 16px;
-      background: rgba(255, 255, 255, 0.55);
+      background: var(--bg-muted);
     }
     .kv-row dt {
       color: var(--muted);
@@ -293,12 +397,12 @@ export const renderHtmlReport = (report) => {
       margin: 0;
       word-break: break-word;
     }
-    .subsection {
+    .subsection:not(:only-child) {
       margin-top: 16px;
     }
     .subsection h3 {
       font-size: 13px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -310,7 +414,15 @@ export const renderHtmlReport = (report) => {
     .inline-list {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px 18px;
+      gap: 10px 14px;
+      padding-left: 0;
+      list-style: none;
+    }
+    .inline-list li {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-muted);
     }
     .issue-list {
       display: grid;
@@ -325,8 +437,8 @@ export const renderHtmlReport = (report) => {
       align-items: start;
       padding: 12px 14px;
       border-radius: 14px;
-      background: rgba(255, 255, 255, 0.55);
-      border: 1px solid var(--panel-border);
+      background: var(--bg-muted);
+      border: 1px solid var(--border);
     }
     .muted {
       color: var(--muted);
@@ -348,34 +460,54 @@ export const renderHtmlReport = (report) => {
       margin: 12px 0 0;
       padding: 16px;
       overflow: auto;
-      border: 1px solid var(--panel-border);
+      border: 1px solid var(--border);
       border-radius: 16px;
-      background: rgba(250, 247, 241, 0.9);
+      background: var(--bg-code);
+      color: var(--tone-strong);
       font-size: 12px;
     }
     @media (max-width: 720px) {
-      main { padding: 18px 14px 44px; }
+      main { padding: 16px 14px 40px; }
       .page-card-header { flex-direction: column; }
       .badge-row { justify-content: flex-start; }
-      .page-header { padding: 22px; }
+      .page-header { padding: 20px; }
     }
   </style>
 </head>
 <body>
   <main>
     <header class="page-header">
+      <div class="page-header-top">
+        <span class="eyebrow">Minimal Audit View</span>
+        <span class="header-time">${ escapeHtml(generatedAtLabel) }</span>
+      </div>
       <h1>SEO Snapshot</h1>
-      <p>Generated at ${ escapeHtml(generatedAtLabel) }</p>
-      <p>Config: <code>${ escapeHtml(report.options.configPath) }</code></p>
-      <p>Base URL: <code>${ escapeHtml(report.options.baseUrl || '-') }</code></p>
-      <p>Output formats: <code>${ escapeHtml(report.options.formats.join(', ')) }</code></p>
+      <p class="page-header-description">A compact crawl report for status codes, indexation signals, metadata coverage, and page-level SEO issues.</p>
+      <div class="header-meta">
+        <div class="header-meta-item">
+          <strong>Config</strong>
+          <code>${ escapeHtml(report.options.configPath) }</code>
+        </div>
+        <div class="header-meta-item">
+          <strong>Base URL</strong>
+          <code>${ escapeHtml(report.options.baseUrl || '-') }</code>
+        </div>
+        <div class="header-meta-item">
+          <strong>Targets</strong>
+          <code>${ escapeHtml(report.options.targetCount) }</code>
+        </div>
+        <div class="header-meta-item">
+          <strong>Formats</strong>
+          <code>${ escapeHtml(report.options.formats.join(', ')) }</code>
+        </div>
+      </div>
     </header>
 
     <section class="summary-grid">
       <article class="summary-card"><strong>${ escapeHtml(summary.total) }</strong><span>Total pages</span></article>
       <article class="summary-card"><strong>${ escapeHtml(summary.pagesWithIssues) }</strong><span>Pages with issues</span></article>
       <article class="summary-card"><strong>${ escapeHtml(summary.totalIssues) }</strong><span>Total issues</span></article>
-      <article class="summary-card"><strong>${ escapeHtml(summary.httpErrors) }</strong><span>HTTP 4xx/5xx</span></article>
+      <article class="summary-card"><strong>${ escapeHtml(summary.failedPages) }</strong><span>Failed pages</span></article>
       <article class="summary-card"><strong>${ escapeHtml(summary.redirected) }</strong><span>Redirected</span></article>
       <article class="summary-card"><strong>${ escapeHtml(summary.noindex) }</strong><span>Noindex</span></article>
       <article class="summary-card"><strong>${ escapeHtml(summary.severityCounts.error) }</strong><span>Error issues</span></article>
@@ -399,7 +531,7 @@ export const renderHtmlReport = (report) => {
 }
 
 export const renderJsonReport = (report) => {
-  const summary = buildSummary(report.pages)
+  const summary = report.summary ?? buildSummary(report.pages)
 
   return JSON.stringify({
     ...report,

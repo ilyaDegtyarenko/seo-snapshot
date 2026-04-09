@@ -1,5 +1,7 @@
-.DS_Store
-.idea/
-node_modules/
-reports/
-.env
+/node_modules/
+/.idea/
+/reports/
+/.env
+/config/targets.txt
+/config/*.local.txt
+/config/*.local.xml

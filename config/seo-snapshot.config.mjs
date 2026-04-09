@@ -1,6 +1,6 @@
 export default {
   baseUrl: 'http://127.0.0.1:3000',
-  targetsFile: './targets.txt',
+  targetsFile: './targets.txt', // Local file. You can also point this to ./targets.local.xml from a sitemap export.
   targets: [
     // '/',
     // '/news',

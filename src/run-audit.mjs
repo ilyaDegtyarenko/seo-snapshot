@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { mkdir, writeFile } from 'node:fs/promises'
-import { buildPageIssues } from './audit.mjs'
+import { buildPageIssues, buildSummary } from './audit.mjs'
 import { buildRuntimeOptions, readSeoConfig, resolveTargets } from './config.mjs'
 import { extractSeoInfoFromHtml } from './extract-seo.mjs'
 import { fetchWithRedirects, isHtmlResponse } from './fetch-page.mjs'
@@ -121,6 +121,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
       issues: buildPageIssues(page, runtimeOptions.audit),
     }
   })
+  const summary = buildSummary(pages)
 
   const report = {
     generatedAt: new Date().toISOString(),
@@ -134,13 +135,17 @@ export const runAudit = async (cliOptions, runtime = {}) => {
       formats: runtimeOptions.output.formats,
       outputDir: runtimeOptions.output.dir,
     },
+    summary,
     pages,
   }
   const outputPaths = await writeReports(report, runtimeOptions.output)
+  const htmlOutputPath = outputPaths.find(outputPath => outputPath.endsWith('.html')) ?? null
 
   return {
     report,
+    summary,
     outputPaths,
+    htmlOutputPath,
     hasFailures: pages.some(page => page.error || page.status >= 400),
   }
 }

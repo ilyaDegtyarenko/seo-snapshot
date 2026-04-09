@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { readSeoConfig } from '../src/config.mjs'
+import { readSeoConfig, resolveTargets } from '../src/config.mjs'
 
 const createTempDir = async () => {
   return mkdtemp(path.join(os.tmpdir(), 'seo-snapshot-config-'))
@@ -106,4 +106,58 @@ test('readSeoConfig loads config path from env', async (context) => {
   assert.equal(result.absoluteConfigPath, configPath)
   assert.equal(result.config.baseUrl, 'https://path.example')
   assert.deepEqual(result.config.targets, [ '/' ])
+})
+
+test('resolveTargets reads plain-text targets files and deduplicates merged targets', async (context) => {
+  const tempDir = await createTempDir()
+
+  context.after(async () => {
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  await writeFile(path.join(tempDir, 'targets.txt'), `# main
+/
+/news
+https://example.com/news
+`, 'utf8')
+
+  const targets = await resolveTargets({
+    baseUrl: 'https://example.com',
+    targetsFile: './targets.txt',
+    targets: [ '/news', '/movies' ],
+  }, tempDir)
+
+  assert.deepEqual(targets, [
+    { input: '/', url: 'https://example.com/' },
+    { input: '/news', url: 'https://example.com/news' },
+    { input: '/movies', url: 'https://example.com/movies' },
+  ])
+})
+
+test('resolveTargets reads sitemap XML dumps from targetsFile', async (context) => {
+  const tempDir = await createTempDir()
+
+  context.after(async () => {
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  await writeFile(path.join(tempDir, 'targets.local.xml'), `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/</loc>
+  </url>
+  <url>
+    <loc>https://example.com/search?tab=movies&amp;page=2</loc>
+  </url>
+</urlset>
+`, 'utf8')
+
+  const targets = await resolveTargets({
+    targetsFile: './targets.local.xml',
+  }, tempDir)
+
+  assert.deepEqual(targets, [
+    { input: 'https://example.com/', url: 'https://example.com/' },
+    { input: 'https://example.com/search?tab=movies&page=2', url: 'https://example.com/search?tab=movies&page=2' },
+  ])
 })
