@@ -1,0 +1,114 @@
+import process from 'node:process'
+import {
+  DEFAULT_CONFIG_PATH,
+  DEFAULT_FORMATS,
+  SUPPORTED_FORMATS,
+  buildHelpText,
+} from './constants.mjs'
+import { exitWithError, parsePositiveInt, readOptionValue } from './utils.mjs'
+
+const parseFormats = (value) => {
+  const normalized = String(value || '')
+    .split(',')
+    .map(item => item.trim().toLowerCase())
+    .filter(Boolean)
+
+  if (normalized.includes('both')) {
+    return DEFAULT_FORMATS
+  }
+
+  if (normalized.length === 0) {
+    exitWithError('Missing value for --format.')
+  }
+
+  const invalidFormat = normalized.find(format => !SUPPORTED_FORMATS.includes(format))
+
+  if (invalidFormat) {
+    exitWithError(`Unsupported report format "${ invalidFormat }". Supported formats: ${ SUPPORTED_FORMATS.join(', ') }.`)
+  }
+
+  return [ ...new Set(normalized) ]
+}
+
+export const parseArgs = (argv) => {
+  const options = {
+    help: false,
+    configPath: DEFAULT_CONFIG_PATH,
+    outputDir: undefined,
+    timeoutMs: undefined,
+    maxRedirects: undefined,
+    concurrency: undefined,
+    userAgent: undefined,
+    formats: undefined,
+  }
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index]
+
+    switch (arg) {
+      case '--':
+        break
+      case '--help':
+        options.help = true
+        break
+      case '--config':
+        options.configPath = readOptionValue(argv, index, arg)
+        index += 1
+        break
+      case '--output-dir':
+        options.outputDir = readOptionValue(argv, index, arg)
+        index += 1
+        break
+      case '--format':
+        options.formats = parseFormats(readOptionValue(argv, index, arg))
+        index += 1
+        break
+      case '--timeout-ms':
+        options.timeoutMs = parsePositiveInt(readOptionValue(argv, index, arg), arg)
+        index += 1
+        break
+      case '--max-redirects':
+        options.maxRedirects = parsePositiveInt(readOptionValue(argv, index, arg), arg)
+        index += 1
+        break
+      case '--concurrency':
+        options.concurrency = parsePositiveInt(readOptionValue(argv, index, arg), arg)
+        index += 1
+        break
+      case '--user-agent':
+        options.userAgent = readOptionValue(argv, index, arg)
+        index += 1
+        break
+      default:
+        if (arg.startsWith('--')) {
+          exitWithError(`Unknown flag "${ arg }".\n\n${ buildHelpText() }`)
+        }
+
+        exitWithError(`Unexpected positional argument "${ arg }". Configure targets in ${ options.configPath }.`)
+    }
+  }
+
+  return options
+}
+
+export const runCli = async (argv = process.argv.slice(2)) => {
+  const options = parseArgs(argv)
+
+  if (options.help) {
+    console.log(buildHelpText())
+    return
+  }
+
+  const { runAudit } = await import('./run-audit.mjs')
+  const result = await runAudit(options, {
+    cwd: process.cwd(),
+  })
+
+  for (const outputPath of result.outputPaths) {
+    process.stdout.write(`${ outputPath }\n`)
+  }
+
+  if (result.hasFailures) {
+    process.exitCode = 1
+  }
+}

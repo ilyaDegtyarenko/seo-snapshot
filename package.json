@@ -1,0 +1,24 @@
+{
+  "name": "seo-snapshot",
+  "version": "0.1.0",
+  "description": "Small CLI project for crawling pages and generating practical SEO audit snapshots.",
+  "type": "module",
+  "bin": {
+    "seo-snapshot": "./bin/seo-snapshot.mjs"
+  },
+  "scripts": {
+    "snapshot": "node ./bin/seo-snapshot.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "keywords": [
+    "seo",
+    "audit",
+    "snapshot",
+    "crawler",
+    "cli"
+  ],
+  "license": "MIT"
+}

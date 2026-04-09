@@ -1,0 +1,13 @@
+# Generated from /map.xml
+# Referenced from ./seo-snapshot.config.mjs
+
+# Main routes
+/
+/tv
+/movie
+/cartoons
+/collections
+
+# Movies
+/movie/33209-koli-ti-viydesh-zamizh
+/movies/boyoviki
