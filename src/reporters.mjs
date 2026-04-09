@@ -545,7 +545,6 @@ const renderIndexedSection = ({
 
         <div class="pages-counter-row">
           <p class="pages-counter muted"><span ${ visibleCountDataAttr }>${ totalCount }</span> of ${ totalCount } ${ escapeHtml(visibleLabel.items) } shown</p>
-          <button class="nav-active-btn" type="button" data-nav-active-btn aria-label="Scroll navigation to active item">To active</button>
         </div>
 
         <nav class="page-index-nav" aria-label="${ escapeHtml(navAriaLabel) }">
@@ -942,28 +941,7 @@ export const renderHtmlReport = (report) => {
     .pages-counter-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 12px;
-    }
-    .nav-active-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: var(--bg-muted);
-      color: var(--muted);
-      font: inherit;
-      font-size: 12px;
-      cursor: pointer;
-      transition: border-color 120ms ease, color 120ms ease, transform 120ms ease;
-      white-space: nowrap;
-    }
-    .nav-active-btn:hover {
-      color: var(--text);
-      border-color: var(--border-strong);
-      transform: translateY(-1px);
     }
     .page-index-nav {
       display: grid;
@@ -1315,13 +1293,13 @@ export const renderHtmlReport = (report) => {
 
       function createNavGroup(config) {
         return {
-          activeButton: document.querySelector(config.activeButtonSelector),
           cards: Array.from(document.querySelectorAll(config.cardSelector)),
           emptyState: document.querySelector(config.emptySelector),
           filter: config.filterSelector ? document.querySelector(config.filterSelector) : null,
           filterAttr: config.filterAttr || '',
           filterMatchMode: config.filterMatchMode || 'single',
           links: Array.from(document.querySelectorAll(config.linkSelector)),
+          nav: document.querySelector(config.navSelector),
           tabName: config.tabName,
           visibleCount: document.querySelector(config.visibleCountSelector),
         }
@@ -1329,23 +1307,23 @@ export const renderHtmlReport = (report) => {
 
       var navGroups = [
         createNavGroup({
-          activeButtonSelector: '#tab-pages [data-nav-active-btn]',
           cardSelector: '[data-page-card]',
           emptySelector: '[data-pages-empty]',
           filterSelector: '[data-page-domain-filter]',
           filterAttr: 'sourceKey',
           linkSelector: '[data-page-link]',
+          navSelector: '#tab-pages .page-index-nav',
           tabName: 'pages',
           visibleCountSelector: '[data-pages-visible-count]',
         }),
         createNavGroup({
-          activeButtonSelector: '#tab-comparison [data-nav-active-btn]',
           cardSelector: '[data-comparison-card]',
           emptySelector: '[data-comparison-empty]',
           filterSelector: '[data-comparison-difference-filter]',
           filterAttr: 'differenceKeys',
           filterMatchMode: 'multi',
           linkSelector: '[data-comparison-link]',
+          navSelector: '#tab-comparison .page-index-nav',
           tabName: 'comparison',
           visibleCountSelector: '[data-comparison-visible-count]',
         }),
@@ -1411,12 +1389,27 @@ export const renderHtmlReport = (report) => {
         return rawValue === selectedFilter
       }
 
-      function scrollNavLinkIntoView(link) {
-        if (!link || link.classList.contains('hidden')) {
+      function scrollNavLinkIntoView(group, link) {
+        if (!group || !group.nav || !link || link.classList.contains('hidden')) {
           return
         }
 
-        link.scrollIntoView({ block: 'nearest' })
+        var navRect = group.nav.getBoundingClientRect()
+        var linkRect = link.getBoundingClientRect()
+        var isAboveViewport = linkRect.top < navRect.top
+        var isBelowViewport = linkRect.bottom > navRect.bottom
+        var scrollPadding = 8
+
+        if (!isAboveViewport && !isBelowViewport) {
+          return
+        }
+
+        if (isAboveViewport) {
+          group.nav.scrollTop -= (navRect.top - linkRect.top) + scrollPadding
+          return
+        }
+
+        group.nav.scrollTop += (linkRect.bottom - navRect.bottom) + scrollPadding
       }
 
       function setActiveLinkState(links, anchorId) {
@@ -1437,6 +1430,7 @@ export const renderHtmlReport = (report) => {
         }
 
         setActiveLinkState(group.links, anchorId)
+        scrollNavLinkIntoView(group, getActiveNavLink(group))
       }
 
       function getNavGroupByTab(tabName) {
@@ -1625,16 +1619,6 @@ export const renderHtmlReport = (report) => {
           } else {
             requestScrollSync()
           }
-        })
-      })
-
-      navGroups.forEach(function (group) {
-        if (!group.activeButton) {
-          return
-        }
-
-        group.activeButton.addEventListener('click', function () {
-          scrollNavLinkIntoView(getActiveNavLink(group))
         })
       })
 
