@@ -8,6 +8,73 @@ const pushIssue = (issues, severity, code, message) => {
   })
 }
 
+const DUPLICATE_SIGNAL_ISSUE_MAP = {
+  title: {
+    code: 'duplicate_title',
+    message: count => `Multiple <title> tags found (${ count }).`,
+  },
+  description: {
+    code: 'duplicate_description',
+    message: count => `Multiple meta description tags found (${ count }).`,
+  },
+  robots: {
+    code: 'duplicate_robots',
+    message: count => `Multiple meta robots tags found (${ count }).`,
+  },
+  canonical: {
+    code: 'duplicate_canonical',
+    message: count => `Multiple canonical links found (${ count }).`,
+  },
+  viewport: {
+    code: 'duplicate_viewport',
+    message: count => `Multiple viewport meta tags found (${ count }).`,
+  },
+  ogTitle: {
+    code: 'duplicate_og_title',
+    message: count => `Multiple og:title tags found (${ count }).`,
+  },
+  ogDescription: {
+    code: 'duplicate_og_description',
+    message: count => `Multiple og:description tags found (${ count }).`,
+  },
+  ogType: {
+    code: 'duplicate_og_type',
+    message: count => `Multiple og:type tags found (${ count }).`,
+  },
+  ogUrl: {
+    code: 'duplicate_og_url',
+    message: count => `Multiple og:url tags found (${ count }).`,
+  },
+  ogImage: {
+    code: 'duplicate_og_image',
+    message: count => `Multiple og:image tags found (${ count }).`,
+  },
+  twitterCard: {
+    code: 'duplicate_twitter_card',
+    message: count => `Multiple twitter:card tags found (${ count }).`,
+  },
+  twitterTitle: {
+    code: 'duplicate_twitter_title',
+    message: count => `Multiple twitter:title tags found (${ count }).`,
+  },
+  twitterDescription: {
+    code: 'duplicate_twitter_description',
+    message: count => `Multiple twitter:description tags found (${ count }).`,
+  },
+  twitterImage: {
+    code: 'duplicate_twitter_image',
+    message: count => `Multiple twitter:image tags found (${ count }).`,
+  },
+  manifest: {
+    code: 'duplicate_manifest',
+    message: count => `Multiple manifest links found (${ count }).`,
+  },
+  appleItunesApp: {
+    code: 'duplicate_apple_itunes_app',
+    message: count => `Multiple apple-itunes-app tags found (${ count }).`,
+  },
+}
+
 export const buildPageIssues = (page, rules) => {
   const issues = []
 
@@ -65,6 +132,16 @@ export const buildPageIssues = (page, rules) => {
 
   if (!lang) {
     pushIssue(issues, 'warning', 'missing_lang', 'Missing lang attribute on <html>.')
+  }
+
+  for (const duplicate of page.seo?.head?.duplicates ?? []) {
+    const duplicateIssue = DUPLICATE_SIGNAL_ISSUE_MAP[duplicate.key]
+
+    if (!duplicateIssue) {
+      continue
+    }
+
+    pushIssue(issues, 'warning', duplicateIssue.code, duplicateIssue.message(duplicate.count))
   }
 
   if (!canonical) {

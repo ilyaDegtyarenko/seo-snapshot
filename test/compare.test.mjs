@@ -2,117 +2,140 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildComparisonReport } from '../src/compare.mjs'
 
+const comparisonSources = [
+  { label: 'prod', url: 'https://www.example.com/' },
+  { label: 'stage', url: 'https://stage.example.com/' },
+]
+
+const createComparablePage = ({
+  alternates = [],
+  bodyTextLength = 400,
+  canonical,
+  description = 'Catalog description',
+  finalUrl,
+  h1 = [ 'Catalog' ],
+  input = '/catalog',
+  issues = [],
+  lang = 'en',
+  ogImage = null,
+  ogTitle = null,
+  ogDescription = null,
+  ogUrl = null,
+  robots = 'index,follow',
+  source,
+  status = 200,
+  targetPath = input,
+  title = 'Catalog',
+  jsonLdTypes = [],
+  twitterCard = null,
+  twitterDescription = null,
+  twitterImage = null,
+  twitterTitle = null,
+  xRobotsTag = null,
+}) => ({
+  input,
+  targetPath,
+  source,
+  requestedUrl: finalUrl,
+  finalUrl,
+  status,
+  error: null,
+  parseSkippedReason: null,
+  headers: {
+    xRobotsTag,
+  },
+  seo: {
+    document: {
+      title,
+      h1,
+      lang,
+      bodyTextLength,
+    },
+    meta: {
+      description,
+      robots,
+      openGraph: {
+        title: ogTitle,
+        description: ogDescription,
+        url: ogUrl,
+        image: ogImage,
+      },
+      twitter: {
+        card: twitterCard,
+        title: twitterTitle,
+        description: twitterDescription,
+        image: twitterImage,
+      },
+    },
+    links: {
+      canonical,
+      alternates,
+    },
+    jsonLd: {
+      types: jsonLdTypes,
+    },
+  },
+  issues,
+})
+
 test('buildComparisonReport highlights SEO field differences across two domains', () => {
   const comparison = buildComparisonReport([
-    {
+    createComparablePage({
       input: '/news',
       targetPath: '/news',
-      source: {
-        label: 'prod',
-        url: 'https://www.example.com/',
-      },
-      requestedUrl: 'https://www.example.com/news',
+      source: comparisonSources[0],
       finalUrl: 'https://www.example.com/news',
-      status: 200,
-      error: null,
-      parseSkippedReason: null,
-      headers: {
-        xRobotsTag: null,
-      },
-      seo: {
-        document: {
-          title: 'Prod title',
-          h1: [ 'News' ],
-          lang: 'en',
-          bodyTextLength: 800,
-        },
-        meta: {
-          description: 'Prod description',
-          robots: 'index,follow',
-          openGraph: {
-            title: 'Prod OG title',
-            description: 'Prod OG description',
-            url: 'https://www.example.com/news',
-            image: 'https://www.example.com/og.jpg',
-          },
-          twitter: {
-            card: 'summary_large_image',
-            title: 'Prod twitter title',
-            description: 'Prod twitter description',
-            image: 'https://www.example.com/twitter.jpg',
-          },
-        },
-        links: {
-          canonical: 'https://www.example.com/news',
-          alternates: [
-            { hreflang: 'en', href: 'https://www.example.com/news' },
-          ],
-        },
-        jsonLd: {
-          types: [ 'NewsArticle' ],
-        },
-      },
+      title: 'Prod title',
+      description: 'Prod description',
+      bodyTextLength: 800,
+      h1: [ 'News' ],
+      canonical: 'https://www.example.com/news',
+      alternates: [
+        { hreflang: 'en', href: 'https://www.example.com/news' },
+      ],
+      ogTitle: 'Prod OG title',
+      ogDescription: 'Prod OG description',
+      ogUrl: 'https://www.example.com/news',
+      ogImage: 'https://www.example.com/og.jpg',
+      twitterCard: 'summary_large_image',
+      twitterTitle: 'Prod twitter title',
+      twitterDescription: 'Prod twitter description',
+      twitterImage: 'https://www.example.com/twitter.jpg',
+      jsonLdTypes: [ 'NewsArticle' ],
       issues: [
         { code: 'missing_og_image', severity: 'info' },
       ],
-    },
-    {
+    }),
+    createComparablePage({
       input: '/news',
       targetPath: '/news',
-      source: {
-        label: 'stage',
-        url: 'https://stage.example.com/',
-      },
-      requestedUrl: 'https://stage.example.com/news',
+      source: comparisonSources[1],
       finalUrl: 'https://stage.example.com/latest-news',
-      status: 200,
-      error: null,
-      parseSkippedReason: null,
-      headers: {
-        xRobotsTag: 'noindex',
-      },
-      seo: {
-        document: {
-          title: 'Stage title',
-          h1: [ 'Latest News' ],
-          lang: 'en',
-          bodyTextLength: 620,
-        },
-        meta: {
-          description: 'Stage description',
-          robots: null,
-          openGraph: {
-            title: 'Stage OG title',
-            description: 'Stage OG description',
-            url: 'https://stage.example.com/latest-news',
-            image: 'https://stage.example.com/og.jpg',
-          },
-          twitter: {
-            card: 'summary',
-            title: 'Stage twitter title',
-            description: 'Stage twitter description',
-            image: 'https://stage.example.com/twitter.jpg',
-          },
-        },
-        links: {
-          canonical: 'https://stage.example.com/latest-news',
-          alternates: [
-            { hreflang: 'en', href: 'https://stage.example.com/latest-news' },
-          ],
-        },
-        jsonLd: {
-          types: [ 'Article' ],
-        },
-      },
+      title: 'Stage title',
+      description: 'Stage description',
+      bodyTextLength: 620,
+      h1: [ 'Latest News' ],
+      canonical: 'https://stage.example.com/latest-news',
+      alternates: [
+        { hreflang: 'en', href: 'https://stage.example.com/latest-news' },
+      ],
+      ogTitle: 'Stage OG title',
+      ogDescription: 'Stage OG description',
+      ogUrl: 'https://stage.example.com/latest-news',
+      ogImage: 'https://stage.example.com/og.jpg',
+      twitterCard: 'summary',
+      twitterTitle: 'Stage twitter title',
+      twitterDescription: 'Stage twitter description',
+      twitterImage: 'https://stage.example.com/twitter.jpg',
+      robots: null,
+      xRobotsTag: 'noindex',
+      jsonLdTypes: [ 'Article' ],
       issues: [
         { code: 'noindex', severity: 'warning' },
       ],
-    },
+    }),
   ], {
-    sources: [
-      { label: 'prod', url: 'https://www.example.com/' },
-      { label: 'stage', url: 'https://stage.example.com/' },
-    ],
+    sources: comparisonSources,
   })
 
   assert.equal(comparison.targetCount, 1)
@@ -122,24 +145,70 @@ test('buildComparisonReport highlights SEO field differences across two domains'
     onlyOnLeft: [ 'missing_og_image' ],
     onlyOnRight: [ 'noindex' ],
   })
-  assert.deepEqual(comparison.differenceBreakdown.map(entry => entry.key), [
-    'bodyTextLength',
-    'canonical',
-    'description',
-    'finalUrl',
-    'h1',
-    'hreflang',
-    'issueCodes',
-    'jsonLdTypes',
-    'ogDescription',
-    'ogImage',
-    'ogTitle',
-    'ogUrl',
-    'robots',
-    'title',
-    'twitterCard',
-    'twitterDescription',
-    'twitterImage',
-    'twitterTitle',
-  ])
+  const differenceKeys = comparison.differenceBreakdown.map(entry => entry.key)
+
+  assert.equal(differenceKeys.includes('bodyTextLength'), true)
+  assert.equal(differenceKeys.includes('canonical'), true)
+  assert.equal(differenceKeys.includes('description'), true)
+  assert.equal(differenceKeys.includes('finalUrl'), true)
+  assert.equal(differenceKeys.includes('h1'), true)
+  assert.equal(differenceKeys.includes('hreflang'), true)
+  assert.equal(differenceKeys.includes('issueCodes'), true)
+  assert.equal(differenceKeys.includes('jsonLdTypes'), true)
+  assert.equal(differenceKeys.includes('metaRobots'), true)
+  assert.equal(differenceKeys.includes('ogDescription'), true)
+  assert.equal(differenceKeys.includes('ogImage'), true)
+  assert.equal(differenceKeys.includes('ogTitle'), true)
+  assert.equal(differenceKeys.includes('ogUrl'), true)
+  assert.equal(differenceKeys.includes('title'), true)
+  assert.equal(differenceKeys.includes('twitterCard'), true)
+  assert.equal(differenceKeys.includes('twitterDescription'), true)
+  assert.equal(differenceKeys.includes('twitterImage'), true)
+  assert.equal(differenceKeys.includes('twitterTitle'), true)
+  assert.equal(differenceKeys.includes('xRobotsTag'), true)
+})
+
+test('buildComparisonReport compares source-local URLs by path but still catches foreign-host leaks', () => {
+  const noLeakComparison = buildComparisonReport([
+    createComparablePage({
+      source: comparisonSources[0],
+      finalUrl: 'https://www.example.com/catalog',
+      canonical: 'https://www.example.com/catalog',
+      ogUrl: 'https://www.example.com/catalog',
+    }),
+    createComparablePage({
+      source: comparisonSources[1],
+      finalUrl: 'https://stage.example.com/catalog',
+      canonical: 'https://stage.example.com/catalog',
+      ogUrl: 'https://stage.example.com/catalog',
+    }),
+  ], {
+    sources: comparisonSources,
+  })
+
+  assert.deepEqual(noLeakComparison.comparisons[0].differences, [])
+
+  const leakComparison = buildComparisonReport([
+    createComparablePage({
+      source: comparisonSources[0],
+      finalUrl: 'https://www.example.com/catalog',
+      canonical: 'https://www.example.com/catalog',
+      ogUrl: 'https://www.example.com/catalog',
+    }),
+    createComparablePage({
+      source: comparisonSources[1],
+      finalUrl: 'https://stage.example.com/catalog',
+      canonical: 'https://www.example.com/catalog',
+      ogUrl: 'https://www.example.com/catalog',
+    }),
+  ], {
+    sources: comparisonSources,
+  })
+
+  const leakKeys = leakComparison.comparisons[0].differences.map(entry => entry.key)
+
+  assert.equal(leakKeys.includes('canonical'), true)
+  assert.equal(leakKeys.includes('canonicalCrossDomain'), true)
+  assert.equal(leakKeys.includes('ogUrl'), true)
+  assert.equal(leakKeys.includes('ogUrlCrossDomain'), true)
 })

@@ -29,6 +29,69 @@ const renderAlternateLinks = (links) => {
   return `<ul class="stack-list">${ links.map(link => `<li><strong>${ escapeHtml(link.hreflang) }</strong>: ${ escapeHtml(link.href || '-') }</li>`).join('') }</ul>`
 }
 
+const renderAlternateResources = (items) => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return '<span class="muted">-</span>'
+  }
+
+  return `<ul class="stack-list">${ items.map((item) => {
+    const labelParts = [ item.rel || 'alternate' ]
+
+    if (item.type) {
+      labelParts.push(item.type)
+    }
+
+    if (item.title) {
+      labelParts.push(item.title)
+    }
+
+    return `<li><strong>${ escapeHtml(labelParts.join(' | ')) }</strong>: ${ escapeHtml(item.href || '-') }</li>`
+  }).join('') }</ul>`
+}
+
+const renderIconLinks = (icons) => {
+  if (!Array.isArray(icons) || icons.length === 0) {
+    return '<span class="muted">-</span>'
+  }
+
+  return `<ul class="stack-list">${ icons.map((icon) => {
+    const labelParts = [ icon.rel || 'icon' ]
+
+    if (icon.type) {
+      labelParts.push(icon.type)
+    }
+
+    if (icon.sizes) {
+      labelParts.push(icon.sizes)
+    }
+
+    return `<li><strong>${ escapeHtml(labelParts.join(' | ')) }</strong>: ${ escapeHtml(icon.href || '-') }</li>`
+  }).join('') }</ul>`
+}
+
+const renderHeadDuplicates = (duplicates) => {
+  if (!Array.isArray(duplicates) || duplicates.length === 0) {
+    return '<p class="muted">No duplicate head signals found.</p>'
+  }
+
+  return `<ul class="stack-list">${ duplicates.map(duplicate =>
+    `<li><strong>${ escapeHtml(duplicate.label || duplicate.key || 'unknown') }</strong>: ${ escapeHtml(duplicate.count) }</li>`
+  ).join('') }</ul>`
+}
+
+const renderJsonLdBlocks = (blocks) => {
+  if (!Array.isArray(blocks) || blocks.length === 0) {
+    return '<span class="muted">-</span>'
+  }
+
+  return `<ul class="stack-list">${ blocks.map(block => `
+    <li>
+      <strong>${ escapeHtml(block.hash || 'unknown') }</strong>: ${ escapeHtml(block.summary || 'Unknown JSON-LD block') }
+      ${ block.preview ? `<div class="muted"><code>${ escapeHtml(block.preview) }</code></div>` : '' }
+    </li>
+  `).join('') }</ul>`
+}
+
 const renderRedirectChain = (redirectChain) => {
   if (!Array.isArray(redirectChain) || redirectChain.length === 0) {
     return '<span class="muted">-</span>'
@@ -409,7 +472,7 @@ const renderPageCard = (entry) => {
   const issuesTone = page.issues.length > 0
     ? getHighestSeverity(page.issues)
     : 'success'
-  const robotsValue = page.seo?.meta.robots || page.headers.xRobotsTag || null
+  const robotsBadgeValue = page.seo?.meta.robots || page.headers.xRobotsTag || null
   const rawJson = escapeHtml(JSON.stringify(page, null, 2))
 
   return `
@@ -431,7 +494,7 @@ const renderPageCard = (entry) => {
           ${ renderBadge(page.error ? 'error' : `status ${ page.status ?? 'n/a' }`, statusTone) }
           ${ page.redirectChain.length > 1 ? renderBadge(`redirects ${ page.redirectChain.length - 1 }`, 'neutral') : '' }
           ${ page.issues.length > 0 ? renderBadge(`issues ${ page.issues.length }`, issuesTone) : renderBadge('clean', 'success') }
-          ${ robotsValue ? renderBadge(robotsValue, robotsValue.toLowerCase().includes('noindex') ? 'warning' : 'neutral') : '' }
+          ${ robotsBadgeValue ? renderBadge(robotsBadgeValue, robotsBadgeValue.toLowerCase().includes('noindex') ? 'warning' : 'neutral') : '' }
         </div>
       </header>
 
@@ -448,16 +511,39 @@ const renderPageCard = (entry) => {
         ${ renderKeyValueRow('Source', getPageSourceDetails(source)) }
         ${ renderKeyValueRow('Requested URL', page.requestedUrl) }
         ${ renderKeyValueRow('Final URL', page.finalUrl) }
+        ${ renderKeyValueRow('Content-Type', page.headers.contentType) }
+        ${ renderKeyValueRow('Content-Length', page.headers.contentLength) }
+        ${ renderKeyValueRow('Charset', page.seo?.meta.charset) }
         ${ renderKeyValueRow('Title', page.seo?.document.title) }
         ${ renderKeyValueRow('Description', page.seo?.meta.description) }
+        ${ renderKeyValueRow('Meta robots', page.seo?.meta.robots) }
+        ${ renderKeyValueRow('X-Robots-Tag', page.headers.xRobotsTag) }
         ${ renderKeyValueRow('Canonical', page.seo?.links.canonical) }
         ${ renderKeyValueRow('Lang', page.seo?.document.lang) }
+        ${ renderKeyValueRow('Content-Language', page.seo?.document.contentLanguage) }
+        ${ renderKeyValueRow('Viewport', page.seo?.meta.viewport) }
+        ${ renderKeyValueRow('Application name', page.seo?.meta.applicationName) }
+        ${ renderKeyValueRow('Theme color', page.seo?.meta.themeColor) }
+        ${ renderKeyValueRow('Manifest', page.seo?.links.manifest) }
+        ${ renderKeyValueRow('Favicon', page.seo?.links.favicon) }
         ${ renderKeyValueRow('Prev', page.seo?.links.prev) }
         ${ renderKeyValueRow('Next', page.seo?.links.next) }
+        ${ renderKeyValueRow('OpenGraph type', page.seo?.meta.openGraph.type) }
+        ${ renderKeyValueRow('OpenGraph site name', page.seo?.meta.openGraph.siteName) }
+        ${ renderKeyValueRow('OpenGraph locale', page.seo?.meta.openGraph.locale) }
         ${ renderKeyValueRow('OpenGraph URL', page.seo?.meta.openGraph.url) }
         ${ renderKeyValueRow('OpenGraph Image', page.seo?.meta.openGraph.image) }
+        ${ renderKeyValueRow('OpenGraph Image Alt', page.seo?.meta.openGraph.imageAlt) }
+        ${ renderKeyValueRow('OpenGraph Video', page.seo?.meta.openGraph.video) }
+        ${ renderKeyValueRow('Twitter URL', page.seo?.meta.twitter.url) }
         ${ renderKeyValueRow('Twitter Image', page.seo?.meta.twitter.image) }
-        ${ renderKeyValueRow('Content-Type', page.headers.contentType) }
+        ${ renderKeyValueRow('Twitter Image Alt', page.seo?.meta.twitter.imageAlt) }
+        ${ renderKeyValueRow('Apple iTunes app', page.seo?.meta.appleItunesApp) }
+        ${ renderKeyValueRow('iOS deep link', page.seo?.meta.appLinks?.iosUrl) }
+        ${ renderKeyValueRow('iOS App Store ID', page.seo?.meta.appLinks?.iosAppStoreId) }
+        ${ renderKeyValueRow('Android deep link', page.seo?.meta.appLinks?.androidUrl) }
+        ${ renderKeyValueRow('Android package', page.seo?.meta.appLinks?.androidPackage) }
+        ${ renderKeyValueRow('Android app store URL', page.seo?.meta.appLinks?.androidAppStoreUrl) }
       </dl>
 
       <div class="subsection">
@@ -471,8 +557,33 @@ const renderPageCard = (entry) => {
       </div>
 
       <div class="subsection">
+        <h3>Alternate Resources</h3>
+        ${ renderAlternateResources(page.seo?.links.alternateResources) }
+      </div>
+
+      <div class="subsection">
+        <h3>Icons</h3>
+        ${ renderIconLinks(page.seo?.links.icons) }
+      </div>
+
+      <div class="subsection">
+        <h3>OpenGraph Locale Alternates</h3>
+        ${ renderList(page.seo?.meta.openGraph.localeAlternates) }
+      </div>
+
+      <div class="subsection">
         <h3>JSON-LD types</h3>
         ${ renderList(page.seo?.jsonLd.types) }
+      </div>
+
+      <div class="subsection">
+        <h3>JSON-LD blocks</h3>
+        ${ renderJsonLdBlocks(page.seo?.jsonLd?.blocks) }
+      </div>
+
+      <div class="subsection">
+        <h3>Head duplicates</h3>
+        ${ renderHeadDuplicates(page.seo?.head?.duplicates) }
       </div>
 
       <div class="subsection">

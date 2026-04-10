@@ -108,6 +108,7 @@ Supported overrides:
 - `SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS`
 - `SEO_SNAPSHOT_REQUEST_CONCURRENCY`
 - `SEO_SNAPSHOT_REQUEST_USER_AGENT`
+- `SEO_SNAPSHOT_REQUEST_COOKIES`
 - `SEO_SNAPSHOT_AUDIT_MIN_TITLE_LENGTH`
 - `SEO_SNAPSHOT_AUDIT_MAX_TITLE_LENGTH`
 - `SEO_SNAPSHOT_AUDIT_MIN_DESCRIPTION_LENGTH`
@@ -162,7 +163,7 @@ export default {
 }
 ```
 
-When `compare.baseUrl` is set, the tool uses `baseUrl` as the primary domain and the compare URL as the secondary one. The same target path is fetched on both domains and the report adds a dedicated diff section for status, title, description, canonical, robots, H1, OpenGraph, Twitter, JSON-LD, and issue-code differences.
+When `compare.baseUrl` is set, the tool uses `baseUrl` as the primary domain and the compare URL as the secondary one. The same target path is fetched on both domains and the report adds a dedicated diff section for status, source-local URL parity, robots meta/header differences, hreflang and alternate resources, OpenGraph, Twitter, app links, JSON-LD block signatures, duplicate head tags, and issue-code differences.
 
 Recommended local setup for targets:
 
@@ -178,10 +179,14 @@ Recommended local setup for targets:
 - meta description and its length
 - canonical presence
 - `lang` on `<html>`
+- `Content-Language`, `charset`, `viewport`, theme/app meta
 - H1 and multiple-H1 cases
-- `og:title`, `og:description`, `og:image`
-- `twitter:card`
-- JSON-LD and parsing errors
+- `manifest`, favicon/icon links, generic alternate resources
+- `og:title`, `og:description`, `og:type`, `og:url`, `og:image`, locale, video
+- `twitter:card`, title/description/url/image
+- app deep links (`apple-itunes-app`, `al:ios:*`, `al:android:*`)
+- JSON-LD types, normalized block signatures, and parsing errors
+- duplicate key head tags such as repeated canonical, robots, or Twitter image tags
 - `noindex` markers
 - visible text volume
 

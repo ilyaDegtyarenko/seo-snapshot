@@ -31,6 +31,15 @@ test('buildPageIssues reports critical SEO gaps', () => {
         scriptCount: 0,
         parseErrors: 1,
       },
+      head: {
+        duplicates: [
+          {
+            key: 'twitterImage',
+            label: 'meta[name="twitter:image"]',
+            count: 2,
+          },
+        ],
+      },
     },
   }
 
@@ -42,6 +51,7 @@ test('buildPageIssues reports critical SEO gaps', () => {
     'missing_description',
     'missing_h1',
     'missing_lang',
+    'duplicate_twitter_image',
     'missing_canonical',
     'noindex',
     'missing_og_title',
