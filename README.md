@@ -52,7 +52,8 @@ pnpm run snapshot -- \
   --format html,json \
   --timeout-ms 15000 \
   --max-redirects 10 \
-  --concurrency 4
+  --concurrency 4 \
+  --user-agent "Mozilla/5.0 (compatible; MyBot/1.0)"
 ```
 
 ## Environment Config
@@ -136,6 +137,7 @@ export default {
     maxRedirects: 10,
     concurrency: 4,
     userAgent: 'Mozilla/5.0 (compatible; SEO-Snapshot/1.0)',
+    cookies: 'session=abc123; token=xyz', // string or { key: value } object
   },
   audit: {
     minTitleLength: 15,
@@ -163,7 +165,24 @@ export default {
 }
 ```
 
-When `compare.baseUrl` is set, the tool uses `baseUrl` as the primary domain and the compare URL as the secondary one. The same target path is fetched on both domains and the report adds a dedicated diff section for status, source-local URL parity, robots meta/header differences, hreflang and alternate resources, OpenGraph, Twitter, app links, JSON-LD block signatures, duplicate head tags, and issue-code differences.
+When `compare.baseUrl` is set, the tool uses `baseUrl` as the primary domain and the compare URL as the secondary one. The same target path is fetched on both domains and the report adds a dedicated diff section. The following fields are compared between domains:
+
+- fetch error, parse-skipped reason
+- HTTP status, final URL (path-normalised for source-local URLs)
+- charset, title, meta description, canonical (path-normalised), canonical cross-domain flag
+- meta robots, `X-Robots-Tag` header
+- `lang`, `Content-Language`, viewport, application name, theme color
+- manifest, favicon, icon links
+- H1 list
+- hreflang alternates, alternate resources (feeds, etc.)
+- `rel=prev` / `rel=next` pagination links
+- OpenGraph: title, description, type, site name, locale, locale alternates, URL (path-normalised), URL cross-domain flag, image, image alt, video
+- Twitter: card, title, description, URL (path-normalised), image, image alt
+- App links: `apple-itunes-app`, `al:ios:*`, `al:android:*`
+- JSON-LD: script count, parse errors, schema types, block signatures
+- duplicate head-tag signals
+- visible body text length
+- issue code sets (per-domain diff)
 
 Recommended local setup for targets:
 
@@ -171,24 +190,46 @@ Recommended local setup for targets:
 - commit `config/targets.example.txt` as the shared template
 - for sitemap exports, point `targetsFile` to a local XML file such as `./targets.local.xml`
 
-## What The Audit Includes
+## What The Report Includes
+
+Each page record contains:
 
 - page status and fetch errors
 - redirect chain
-- title and its length
-- meta description and its length
-- canonical presence
-- `lang` on `<html>`
-- `Content-Language`, `charset`, `viewport`, theme/app meta
-- H1 and multiple-H1 cases
-- `manifest`, favicon/icon links, generic alternate resources
-- `og:title`, `og:description`, `og:type`, `og:url`, `og:image`, locale, video
-- `twitter:card`, title/description/url/image
-- app deep links (`apple-itunes-app`, `al:ios:*`, `al:android:*`)
-- JSON-LD types, normalized block signatures, and parsing errors
-- duplicate key head tags such as repeated canonical, robots, or Twitter image tags
-- `noindex` markers
-- visible text volume
+- all extracted SEO signals (see below)
+- per-page issue list with severity (`error` / `warning` / `info`)
+- overall summary: total pages, pages with issues, failed pages, redirected, noindex count, issue breakdown by code
+
+### Audit checks (produce issues)
+
+The following fields are actively checked and generate issues if missing or out of range:
+
+- **title** — missing, too short (`< minTitleLength`), too long (`> maxTitleLength`)
+- **meta description** — missing, too short, too long
+- **H1** — missing, or multiple H1s on one page
+- **`lang` attribute on `<html>`** — missing
+- **canonical link** — missing
+- **`noindex`** — detected in `meta[name="robots"]` or `X-Robots-Tag` header
+- **og:title, og:description, og:image** — missing (`info` severity)
+- **twitter:card** — missing (`info` severity)
+- **JSON-LD** — no structured data blocks found (`info`), or parse errors in existing blocks (`warning`)
+- **visible body text** — shorter than `minBodyTextLength`
+- **HTTP status** — 4xx produces a warning, 5xx produces an error
+- **duplicate head tags** — repeated `<title>`, `meta[name="description"]`, `meta[name="robots"]`, canonical, viewport, og:title/description/type/url/image, twitter:card/title/description/image, manifest, `apple-itunes-app`
+
+### Extracted signals (displayed in report, no issues raised)
+
+The following fields are collected and shown in the report but do not trigger audit issues:
+
+- `charset`, `Content-Language`, viewport value, application name, theme color
+- manifest URL, favicon, all icon links
+- full OpenGraph data: type, URL, site name, locale, locale alternates, image alt, video
+- full Twitter data: title, description, URL, image alt
+- app deep links: `apple-itunes-app`, `al:ios:*`, `al:android:*`
+- hreflang alternates, alternate resources (feeds, etc.)
+- `rel=prev` / `rel=next` pagination links
+- JSON-LD schema types, block signatures, and previews
+- visible body text length
 
 ## Tests
 
