@@ -128,7 +128,7 @@ const normalizeAlternateResources = (links, page) => {
     const rel = normalizeScalar(link?.rel) ?? 'alternate'
     const type = normalizeScalar(link?.type)
     const title = normalizeScalar(link?.title)
-    const href = normalizeComparableUrl(link?.href, page) ?? '-'
+    const href = normalizeAbsoluteUrl(link?.href) ?? '-'
     const prefixParts = [ rel ]
 
     if (type) {
@@ -153,7 +153,8 @@ const normalizeLinkHeaderEntries = (entries, page) => {
     const hreflang = normalizeScalar(entry?.hreflang)
     const type = normalizeScalar(entry?.type)
     const title = normalizeScalar(entry?.title)
-    const href = normalizeComparableUrl(entry?.href, page) ?? '-'
+    const isCanonicalRel = rel === 'canonical'
+    const href = (isCanonicalRel ? normalizeComparableUrl(entry?.href, page) : normalizeAbsoluteUrl(entry?.href)) ?? '-'
     const labelParts = [ rel ]
 
     if (hreflang) {
