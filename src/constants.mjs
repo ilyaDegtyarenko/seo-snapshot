@@ -32,7 +32,7 @@ Options:
   --timeout-ms <number>   Per-request timeout in milliseconds. Default: ${ DEFAULT_TIMEOUT_MS }.
   --max-redirects <n>     Maximum redirect hops to follow. Default: ${ DEFAULT_MAX_REDIRECTS }.
   --concurrency <n>       Maximum parallel requests. Default: ${ DEFAULT_CONCURRENCY }.
-  --user-agent <value>    Override the request User-Agent.
+  --user-agent <value>    Override the request User-Agent. Repeat the flag to enable variants; repeated values may use "Label=UA".
   --help                  Show this help.
 
 Environment:
@@ -72,6 +72,11 @@ Config file format:
       maxRedirects: ${ DEFAULT_MAX_REDIRECTS },
       concurrency: ${ DEFAULT_CONCURRENCY },
       userAgent: '${ DEFAULT_USER_AGENT }',
+      // Or multiple variants:
+      // userAgent: [
+      //   { label: 'Desktop', userAgent: 'Mozilla/5.0 (Macintosh...)' },
+      //   { label: 'Mobile', userAgent: 'Mozilla/5.0 (iPhone...)' },
+      // ],
     },
     audit: {
       minTitleLength: ${ DEFAULT_AUDIT_RULES.minTitleLength },

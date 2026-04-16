@@ -606,17 +606,21 @@ export const buildComparisonReport = (pages, compareOptions) => {
       continue
     }
 
-    if (!groupedPages.has(targetPath)) {
-      groupedPages.set(targetPath, [])
+    const variant = page.variant ?? null
+    const variantId = page.variantId ?? variant
+    const groupKey = variantId ? `${ targetPath }::${ variantId }` : targetPath
+
+    if (!groupedPages.has(groupKey)) {
+      groupedPages.set(groupKey, { targetPath, variant, variantId, pages: [] })
     }
 
-    groupedPages.get(targetPath).push(page)
+    groupedPages.get(groupKey).pages.push(page)
   }
 
   const differenceCounts = new Map()
   const comparisons = []
 
-  for (const [ targetPath, targetPages ] of groupedPages.entries()) {
+  for (const { targetPath, variant, variantId, pages: targetPages } of groupedPages.values()) {
     const leftPage = targetPages.find(page => page.source?.url === leftSource.url) ?? null
     const rightPage = targetPages.find(page => page.source?.url === rightSource.url) ?? null
 
@@ -633,6 +637,8 @@ export const buildComparisonReport = (pages, compareOptions) => {
 
     comparisons.push({
       targetPath,
+      variant,
+      variantId,
       left: {
         label: leftSource.label,
         baseUrl: leftSource.url,
@@ -652,10 +658,27 @@ export const buildComparisonReport = (pages, compareOptions) => {
     })
   }
 
-  comparisons.sort((left, right) => left.targetPath.localeCompare(right.targetPath))
+  comparisons.sort((left, right) => {
+    const pathCmp = left.targetPath.localeCompare(right.targetPath)
+
+    if (pathCmp !== 0) {
+      return pathCmp
+    }
+
+    const variantCmp = (left.variant ?? '').localeCompare(right.variant ?? '')
+
+    if (variantCmp !== 0) {
+      return variantCmp
+    }
+
+    return (left.variantId ?? '').localeCompare(right.variantId ?? '')
+  })
+
+  const variantLabels = [ ...new Set(comparisons.map(c => c.variant).filter(Boolean)) ]
 
   return {
     sources: compareOptions.sources,
+    variants: variantLabels.length > 0 ? variantLabels : null,
     targetCount: comparisons.length,
     targetsWithDifferences: comparisons.filter(comparison => comparison.differences.length > 0).length,
     totalDifferences: comparisons.reduce((total, comparison) => total + comparison.differences.length, 0),

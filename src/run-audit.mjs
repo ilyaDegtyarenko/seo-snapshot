@@ -51,13 +51,19 @@ const buildHeaderDetails = (response, finalUrl) => {
 }
 
 const buildPageReport = async (target, requestOptions) => {
+  const effectiveOptions = target.variant
+    ? { ...requestOptions, userAgent: target.variant.userAgent }
+    : requestOptions
+
   try {
-    const fetched = await fetchWithRedirects(target.url, requestOptions)
+    const fetched = await fetchWithRedirects(target.url, effectiveOptions)
     const headers = buildHeaderDetails(fetched.response, fetched.finalUrl)
     const report = {
       input: target.input,
       targetPath: target.path ?? target.input,
       source: target.source ?? null,
+      variant: target.variant?.label ?? null,
+      variantId: target.variant?.id ?? null,
       requestedUrl: target.url,
       finalUrl: fetched.finalUrl,
       status: fetched.response.status,
@@ -83,6 +89,8 @@ const buildPageReport = async (target, requestOptions) => {
       input: target.input,
       targetPath: target.path ?? target.input,
       source: target.source ?? null,
+      variant: target.variant?.label ?? null,
+      variantId: target.variant?.id ?? null,
       requestedUrl: target.url,
       finalUrl: null,
       status: null,
@@ -140,7 +148,11 @@ export const runAudit = async (cliOptions, runtime = {}) => {
     configDir,
     cliOptions,
   })
-  const targets = await resolveTargets(config, configDir)
+  const baseTargets = await resolveTargets(config, configDir)
+  const targets = runtimeOptions.variants
+    ? baseTargets.flatMap(target => runtimeOptions.variants.map(variant => ({ ...target, variant })))
+    : baseTargets
+
   const pages = await mapWithConcurrency(targets, runtimeOptions.request.concurrency, async (target) => {
     const page = await buildPageReport(target, runtimeOptions.request)
 
@@ -162,6 +174,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
       maxRedirects: runtimeOptions.request.maxRedirects,
       concurrency: runtimeOptions.request.concurrency,
       userAgent: runtimeOptions.request.userAgent,
+      variants: runtimeOptions.variants ? runtimeOptions.variants.map(v => v.label) : null,
       targetCount: targets.length,
       formats: runtimeOptions.output.formats,
       outputDir: runtimeOptions.output.dir,

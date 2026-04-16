@@ -111,6 +111,30 @@ const parseEnvCookies = (value, envName) => {
     .join('; ') || null
 }
 
+const parseEnvUserAgent = (value, envName) => {
+  const normalizedValue = String(value ?? '').trim()
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  if (!normalizedValue.startsWith('[')) {
+    return normalizedValue
+  }
+
+  try {
+    const parsed = JSON.parse(normalizedValue)
+
+    if (!Array.isArray(parsed)) {
+      exitWithError(`Expected ${ envName } to contain a UA string or JSON array of variant objects.`)
+    }
+
+    return parsed
+  } catch (error) {
+    exitWithError(`Failed to parse ${ envName }: ${ error instanceof Error ? error.message : String(error) }`)
+  }
+}
+
 const parseEnvCompareBaseUrl = (value, envName) => {
   const normalizedValue = String(value ?? '').trim()
 
@@ -224,7 +248,7 @@ const ENV_OVERRIDE_MAPPINGS = [
   [ 'SEO_SNAPSHOT_REQUEST_TIMEOUT_MS', [ 'request', 'timeoutMs' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS', [ 'request', 'maxRedirects' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_CONCURRENCY', [ 'request', 'concurrency' ], parseEnvPositiveInt ],
-  [ 'SEO_SNAPSHOT_REQUEST_USER_AGENT', [ 'request', 'userAgent' ], parseEnvString ],
+  [ 'SEO_SNAPSHOT_REQUEST_USER_AGENT', [ 'request', 'userAgent' ], parseEnvUserAgent ],
   [ 'SEO_SNAPSHOT_REQUEST_COOKIES', [ 'request', 'cookies' ], parseEnvCookies ],
   [ 'SEO_SNAPSHOT_AUDIT_MIN_TITLE_LENGTH', [ 'audit', 'minTitleLength' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_AUDIT_MAX_TITLE_LENGTH', [ 'audit', 'maxTitleLength' ], parseEnvPositiveInt ],
@@ -484,6 +508,24 @@ export const resolveTargets = async (config, configDir) => {
   return normalizedTargets
 }
 
+export const normalizeVariants = (userAgentValue) => {
+  if (!Array.isArray(userAgentValue) || userAgentValue.length === 0) {
+    return null
+  }
+
+  return userAgentValue.map((item, index) => {
+    if (!isPlainObject(item) || !isNonEmptyString(item.userAgent)) {
+      exitWithError(`request.userAgent[${ index }] must be an object with a userAgent string property.`)
+    }
+
+    return {
+      id: `variant-${ index + 1 }`,
+      label: isNonEmptyString(item.label) ? item.label.trim() : `Variant ${ index + 1 }`,
+      userAgent: item.userAgent.trim(),
+    }
+  })
+}
+
 const normalizeFormats = (formats) => {
   if (!Array.isArray(formats) || formats.length === 0) {
     return DEFAULT_FORMATS
@@ -539,7 +581,11 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions }) => {
   const timeoutMs = cliOptions.timeoutMs ?? request.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const maxRedirects = cliOptions.maxRedirects ?? request.maxRedirects ?? DEFAULT_MAX_REDIRECTS
   const concurrency = cliOptions.concurrency ?? request.concurrency ?? DEFAULT_CONCURRENCY
-  const userAgent = cliOptions.userAgent ?? request.userAgent ?? DEFAULT_USER_AGENT
+  const userAgentRaw = cliOptions.userAgent ?? request.userAgent ?? DEFAULT_USER_AGENT
+  const variants = normalizeVariants(userAgentRaw)
+  const userAgent = variants !== null
+    ? variants[0].userAgent
+    : (isNonEmptyString(userAgentRaw) ? userAgentRaw : DEFAULT_USER_AGENT)
   const cookies = normalizeCookies(request.cookies ?? null)
   const outputDir = normalizePathLikeValue(cliOptions.outputDir ?? output.dir ?? DEFAULT_REPORTS_DIR, configDir)
   const formats = normalizeFormats(cliOptions.formats ?? output.formats ?? DEFAULT_FORMATS)
@@ -556,6 +602,7 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions }) => {
       dir: outputDir,
       formats,
     },
+    variants,
     compare: compareSources
       ? {
         sources: compareSources,

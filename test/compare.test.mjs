@@ -29,6 +29,8 @@ const createComparablePage = ({
   status = 200,
   targetPath = input,
   title = 'Catalog',
+  variant = null,
+  variantId = null,
   jsonLdHasOrganization = undefined,
   jsonLdHasWebSite = undefined,
   jsonLdTypes = [],
@@ -41,6 +43,8 @@ const createComparablePage = ({
   input,
   targetPath,
   source,
+  variant,
+  variantId,
   requestedUrl: finalUrl,
   finalUrl,
   status,
@@ -274,4 +278,48 @@ test('buildComparisonReport treats identical absolute linkHeaderLlms URLs as equ
   const differenceKeys = comparison.comparisons[0].differences.map(entry => entry.key)
 
   assert.equal(differenceKeys.includes('linkHeaderLlms'), false)
+})
+
+test('buildComparisonReport keeps duplicate variant labels as separate comparisons when variant ids differ', () => {
+  const comparison = buildComparisonReport([
+    createComparablePage({
+      source: comparisonSources[0],
+      finalUrl: 'https://www.example.com/catalog',
+      title: 'Desktop prod',
+      variant: 'Bot',
+      variantId: 'variant-1',
+    }),
+    createComparablePage({
+      source: comparisonSources[1],
+      finalUrl: 'https://stage.example.com/catalog',
+      title: 'Desktop stage',
+      variant: 'Bot',
+      variantId: 'variant-1',
+    }),
+    createComparablePage({
+      source: comparisonSources[0],
+      finalUrl: 'https://www.example.com/catalog',
+      title: 'Mobile prod',
+      variant: 'Bot',
+      variantId: 'variant-2',
+    }),
+    createComparablePage({
+      source: comparisonSources[1],
+      finalUrl: 'https://stage.example.com/catalog',
+      title: 'Mobile stage',
+      variant: 'Bot',
+      variantId: 'variant-2',
+    }),
+  ], {
+    sources: comparisonSources,
+  })
+
+  assert.equal(comparison.targetCount, 2)
+  assert.equal(comparison.targetsWithDifferences, 2)
+  assert.equal(comparison.totalDifferences, 2)
+  assert.deepEqual(comparison.comparisons.map(entry => entry.variantId), [
+    'variant-1',
+    'variant-2',
+  ])
+  assert.deepEqual(comparison.variants, [ 'Bot' ])
 })

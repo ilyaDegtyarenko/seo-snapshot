@@ -31,6 +31,26 @@ const parseFormats = (value) => {
   return [ ...new Set(normalized) ]
 }
 
+const parseUserAgentArgs = (values) => {
+  if (values.length === 0) {
+    return undefined
+  }
+
+  if (values.length === 1) {
+    return values[0]
+  }
+
+  return values.map((v, i) => {
+    const eqIndex = v.indexOf('=')
+
+    if (eqIndex > 0) {
+      return { label: v.slice(0, eqIndex).trim(), userAgent: v.slice(eqIndex + 1).trim() }
+    }
+
+    return { label: `Variant ${ i + 1 }`, userAgent: v }
+  })
+}
+
 export const parseArgs = (argv) => {
   const options = {
     help: false,
@@ -42,6 +62,7 @@ export const parseArgs = (argv) => {
     userAgent: undefined,
     formats: undefined,
   }
+  const userAgentValues = []
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
@@ -77,7 +98,7 @@ export const parseArgs = (argv) => {
         index += 1
         break
       case '--user-agent':
-        options.userAgent = readOptionValue(argv, index, arg)
+        userAgentValues.push(readOptionValue(argv, index, arg))
         index += 1
         break
       default:
@@ -88,6 +109,8 @@ export const parseArgs = (argv) => {
         exitWithError(`Unexpected positional argument "${ arg }". Configure targets in ${ options.configPath ?? process.env.SEO_SNAPSHOT_CONFIG_PATH ?? DEFAULT_CONFIG_PATH }.`)
     }
   }
+
+  options.userAgent = parseUserAgentArgs(userAgentValues)
 
   return options
 }

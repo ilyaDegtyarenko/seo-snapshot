@@ -220,6 +220,7 @@ const buildPageEntries = (pages) => {
       navLabel: getPageNavLabel(page),
       source,
       title: getPageTitle(page),
+      variant: page.variant ?? null,
       page,
     }
   })
@@ -448,6 +449,7 @@ const renderPageIndexItem = (entry) => {
   const statusLabel = entry.page.error ? 'error' : `status ${ entry.page.status ?? 'n/a' }`
   const metaParts = [
     entry.source.badge,
+    entry.variant,
     statusLabel,
   ].filter(Boolean)
 
@@ -461,6 +463,7 @@ const renderPageIndexItem = (entry) => {
       data-page-anchor="${ escapeHtml(entry.anchorId) }"
       data-nav-anchor="${ escapeHtml(entry.anchorId) }"
       data-source-key="${ escapeHtml(entry.source.key) }"
+      data-variant="${ escapeHtml(entry.variant ?? '') }"
       title="${ escapeHtml(entry.title) }"
     >
       <strong>${ escapeHtml(entry.navLabel) }</strong>
@@ -495,6 +498,7 @@ const renderPageCard = (entry) => {
         </div>
         <div class="badge-row">
           ${ source.badge ? renderBadge(source.badge, 'info') : '' }
+          ${ page.variant ? renderBadge(page.variant, 'neutral') : '' }
           ${ renderBadge(page.error ? 'error' : `status ${ page.status ?? 'n/a' }`, statusTone) }
           ${ page.redirectChain.length > 1 ? renderBadge(`redirects ${ page.redirectChain.length - 1 }`, 'neutral') : '' }
           ${ page.issues.length > 0 ? renderBadge(`issues ${ page.issues.length }`, issuesTone) : renderBadge('clean', 'success') }
@@ -687,12 +691,30 @@ const renderIndexedSection = ({
   `
 }
 
+const renderComparisonVariantGroupedCards = (comparisonEntries, variantLabels) => {
+  return variantLabels.map((variantLabel) => {
+    const groupEntries = comparisonEntries.filter(e => e.comparison.variant === variantLabel)
+
+    if (groupEntries.length === 0) {
+      return ''
+    }
+
+    return `
+      <section class="variant-group">
+        <h3 class="variant-group-title">${ escapeHtml(variantLabel) }</h3>
+        <section class="page-list">${ groupEntries.map(renderComparisonCard).join('') }</section>
+      </section>
+    `
+  }).join('')
+}
+
 const renderComparisonTab = (comparison) => {
   const withDiffs = comparison.comparisons.filter(c =>
     c.differences.length > 0 ||
     (c.issueDelta && (c.issueDelta.onlyOnLeft.length || c.issueDelta.onlyOnRight.length))
   )
   const comparisonEntries = buildComparisonEntries(withDiffs)
+  const hasVariants = Boolean(comparison.variants?.length)
   const comparisonProblemFilter = renderIndexFilter({
     filters: comparison.differenceBreakdown,
     totalCount: comparisonEntries.length,
@@ -701,6 +723,12 @@ const renderComparisonTab = (comparison) => {
     filterDataAttr: 'data-comparison-difference-filter',
     filterAriaLabel: 'Filter changed paths by problem',
   })
+
+  const cardsHtml = comparisonEntries.length > 0
+    ? (hasVariants
+      ? renderComparisonVariantGroupedCards(comparisonEntries, comparison.variants)
+      : `<section class="page-list">${ comparisonEntries.map(renderComparisonCard).join('') }</section>`)
+    : ''
 
   return `
     <section class="summary-grid">
@@ -723,9 +751,7 @@ const renderComparisonTab = (comparison) => {
     </section>
 
     ${ renderIndexedSection({
-      cardsHtml: comparisonEntries.length > 0
-        ? `<section class="page-list">${ comparisonEntries.map(renderComparisonCard).join('') }</section>`
-        : '',
+      cardsHtml,
       description: 'Jump to any changed path. Each card shows the concrete left and right URL for that page.',
       emptyDataAttr: 'data-comparison-empty',
       emptyHidden: comparisonEntries.length > 0,
@@ -745,11 +771,43 @@ const renderComparisonTab = (comparison) => {
   `
 }
 
+const buildVariantGroups = (entries) => {
+  const groups = new Map()
+
+  for (const entry of entries) {
+    const key = entry.variant ?? ''
+
+    if (!groups.has(key)) {
+      groups.set(key, [])
+    }
+
+    groups.get(key).push(entry)
+  }
+
+  return groups
+}
+
+const renderVariantGroupedCards = (pageEntries) => {
+  const groups = buildVariantGroups(pageEntries)
+
+  return [ ...groups.entries() ].map(([ variantLabel, entries ]) => `
+    <section class="variant-group">
+      <h3 class="variant-group-title">${ escapeHtml(variantLabel || 'Default') }</h3>
+      <section class="page-list">${ entries.map(renderPageCard).join('') }</section>
+    </section>
+  `).join('')
+}
+
 const renderPagesTab = (pageEntries, comparison) => {
+  const hasVariants = pageEntries.some(entry => entry.variant !== null)
   const sourceFilters = comparison ? buildSourceFilters(pageEntries, entry => entry.source) : []
 
+  const cardsHtml = hasVariants
+    ? renderVariantGroupedCards(pageEntries)
+    : `<section class="page-list">${ pageEntries.map(renderPageCard).join('') }</section>`
+
   return renderIndexedSection({
-    cardsHtml: `<section class="page-list">${ pageEntries.map(renderPageCard).join('') }</section>`,
+    cardsHtml,
     description: comparison
       ? 'Jump to any page card. Comparison mode also lets you filter by source domain.'
       : 'Jump to any page card. Use the anchor list to move through long reports faster.',
@@ -951,6 +1009,22 @@ export const renderHtmlReport = (report) => {
     .page-list {
       display: grid;
       gap: 14px;
+    }
+    .variant-group {
+      display: grid;
+      gap: 14px;
+    }
+    .variant-group + .variant-group {
+      margin-top: 8px;
+    }
+    .variant-group-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 6px 0 2px;
+      border-bottom: 1px solid var(--border);
     }
     .report-page-card {
       scroll-margin-top: 24px;
