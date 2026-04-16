@@ -86,8 +86,8 @@ SEO_SNAPSHOT_TARGETS=/,/news,/about
 Compare mode via env:
 
 ```bash
-SEO_SNAPSHOT_BASE_URL=https://www.example.com
-SEO_SNAPSHOT_COMPARE_BASE_URL={"url":"https://stage.example.com","label":"stage"}
+SEO_SNAPSHOT_BASE_URL='{"url":"https://www.example.com","label":"prod"}'
+SEO_SNAPSHOT_COMPARE_BASE_URL='{"url":"https://stage.example.com","label":"stage"}'
 SEO_SNAPSHOT_TARGETS=/,/news
 ```
 
@@ -126,7 +126,7 @@ Supported overrides:
 
 - `SEO_SNAPSHOT_CONFIG_PATH`
 - `SEO_SNAPSHOT_CONFIG`
-- `SEO_SNAPSHOT_BASE_URL`
+- `SEO_SNAPSHOT_BASE_URL` as a URL string or `{ "url": "...", "label": "..." }` JSON object
 - `SEO_SNAPSHOT_COMPARE_BASE_URL` as a URL string or `{ "url": "...", "label": "..." }` JSON object
 - `SEO_SNAPSHOT_TARGETS_FILE`
 - `SEO_SNAPSHOT_TARGETS` as a JSON array or comma/newline-separated list
@@ -149,7 +149,7 @@ Example `config/seo-snapshot.config.mjs`:
 
 ```js
 export default {
-  baseUrl: 'http://127.0.0.1:3000',
+  baseUrl: { url: 'http://127.0.0.1:3000', label: 'local' }, // or a plain string
   compare: {
     baseUrl: { label: 'stage', url: 'https://stage.example.com' },
   },
@@ -185,7 +185,7 @@ export default {
 Comparison mode notes:
 
 - `compare.baseUrl` requires `baseUrl`.
-- `compare.baseUrl` can be a string URL or an object with `url` and optional `label`.
+- Both `baseUrl` and `compare.baseUrl` can be a string URL or an object with `url` and optional `label`.
 - `baseUrl` is used as the primary domain.
 - The same target path is fetched on both domains and the report adds a dedicated diff section.
 - Absolute targets are normalized to `pathname + search + hash` before they are replayed on both domains.

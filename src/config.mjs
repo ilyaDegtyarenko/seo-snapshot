@@ -239,7 +239,7 @@ const readEnvJsonConfig = (env) => {
 }
 
 const ENV_OVERRIDE_MAPPINGS = [
-  [ 'SEO_SNAPSHOT_BASE_URL', [ 'baseUrl' ], parseEnvString ],
+  [ 'SEO_SNAPSHOT_BASE_URL', [ 'baseUrl' ], parseEnvCompareBaseUrl ],
   [ 'SEO_SNAPSHOT_COMPARE_BASE_URL', [ 'compare', 'baseUrl' ], parseEnvCompareBaseUrl ],
   [ 'SEO_SNAPSHOT_TARGETS_FILE', [ 'targetsFile' ], parseEnvString ],
   [ 'SEO_SNAPSHOT_TARGETS', [ 'targets' ], parseEnvList ],
@@ -402,7 +402,10 @@ export const resolveComparisonSources = (config) => {
     return null
   }
 
-  if (!isNonEmptyString(config?.baseUrl)) {
+  const rawBaseUrl = config?.baseUrl
+  const hasBaseUrl = isNonEmptyString(rawBaseUrl) || (isPlainObject(rawBaseUrl) && isNonEmptyString(rawBaseUrl.url))
+
+  if (!hasBaseUrl) {
     exitWithError('compare.baseUrl requires baseUrl (or SEO_SNAPSHOT_BASE_URL) for the primary domain.')
   }
 
@@ -489,7 +492,9 @@ export const resolveTargets = async (config, configDir) => {
 
   const baseUrl = isNonEmptyString(config.baseUrl)
     ? config.baseUrl.trim()
-    : null
+    : (isPlainObject(config.baseUrl) && isNonEmptyString(config.baseUrl.url))
+      ? config.baseUrl.url.trim()
+      : null
 
   for (const target of mergedTargets) {
     const absoluteUrl = toAbsoluteUrl(target, baseUrl)
