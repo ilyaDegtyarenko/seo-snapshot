@@ -12,6 +12,22 @@ const normalizeScalar = (value) => {
   return normalizedValue || null
 }
 
+// Normalize robots directive strings so that "index,follow" and "index, follow"
+// compare as equal — servers differ in whether they include a space after commas.
+const normalizeRobotsValue = (value) => {
+  const normalized = normalizeScalar(value)
+
+  if (!normalized) {
+    return null
+  }
+
+  return normalized
+    .split(/\s*,\s*/)
+    .map(directive => directive.trim())
+    .filter(Boolean)
+    .join(',')
+}
+
 const normalizeList = (items, { sort = false } = {}) => {
   if (!Array.isArray(items)) {
     return []
@@ -154,7 +170,8 @@ const normalizeLinkHeaderEntries = (entries, page) => {
     const type = normalizeScalar(entry?.type)
     const title = normalizeScalar(entry?.title)
     const isCanonicalRel = rel === 'canonical'
-    const href = (isCanonicalRel ? normalizeComparableUrl(entry?.href, page) : normalizeAbsoluteUrl(entry?.href)) ?? '-'
+    const isHreflangEntry = Boolean(hreflang)
+    const href = (isCanonicalRel || isHreflangEntry ? normalizeComparableUrl(entry?.href, page) : normalizeAbsoluteUrl(entry?.href)) ?? '-'
     const labelParts = [ rel ]
 
     if (hreflang) {
@@ -285,12 +302,12 @@ const DIFFERENCE_SPECS = [
   {
     key: 'metaRobots',
     label: 'Meta robots',
-    getValue: page => normalizeScalar(page.seo?.meta.robots),
+    getValue: page => normalizeRobotsValue(page.seo?.meta.robots),
   },
   {
     key: 'xRobotsTag',
     label: 'X-Robots-Tag',
-    getValue: page => normalizeScalar(page.headers?.xRobotsTag),
+    getValue: page => normalizeRobotsValue(page.headers?.xRobotsTag),
   },
   {
     key: 'linkHeaderCanonical',

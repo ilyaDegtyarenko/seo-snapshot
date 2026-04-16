@@ -268,8 +268,20 @@ export const buildPageIssues = (page, rules) => {
     pushIssue(issues, 'warning', 'canonical_cross_domain', 'Canonical points to a different host.')
   }
 
-  if (headerCanonical && canonical && headerCanonical !== canonical) {
-    pushIssue(issues, 'warning', 'header_canonical_mismatch', 'Response Link canonical does not match HTML canonical.')
+  if (headerCanonical && canonical) {
+    let normalizedHeaderCanonical = headerCanonical
+    let normalizedHtmlCanonical = canonical
+
+    try {
+      normalizedHeaderCanonical = new URL(headerCanonical).toString()
+      normalizedHtmlCanonical = new URL(canonical).toString()
+    } catch {
+      // fall back to raw string comparison
+    }
+
+    if (normalizedHeaderCanonical !== normalizedHtmlCanonical) {
+      pushIssue(issues, 'warning', 'header_canonical_mismatch', 'Response Link canonical does not match HTML canonical.')
+    }
   }
 
   if (robots.includes('noindex')) {

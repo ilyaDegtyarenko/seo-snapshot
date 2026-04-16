@@ -261,7 +261,7 @@ const sortJsonValue = (value) => {
     }, {})
 }
 
-const buildJsonLdBlock = (value) => {
+const buildJsonLdBlock = (value, pageUrl) => {
   const types = new Set()
   const names = new Set()
   const ids = new Set()
@@ -273,10 +273,43 @@ const buildJsonLdBlock = (value) => {
   collectJsonLdStrings(value, 'url', urls)
 
   const normalizedValue = JSON.stringify(sortJsonValue(value))
-  const hash = createHash('sha1').update(normalizedValue).digest('hex').slice(0, 12)
+
+  // Strip the page origin from JSON content before hashing so that structurally
+  // identical schemas only differing by domain (local vs prod) hash identically.
+  let hashableValue = normalizedValue
+
+  try {
+    const origin = pageUrl ? new URL(pageUrl).origin : null
+
+    if (origin && origin !== 'null') {
+      hashableValue = normalizedValue.replaceAll(origin, '{origin}')
+    }
+  } catch {
+    // use normalizedValue as-is
+  }
+
+  const hash = createHash('sha1').update(hashableValue).digest('hex').slice(0, 12)
   const typeLabel = [ ...types ].sort().join(', ') || 'Unknown'
   const previewName = [ ...names ][0] ?? null
-  const previewLocation = [ ...urls ][0] ?? [ ...ids ][0] ?? null
+  const rawPreviewLocation = [ ...urls ][0] ?? [ ...ids ][0] ?? null
+
+  // Normalize previewLocation to path-only when it belongs to the page origin,
+  // so the summary is comparable across environments.
+  let previewLocation = rawPreviewLocation
+
+  if (rawPreviewLocation && pageUrl) {
+    try {
+      const parsedLocation = new URL(rawPreviewLocation)
+      const parsedPage = new URL(pageUrl)
+
+      if (parsedLocation.origin === parsedPage.origin) {
+        previewLocation = `${ parsedLocation.pathname }${ parsedLocation.search }${ parsedLocation.hash }` || '/'
+      }
+    } catch {
+      // use rawPreviewLocation as-is
+    }
+  }
+
   const summaryParts = [ typeLabel ]
 
   if (previewName) {
@@ -409,7 +442,7 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
       const parsedJson = JSON.parse(content)
 
       appendJsonLdTypes(parsedJson, jsonLdTypes)
-      jsonLdBlocks.push(buildJsonLdBlock(parsedJson))
+      jsonLdBlocks.push(buildJsonLdBlock(parsedJson, pageUrl))
     } catch {
       jsonLdParseErrors += 1
     }
