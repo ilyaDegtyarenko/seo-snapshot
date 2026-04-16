@@ -344,7 +344,10 @@ const normalizeJsonLdType = (value) => {
 }
 
 const getBodyTextLength = (html) => {
-  const stripped = html
+  const bodyMatch = String(html || '').match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)
+  const bodyHtml = bodyMatch?.[1] ?? ''
+
+  const stripped = bodyHtml
     .replaceAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
     .replaceAll(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
     .replaceAll(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, ' ')
