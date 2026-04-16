@@ -700,10 +700,10 @@ const renderComparisonVariantGroupedCards = (comparisonEntries, variantLabels) =
     }
 
     return `
-      <section class="variant-group">
-        <h3 class="variant-group-title">${ escapeHtml(variantLabel) }</h3>
+      <details class="variant-group" open>
+        <summary class="variant-group-title">${ escapeHtml(variantLabel) }</summary>
         <section class="page-list">${ groupEntries.map(renderComparisonCard).join('') }</section>
-      </section>
+      </details>
     `
   }).join('')
 }
@@ -758,7 +758,9 @@ const renderComparisonTab = (comparison) => {
       emptyMessage: comparisonEntries.length > 0
         ? 'No changed paths match the selected problem.'
         : 'No differences found between the two sources.',
-      itemsHtml: comparisonEntries.map(renderComparisonIndexItem).join(''),
+      itemsHtml: hasVariants
+        ? renderVariantGroupedNavItems(comparisonEntries, e => e.comparison.variant, renderComparisonIndexItem)
+        : comparisonEntries.map(renderComparisonIndexItem).join(''),
       navAriaLabel: 'Comparison navigation',
       title: 'Comparison Index',
       totalCount: comparisonEntries.length,
@@ -769,6 +771,23 @@ const renderComparisonTab = (comparison) => {
       },
     }) }
   `
+}
+
+const renderVariantGroupedNavItems = (entries, getVariant, renderItem) => {
+  const groups = new Map()
+
+  for (const entry of entries) {
+    const key = getVariant(entry) ?? ''
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(entry)
+  }
+
+  return [ ...groups.entries() ].map(([ variantLabel, groupEntries ]) => `
+    <details class="nav-variant-group" open>
+      <summary class="nav-variant-label">${ escapeHtml(variantLabel || 'Default') }</summary>
+      <div class="nav-variant-items">${ groupEntries.map(renderItem).join('') }</div>
+    </details>
+  `).join('')
 }
 
 const buildVariantGroups = (entries) => {
@@ -791,10 +810,10 @@ const renderVariantGroupedCards = (pageEntries) => {
   const groups = buildVariantGroups(pageEntries)
 
   return [ ...groups.entries() ].map(([ variantLabel, entries ]) => `
-    <section class="variant-group">
-      <h3 class="variant-group-title">${ escapeHtml(variantLabel || 'Default') }</h3>
+    <details class="variant-group" open>
+      <summary class="variant-group-title">${ escapeHtml(variantLabel || 'Default') }</summary>
       <section class="page-list">${ entries.map(renderPageCard).join('') }</section>
-    </section>
+    </details>
   `).join('')
 }
 
@@ -817,7 +836,9 @@ const renderPagesTab = (pageEntries, comparison) => {
     filterAriaLabel: 'Filter pages by domain',
     filterDataAttr: 'data-page-domain-filter',
     filters: sourceFilters,
-    itemsHtml: pageEntries.map(renderPageIndexItem).join(''),
+    itemsHtml: hasVariants
+      ? renderVariantGroupedNavItems(pageEntries, e => e.variant, renderPageIndexItem)
+      : pageEntries.map(renderPageIndexItem).join(''),
     navAriaLabel: 'Pages navigation',
     title: 'Page Index',
     totalCount: pageEntries.length,
@@ -1023,8 +1044,32 @@ export const renderHtmlReport = (report) => {
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--muted);
-      padding: 6px 0 2px;
+      padding: 8px 0 6px;
       border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--bg);
+    }
+    .variant-group-title::-webkit-details-marker {
+      display: none;
+    }
+    .variant-group-title::after {
+      content: '▾';
+      font-size: 0.85em;
+      color: var(--muted);
+      transition: transform 200ms ease;
+      flex-shrink: 0;
+      margin-left: 8px;
+    }
+    details.variant-group:not([open]) > .variant-group-title::after {
+      transform: rotate(-90deg);
     }
     .report-page-card {
       scroll-margin-top: 24px;
@@ -1150,6 +1195,49 @@ export const renderHtmlReport = (report) => {
       max-height: calc(100vh - 220px);
       overflow: auto;
       padding-right: 4px;
+    }
+    .nav-variant-group {
+      display: block;
+    }
+    .nav-variant-items {
+      display: grid;
+      gap: 8px;
+      padding-top: 8px;
+    }
+    .nav-variant-group + .nav-variant-group {
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .nav-variant-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 4px 4px 6px;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: rgb(17, 17, 17);
+    }
+    .nav-variant-label::-webkit-details-marker {
+      display: none;
+    }
+    .nav-variant-label::after {
+      content: '▾';
+      font-size: 0.85em;
+      transition: transform 200ms ease;
+      flex-shrink: 0;
+      margin-left: 6px;
+    }
+    details.nav-variant-group:not([open]) > .nav-variant-label::after {
+      transform: rotate(-90deg);
     }
     .page-index-link {
       display: grid;
