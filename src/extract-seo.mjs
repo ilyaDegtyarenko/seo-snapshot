@@ -298,6 +298,18 @@ const buildJsonLdBlock = (value) => {
   }
 }
 
+const normalizeJsonLdType = (value) => {
+  const normalizedValue = normalizeAttributeValue(value)
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  return normalizedValue
+    .toLowerCase()
+    .replace(/^https?:\/\/schema\.org\//, '')
+}
+
 const getBodyTextLength = (html) => {
   const stripped = html
     .replaceAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
@@ -412,6 +424,10 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
     metaTags,
     titleCount: titleMatches.length,
   })
+  const normalizedJsonLdTypes = [ ...jsonLdTypes ]
+    .map(type => normalizeJsonLdType(type))
+    .filter(Boolean)
+  const jsonLdTypeSet = new Set(normalizedJsonLdTypes)
 
   return {
     document: {
@@ -473,6 +489,8 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
       scriptCount: jsonLdScriptCount,
       parseErrors: jsonLdParseErrors,
       types: [ ...jsonLdTypes ].sort(),
+      hasWebSite: jsonLdTypeSet.has('website'),
+      hasOrganization: jsonLdTypeSet.has('organization'),
       blocks: jsonLdBlocks,
       signatures: jsonLdBlocks.map(block => `${ block.hash } | ${ block.summary }`).sort(),
     },

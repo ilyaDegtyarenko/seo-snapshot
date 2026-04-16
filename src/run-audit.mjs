@@ -6,6 +6,7 @@ import { buildRuntimeOptions, readSeoConfig, resolveTargets } from './config.mjs
 import { extractSeoInfoFromHtml } from './extract-seo.mjs'
 import { fetchWithRedirects, isHtmlResponse } from './fetch-page.mjs'
 import { renderHtmlReport, renderJsonReport } from './reporters.mjs'
+import { parseLinkHeader } from './utils.mjs'
 import { formatTimestamp } from './utils.mjs'
 
 const mapWithConcurrency = async (items, concurrency, worker) => {
@@ -28,11 +29,31 @@ const mapWithConcurrency = async (items, concurrency, worker) => {
   return results
 }
 
+const buildHeaderDetails = (response, finalUrl) => {
+  const contentType = response.headers.get('content-type')
+  const contentLength = response.headers.get('content-length')
+  const xRobotsTag = response.headers.get('x-robots-tag')
+  const link = response.headers.get('link')
+  const linkEntries = parseLinkHeader(link, finalUrl)
+  const findLinkByRel = rel => linkEntries.find(entry => entry.relTokens?.includes(rel))?.href ?? null
+
+  return {
+    contentType,
+    contentLength,
+    xRobotsTag,
+    link,
+    links: {
+      entries: linkEntries,
+      canonical: findLinkByRel('canonical'),
+      llms: findLinkByRel('llms'),
+    },
+  }
+}
+
 const buildPageReport = async (target, requestOptions) => {
   try {
     const fetched = await fetchWithRedirects(target.url, requestOptions)
-    const contentType = fetched.response.headers.get('content-type')
-    const xRobotsTag = fetched.response.headers.get('x-robots-tag')
+    const headers = buildHeaderDetails(fetched.response, fetched.finalUrl)
     const report = {
       input: target.input,
       targetPath: target.path ?? target.input,
@@ -42,18 +63,14 @@ const buildPageReport = async (target, requestOptions) => {
       status: fetched.response.status,
       ok: fetched.response.ok,
       redirectChain: fetched.redirectChain,
-      headers: {
-        contentType,
-        contentLength: fetched.response.headers.get('content-length'),
-        xRobotsTag,
-      },
+      headers,
       seo: null,
       parseSkippedReason: null,
       error: null,
       issues: [],
     }
 
-    if (!isHtmlResponse(contentType, fetched.body)) {
+    if (!isHtmlResponse(headers.contentType, fetched.body)) {
       report.parseSkippedReason = 'Response is not HTML.'
       return report
     }
@@ -75,6 +92,12 @@ const buildPageReport = async (target, requestOptions) => {
         contentType: null,
         contentLength: null,
         xRobotsTag: null,
+        link: null,
+        links: {
+          entries: [],
+          canonical: null,
+          llms: null,
+        },
       },
       seo: null,
       parseSkippedReason: null,

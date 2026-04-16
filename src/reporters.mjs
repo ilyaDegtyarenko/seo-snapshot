@@ -37,6 +37,10 @@ const renderAlternateResources = (items) => {
   return `<ul class="stack-list">${ items.map((item) => {
     const labelParts = [ item.rel || 'alternate' ]
 
+    if (item.hreflang) {
+      labelParts.push(`hreflang=${ item.hreflang }`)
+    }
+
     if (item.type) {
       labelParts.push(item.type)
     }
@@ -518,7 +522,10 @@ const renderPageCard = (entry) => {
         ${ renderKeyValueRow('Description', page.seo?.meta.description) }
         ${ renderKeyValueRow('Meta robots', page.seo?.meta.robots) }
         ${ renderKeyValueRow('X-Robots-Tag', page.headers.xRobotsTag) }
+        ${ renderKeyValueRow('Link header', page.headers.link) }
         ${ renderKeyValueRow('Canonical', page.seo?.links.canonical) }
+        ${ renderKeyValueRow('Header canonical', page.headers?.links?.canonical) }
+        ${ renderKeyValueRow('Header llms', page.headers?.links?.llms) }
         ${ renderKeyValueRow('Lang', page.seo?.document.lang) }
         ${ renderKeyValueRow('Content-Language', page.seo?.document.contentLanguage) }
         ${ renderKeyValueRow('Viewport', page.seo?.meta.viewport) }
@@ -562,6 +569,11 @@ const renderPageCard = (entry) => {
       </div>
 
       <div class="subsection">
+        <h3>Response Link Header</h3>
+        ${ renderAlternateResources(page.headers?.links?.entries) }
+      </div>
+
+      <div class="subsection">
         <h3>Icons</h3>
         ${ renderIconLinks(page.seo?.links.icons) }
       </div>
@@ -574,6 +586,10 @@ const renderPageCard = (entry) => {
       <div class="subsection">
         <h3>JSON-LD types</h3>
         ${ renderList(page.seo?.jsonLd.types) }
+        <div class="kv-grid">
+          ${ renderKeyValueRow('Has WebSite', page.seo?.jsonLd?.hasWebSite === undefined ? null : String(Boolean(page.seo?.jsonLd?.hasWebSite))) }
+          ${ renderKeyValueRow('Has Organization', page.seo?.jsonLd?.hasOrganization === undefined ? null : String(Boolean(page.seo?.jsonLd?.hasOrganization))) }
+        </div>
       </div>
 
       <div class="subsection">

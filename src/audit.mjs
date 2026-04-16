@@ -1,5 +1,7 @@
 import { getLength, sortByCountDesc } from './utils.mjs'
 
+const HOMEPAGE_PATH_PATTERN = /^\/(?:[a-z]{2}(?:-[a-z]{2})?)?\/?$/i
+
 const pushIssue = (issues, severity, code, message) => {
   issues.push({
     severity,
@@ -75,6 +77,118 @@ const DUPLICATE_SIGNAL_ISSUE_MAP = {
   },
 }
 
+const normalizeLocaleCode = (value) => {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, '-')
+}
+
+const resolvePagePathname = (page) => {
+  for (const candidate of [ page.targetPath, page.finalUrl, page.requestedUrl, page.input ]) {
+    if (!candidate) {
+      continue
+    }
+
+    try {
+      return new URL(String(candidate), 'https://seo-snapshot.local').pathname
+    } catch {
+      continue
+    }
+  }
+
+  return null
+}
+
+const isHomepageLikePage = (page) => {
+  const pathname = resolvePagePathname(page)
+
+  if (!pathname) {
+    return false
+  }
+
+  return HOMEPAGE_PATH_PATTERN.test(pathname)
+}
+
+const getSourceHosts = (page) => {
+  const sourceHosts = new Set()
+
+  for (const candidate of [ page.source?.url, page.finalUrl, page.requestedUrl ]) {
+    if (!candidate) {
+      continue
+    }
+
+    try {
+      sourceHosts.add(new URL(String(candidate)).host.toLowerCase())
+    } catch {
+      continue
+    }
+  }
+
+  return sourceHosts
+}
+
+const isSourceLocalUrl = (url, page) => {
+  if (!url) {
+    return null
+  }
+
+  try {
+    const parsed = new URL(String(url))
+    const sourceHosts = getSourceHosts(page)
+
+    if (sourceHosts.size === 0) {
+      return null
+    }
+
+    return sourceHosts.has(parsed.host.toLowerCase())
+  } catch {
+    return null
+  }
+}
+
+const countInvalidHreflangLinks = (alternates) => {
+  if (!Array.isArray(alternates)) {
+    return 0
+  }
+
+  return alternates.filter(link => !link?.hreflang || !link?.href).length
+}
+
+const hasUnexpectedHreflangHost = (alternates, page) => {
+  if (!Array.isArray(alternates) || alternates.length === 0) {
+    return false
+  }
+
+  return alternates.some((link) => {
+    if (!link?.href) {
+      return false
+    }
+
+    return isSourceLocalUrl(link.href, page) === false
+  })
+}
+
+const hasSelfHreflang = (lang, alternates) => {
+  const normalizedLang = normalizeLocaleCode(lang)
+
+  if (!normalizedLang || !Array.isArray(alternates) || alternates.length === 0) {
+    return false
+  }
+
+  return alternates.some((link) => {
+    const hreflang = normalizeLocaleCode(link?.hreflang)
+
+    if (!hreflang || hreflang === 'x-default') {
+      return false
+    }
+
+    return hreflang === normalizedLang
+      || hreflang.startsWith(`${ normalizedLang }-`)
+      || normalizedLang.startsWith(`${ hreflang }-`)
+  })
+}
+
 export const buildPageIssues = (page, rules) => {
   const issues = []
 
@@ -99,11 +213,15 @@ export const buildPageIssues = (page, rules) => {
   const h1 = page.seo?.document.h1 ?? []
   const lang = page.seo?.document.lang
   const canonical = page.seo?.links.canonical
+  const headerCanonical = page.headers?.links?.canonical
+  const headerLlms = page.headers?.links?.llms
   const robots = `${ page.seo?.meta.robots || '' } ${ page.headers.xRobotsTag || '' }`.toLowerCase()
   const openGraph = page.seo?.meta.openGraph ?? {}
   const twitter = page.seo?.meta.twitter ?? {}
   const jsonLd = page.seo?.jsonLd ?? { scriptCount: 0, parseErrors: 0 }
+  const hreflangLinks = page.seo?.links.alternates ?? []
   const bodyTextLength = page.seo?.document.bodyTextLength ?? 0
+  const hasHomepagePath = isHomepageLikePage(page)
 
   const titleLength = getLength(title)
   const descriptionLength = getLength(description)
@@ -146,10 +264,42 @@ export const buildPageIssues = (page, rules) => {
 
   if (!canonical) {
     pushIssue(issues, 'warning', 'missing_canonical', 'Missing canonical link.')
+  } else if (isSourceLocalUrl(canonical, page) === false) {
+    pushIssue(issues, 'warning', 'canonical_cross_domain', 'Canonical points to a different host.')
+  }
+
+  if (headerCanonical && canonical && headerCanonical !== canonical) {
+    pushIssue(issues, 'warning', 'header_canonical_mismatch', 'Response Link canonical does not match HTML canonical.')
   }
 
   if (robots.includes('noindex')) {
     pushIssue(issues, 'warning', 'noindex', 'Page is marked as noindex.')
+  }
+
+  if (!page.seo?.meta.robots) {
+    pushIssue(issues, 'info', 'missing_meta_robots', 'Missing meta robots tag.')
+  }
+
+  const invalidHreflangCount = countInvalidHreflangLinks(hreflangLinks)
+
+  if (hasHomepagePath && hreflangLinks.length === 0) {
+    pushIssue(issues, 'info', 'missing_hreflang', 'Missing hreflang alternate links on a homepage-like route.')
+  }
+
+  if (invalidHreflangCount > 0) {
+    pushIssue(issues, 'warning', 'invalid_hreflang', `${ invalidHreflangCount } hreflang link(s) are missing a valid href or hreflang value.`)
+  }
+
+  if (hreflangLinks.length > 0 && !hreflangLinks.some(link => normalizeLocaleCode(link?.hreflang) === 'x-default')) {
+    pushIssue(issues, 'warning', 'hreflang_missing_x_default', 'hreflang links do not include x-default.')
+  }
+
+  if (hreflangLinks.length > 0 && lang && !hasSelfHreflang(lang, hreflangLinks)) {
+    pushIssue(issues, 'warning', 'hreflang_missing_self', `hreflang links do not include a self entry for ${ lang }.`)
+  }
+
+  if (hasUnexpectedHreflangHost(hreflangLinks, page)) {
+    pushIssue(issues, 'warning', 'hreflang_cross_domain', 'hreflang links point to a different host.')
   }
 
   if (!openGraph.title) {
@@ -174,6 +324,18 @@ export const buildPageIssues = (page, rules) => {
 
   if (jsonLd.parseErrors > 0) {
     pushIssue(issues, 'warning', 'invalid_jsonld', `${ jsonLd.parseErrors } JSON-LD block(s) could not be parsed.`)
+  }
+
+  if (hasHomepagePath && !jsonLd.hasWebSite) {
+    pushIssue(issues, 'info', 'missing_schema_website', 'Homepage-like route is missing WebSite JSON-LD.')
+  }
+
+  if (hasHomepagePath && !jsonLd.hasOrganization) {
+    pushIssue(issues, 'info', 'missing_schema_organization', 'Homepage-like route is missing Organization JSON-LD.')
+  }
+
+  if (headerLlms && isSourceLocalUrl(headerLlms, page) === false) {
+    pushIssue(issues, 'warning', 'llms_link_cross_domain', 'Response Link llms target points to a different host.')
   }
 
   if (bodyTextLength < rules.minBodyTextLength) {

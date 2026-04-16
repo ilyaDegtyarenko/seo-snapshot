@@ -13,6 +13,9 @@ const createComparablePage = ({
   canonical,
   description = 'Catalog description',
   finalUrl,
+  headerCanonical = null,
+  headerLinkEntries = [],
+  headerLlms = null,
   h1 = [ 'Catalog' ],
   input = '/catalog',
   issues = [],
@@ -26,6 +29,8 @@ const createComparablePage = ({
   status = 200,
   targetPath = input,
   title = 'Catalog',
+  jsonLdHasOrganization = undefined,
+  jsonLdHasWebSite = undefined,
   jsonLdTypes = [],
   twitterCard = null,
   twitterDescription = null,
@@ -43,6 +48,11 @@ const createComparablePage = ({
   parseSkippedReason: null,
   headers: {
     xRobotsTag,
+    links: {
+      canonical: headerCanonical,
+      llms: headerLlms,
+      entries: headerLinkEntries,
+    },
   },
   seo: {
     document: {
@@ -72,6 +82,8 @@ const createComparablePage = ({
       alternates,
     },
     jsonLd: {
+      hasWebSite: jsonLdHasWebSite,
+      hasOrganization: jsonLdHasOrganization,
       types: jsonLdTypes,
     },
   },
@@ -101,6 +113,14 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       twitterTitle: 'Prod twitter title',
       twitterDescription: 'Prod twitter description',
       twitterImage: 'https://www.example.com/twitter.jpg',
+      headerCanonical: 'https://www.example.com/news',
+      headerLlms: 'https://www.example.com/llms.txt',
+      headerLinkEntries: [
+        { rel: 'canonical', href: 'https://www.example.com/news' },
+        { rel: 'llms', type: 'text/plain', href: 'https://www.example.com/llms.txt' },
+      ],
+      jsonLdHasWebSite: true,
+      jsonLdHasOrganization: true,
       jsonLdTypes: [ 'NewsArticle' ],
       issues: [
         { code: 'missing_og_image', severity: 'info' },
@@ -129,6 +149,14 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       twitterImage: 'https://stage.example.com/twitter.jpg',
       robots: null,
       xRobotsTag: 'noindex',
+      headerCanonical: 'https://www.example.com/news',
+      headerLlms: 'https://stage.example.com/llms.txt',
+      headerLinkEntries: [
+        { rel: 'canonical', href: 'https://www.example.com/news' },
+        { rel: 'llms', type: 'text/plain', href: 'https://stage.example.com/llms.txt' },
+      ],
+      jsonLdHasWebSite: false,
+      jsonLdHasOrganization: false,
       jsonLdTypes: [ 'Article' ],
       issues: [
         { code: 'noindex', severity: 'warning' },
@@ -155,6 +183,12 @@ test('buildComparisonReport highlights SEO field differences across two domains'
   assert.equal(differenceKeys.includes('hreflang'), true)
   assert.equal(differenceKeys.includes('issueCodes'), true)
   assert.equal(differenceKeys.includes('jsonLdTypes'), true)
+  assert.equal(differenceKeys.includes('jsonLdHasOrganization'), true)
+  assert.equal(differenceKeys.includes('jsonLdHasWebSite'), true)
+  assert.equal(differenceKeys.includes('linkHeaderCanonical'), true)
+  assert.equal(differenceKeys.includes('linkHeaderCanonicalCrossDomain'), true)
+  assert.equal(differenceKeys.includes('linkHeaderEntries'), true)
+  assert.equal(differenceKeys.includes('linkHeaderLlms'), true)
   assert.equal(differenceKeys.includes('metaRobots'), true)
   assert.equal(differenceKeys.includes('ogDescription'), true)
   assert.equal(differenceKeys.includes('ogImage'), true)
@@ -174,12 +208,14 @@ test('buildComparisonReport compares source-local URLs by path but still catches
       source: comparisonSources[0],
       finalUrl: 'https://www.example.com/catalog',
       canonical: 'https://www.example.com/catalog',
+      headerCanonical: 'https://www.example.com/catalog',
       ogUrl: 'https://www.example.com/catalog',
     }),
     createComparablePage({
       source: comparisonSources[1],
       finalUrl: 'https://stage.example.com/catalog',
       canonical: 'https://stage.example.com/catalog',
+      headerCanonical: 'https://stage.example.com/catalog',
       ogUrl: 'https://stage.example.com/catalog',
     }),
   ], {
@@ -193,12 +229,14 @@ test('buildComparisonReport compares source-local URLs by path but still catches
       source: comparisonSources[0],
       finalUrl: 'https://www.example.com/catalog',
       canonical: 'https://www.example.com/catalog',
+      headerCanonical: 'https://www.example.com/catalog',
       ogUrl: 'https://www.example.com/catalog',
     }),
     createComparablePage({
       source: comparisonSources[1],
       finalUrl: 'https://stage.example.com/catalog',
       canonical: 'https://www.example.com/catalog',
+      headerCanonical: 'https://www.example.com/catalog',
       ogUrl: 'https://www.example.com/catalog',
     }),
   ], {
@@ -209,6 +247,31 @@ test('buildComparisonReport compares source-local URLs by path but still catches
 
   assert.equal(leakKeys.includes('canonical'), true)
   assert.equal(leakKeys.includes('canonicalCrossDomain'), true)
+  assert.equal(leakKeys.includes('linkHeaderCanonical'), true)
+  assert.equal(leakKeys.includes('linkHeaderCanonicalCrossDomain'), true)
   assert.equal(leakKeys.includes('ogUrl'), true)
   assert.equal(leakKeys.includes('ogUrlCrossDomain'), true)
+})
+
+test('buildComparisonReport treats identical absolute linkHeaderLlms URLs as equal across different source domains', () => {
+  const sharedLlmsUrl = 'https://www.example.com/llms.txt'
+
+  const comparison = buildComparisonReport([
+    createComparablePage({
+      source: comparisonSources[0],
+      finalUrl: 'https://www.example.com/catalog',
+      headerLlms: sharedLlmsUrl,
+    }),
+    createComparablePage({
+      source: comparisonSources[1],
+      finalUrl: 'https://stage.example.com/catalog',
+      headerLlms: sharedLlmsUrl,
+    }),
+  ], {
+    sources: comparisonSources,
+  })
+
+  const differenceKeys = comparison.comparisons[0].differences.map(entry => entry.key)
+
+  assert.equal(differenceKeys.includes('linkHeaderLlms'), false)
 })

@@ -134,6 +134,110 @@ export const normalizeWhitespace = (value) => {
     .trim()
 }
 
+const splitLinkHeaderEntries = (value) => {
+  const entries = []
+  let currentEntry = ''
+  let isInsideQuotes = false
+  let isInsideAngleBrackets = false
+
+  for (const character of String(value || '')) {
+    if (character === '"' && !isInsideAngleBrackets) {
+      isInsideQuotes = !isInsideQuotes
+      currentEntry += character
+      continue
+    }
+
+    if (character === '<' && !isInsideQuotes) {
+      isInsideAngleBrackets = true
+      currentEntry += character
+      continue
+    }
+
+    if (character === '>' && !isInsideQuotes) {
+      isInsideAngleBrackets = false
+      currentEntry += character
+      continue
+    }
+
+    if (character === ',' && !isInsideQuotes && !isInsideAngleBrackets) {
+      const normalizedEntry = normalizeWhitespace(currentEntry)
+
+      if (normalizedEntry) {
+        entries.push(normalizedEntry)
+      }
+
+      currentEntry = ''
+      continue
+    }
+
+    currentEntry += character
+  }
+
+  const trailingEntry = normalizeWhitespace(currentEntry)
+
+  if (trailingEntry) {
+    entries.push(trailingEntry)
+  }
+
+  return entries
+}
+
+const stripMatchingQuotes = (value) => {
+  const normalizedValue = String(value || '').trim()
+
+  if (
+    normalizedValue.length >= 2
+    && normalizedValue.startsWith('"')
+    && normalizedValue.endsWith('"')
+  ) {
+    return normalizedValue.slice(1, -1)
+  }
+
+  return normalizedValue
+}
+
+export const tokenizeRel = (value) => {
+  return normalizeWhitespace(String(value || '').toLowerCase())
+    .split(' ')
+    .filter(Boolean)
+}
+
+export const parseLinkHeader = (value, baseUrl) => {
+  return splitLinkHeaderEntries(value)
+    .map((entry) => {
+      const linkMatch = /^<([^>]+)>(.*)$/.exec(entry)
+
+      if (!linkMatch) {
+        return null
+      }
+
+      const [, rawHref, rawParameters = '' ] = linkMatch
+      const parameters = {}
+
+      for (const parameterMatch of rawParameters.matchAll(/;\s*([^\s=;]+)(?:\s*=\s*(?:"([^"]*)"|([^";,]+)))?/g)) {
+        const [, rawKey, quotedValue, unquotedValue ] = parameterMatch
+
+        if (!rawKey) {
+          continue
+        }
+
+        parameters[rawKey.toLowerCase()] = stripMatchingQuotes(quotedValue ?? unquotedValue ?? '')
+      }
+
+      const relTokens = tokenizeRel(parameters.rel)
+
+      return {
+        href: resolveMaybeUrl(rawHref, baseUrl),
+        rel: relTokens.join(' '),
+        relTokens,
+        hreflang: normalizeWhitespace(parameters.hreflang) || null,
+        title: normalizeWhitespace(parameters.title) || null,
+        type: normalizeWhitespace(parameters.type) || null,
+      }
+    })
+    .filter(Boolean)
+}
+
 export const getLength = (value) => normalizeWhitespace(value).length
 
 export const getHighestSeverity = (issues) => {

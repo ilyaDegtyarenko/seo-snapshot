@@ -33,6 +33,9 @@ test('extractSeoInfoFromHtml parses detailed SEO fields from head and JSON-LD', 
       <script type="application/ld+json">
         {"@context":"https://schema.org","@type":"Movie","name":"Movie title","url":"https://example.com/movie/123"}
       </script>
+      <script type="application/ld+json">
+        {"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"SWEET.TV","url":"https://example.com/"},{"@type":"Organization","name":"SWEET.TV","url":"https://example.com/"}]}
+      </script>
     </head>
     <body>
       <h1>Movie title</h1>
@@ -64,8 +67,10 @@ test('extractSeoInfoFromHtml parses detailed SEO fields from head and JSON-LD', 
   assert.equal(result.meta.appleItunesApp, 'app-id=123, app-argument=app://movie/123')
   assert.equal(result.meta.appLinks.iosUrl, 'app://movie/123')
   assert.equal(result.meta.appLinks.androidPackage, 'tv.sweet.player')
-  assert.deepEqual(result.jsonLd.types, [ 'Movie' ])
-  assert.equal(result.jsonLd.blocks.length, 1)
+  assert.deepEqual(result.jsonLd.types, [ 'Movie', 'Organization', 'WebSite' ])
+  assert.equal(result.jsonLd.hasWebSite, true)
+  assert.equal(result.jsonLd.hasOrganization, true)
+  assert.equal(result.jsonLd.blocks.length, 2)
   assert.match(result.jsonLd.blocks[0].summary, /Movie/)
   assert.deepEqual(result.head.duplicates, [
     {

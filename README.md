@@ -8,7 +8,7 @@ A small CLI project for checking the SEO state of a URL set. The tool crawls pag
 - support `baseUrl` for relative paths
 - compare the same target path across two domains and show SEO differences
 - follow redirects and store the redirect chain
-- check title, description, canonical, H1, `lang`, OpenGraph, Twitter Card, and JSON-LD
+- check title, description, canonical, H1, `lang`, response `Link` headers, `hreflang`, OpenGraph, Twitter Card, and JSON-LD
 - detect page-level issues and produce an overall issue breakdown
 - save reports to `reports/`
 
@@ -171,6 +171,7 @@ When `compare.baseUrl` is set, the tool uses `baseUrl` as the primary domain and
 - HTTP status, final URL (path-normalised for source-local URLs)
 - charset, title, meta description, canonical (path-normalised), canonical cross-domain flag
 - meta robots, `X-Robots-Tag` header
+- response `Link` header canonical, canonical cross-domain flag, `llms`, and parsed header entries
 - `lang`, `Content-Language`, viewport, application name, theme color
 - manifest, favicon, icon links
 - H1 list
@@ -179,7 +180,7 @@ When `compare.baseUrl` is set, the tool uses `baseUrl` as the primary domain and
 - OpenGraph: title, description, type, site name, locale, locale alternates, URL (path-normalised), URL cross-domain flag, image, image alt, video
 - Twitter: card, title, description, URL (path-normalised), image, image alt
 - App links: `apple-itunes-app`, `al:ios:*`, `al:android:*`
-- JSON-LD: script count, parse errors, schema types, block signatures
+- JSON-LD: script count, parse errors, schema types, `WebSite`/`Organization` presence, block signatures
 - duplicate head-tag signals
 - visible body text length
 - issue code sets (per-domain diff)
@@ -209,10 +210,16 @@ The following fields are actively checked and generate issues if missing or out 
 - **H1** — missing, or multiple H1s on one page
 - **`lang` attribute on `<html>`** — missing
 - **canonical link** — missing
+- **canonical host consistency** — warning when canonical points to another host; warning when response `Link` canonical conflicts with HTML canonical
 - **`noindex`** — detected in `meta[name="robots"]` or `X-Robots-Tag` header
+- **meta robots tag** — missing (`info` severity)
+- **hreflang on homepage-like routes** — missing (`info` severity)
+- **hreflang integrity** — invalid entries, missing `x-default`, missing self-locale entry, or cross-domain targets (`warning`)
 - **og:title, og:description, og:image** — missing (`info` severity)
 - **twitter:card** — missing (`info` severity)
 - **JSON-LD** — no structured data blocks found (`info`), or parse errors in existing blocks (`warning`)
+- **homepage JSON-LD coverage** — missing `WebSite` or `Organization` schema on homepage-like routes (`info`)
+- **response `Link` `llms` target** — warning when it points to another host
 - **visible body text** — shorter than `minBodyTextLength`
 - **HTTP status** — 4xx produces a warning, 5xx produces an error
 - **duplicate head tags** — repeated `<title>`, `meta[name="description"]`, `meta[name="robots"]`, canonical, viewport, og:title/description/type/url/image, twitter:card/title/description/image, manifest, `apple-itunes-app`
@@ -222,13 +229,14 @@ The following fields are actively checked and generate issues if missing or out 
 The following fields are collected and shown in the report but do not trigger audit issues:
 
 - `charset`, `Content-Language`, viewport value, application name, theme color
+- raw response `Link` header plus parsed relation entries
 - manifest URL, favicon, all icon links
 - full OpenGraph data: type, URL, site name, locale, locale alternates, image alt, video
 - full Twitter data: title, description, URL, image alt
 - app deep links: `apple-itunes-app`, `al:ios:*`, `al:android:*`
 - hreflang alternates, alternate resources (feeds, etc.)
 - `rel=prev` / `rel=next` pagination links
-- JSON-LD schema types, block signatures, and previews
+- JSON-LD schema types, `WebSite`/`Organization` flags, block signatures, and previews
 - visible body text length
 
 ## Tests

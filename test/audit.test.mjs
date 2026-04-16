@@ -5,11 +5,16 @@ import { DEFAULT_AUDIT_RULES } from '../src/constants.mjs'
 
 test('buildPageIssues reports critical SEO gaps', () => {
   const page = {
+    targetPath: '/',
     status: 200,
     error: null,
     parseSkippedReason: null,
     headers: {
       xRobotsTag: null,
+      links: {
+        canonical: null,
+        llms: null,
+      },
     },
     seo: {
       document: {
@@ -26,10 +31,13 @@ test('buildPageIssues reports critical SEO gaps', () => {
       },
       links: {
         canonical: null,
+        alternates: [],
       },
       jsonLd: {
         scriptCount: 0,
         parseErrors: 1,
+        hasWebSite: false,
+        hasOrganization: false,
       },
       head: {
         duplicates: [
@@ -54,12 +62,15 @@ test('buildPageIssues reports critical SEO gaps', () => {
     'duplicate_twitter_image',
     'missing_canonical',
     'noindex',
+    'missing_hreflang',
     'missing_og_title',
     'missing_og_description',
     'missing_og_image',
     'missing_twitter_card',
     'missing_jsonld',
     'invalid_jsonld',
+    'missing_schema_website',
+    'missing_schema_organization',
     'thin_content',
   ])
 })

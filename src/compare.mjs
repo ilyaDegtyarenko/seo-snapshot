@@ -143,6 +143,35 @@ const normalizeAlternateResources = (links, page) => {
   }), { sort: true })
 }
 
+const normalizeLinkHeaderEntries = (entries, page) => {
+  if (!Array.isArray(entries)) {
+    return []
+  }
+
+  return normalizeList(entries.map((entry) => {
+    const rel = normalizeScalar(entry?.rel) ?? 'link'
+    const hreflang = normalizeScalar(entry?.hreflang)
+    const type = normalizeScalar(entry?.type)
+    const title = normalizeScalar(entry?.title)
+    const href = normalizeComparableUrl(entry?.href, page) ?? '-'
+    const labelParts = [ rel ]
+
+    if (hreflang) {
+      labelParts.push(`hreflang=${ hreflang }`)
+    }
+
+    if (type) {
+      labelParts.push(type)
+    }
+
+    if (title) {
+      labelParts.push(title)
+    }
+
+    return `${ labelParts.join(' | ') }: ${ href }`
+  }), { sort: true })
+}
+
 const normalizeIconLinks = (icons, page) => {
   if (!Array.isArray(icons)) {
     return []
@@ -261,6 +290,26 @@ const DIFFERENCE_SPECS = [
     key: 'xRobotsTag',
     label: 'X-Robots-Tag',
     getValue: page => normalizeScalar(page.headers?.xRobotsTag),
+  },
+  {
+    key: 'linkHeaderCanonical',
+    label: 'Link header canonical',
+    getValue: page => normalizeComparableUrl(page.headers?.links?.canonical, page),
+  },
+  {
+    key: 'linkHeaderCanonicalCrossDomain',
+    label: 'Link header canonical cross-domain',
+    getValue: page => normalizeCrossDomainFlag(page.headers?.links?.canonical, page),
+  },
+  {
+    key: 'linkHeaderLlms',
+    label: 'Link header llms',
+    getValue: page => normalizeAbsoluteUrl(page.headers?.links?.llms),
+  },
+  {
+    key: 'linkHeaderEntries',
+    label: 'Link header entries',
+    getValue: page => normalizeLinkHeaderEntries(page.headers?.links?.entries, page),
   },
   {
     key: 'lang',
@@ -466,6 +515,28 @@ const DIFFERENCE_SPECS = [
     key: 'jsonLdTypes',
     label: 'JSON-LD types',
     getValue: page => normalizeList(page.seo?.jsonLd?.types, { sort: true }),
+  },
+  {
+    key: 'jsonLdHasWebSite',
+    label: 'JSON-LD has WebSite',
+    getValue: page => {
+      if (page.seo?.jsonLd?.hasWebSite === undefined) {
+        return null
+      }
+
+      return Boolean(page.seo?.jsonLd?.hasWebSite)
+    },
+  },
+  {
+    key: 'jsonLdHasOrganization',
+    label: 'JSON-LD has Organization',
+    getValue: page => {
+      if (page.seo?.jsonLd?.hasOrganization === undefined) {
+        return null
+      }
+
+      return Boolean(page.seo?.jsonLd?.hasOrganization)
+    },
   },
   {
     key: 'jsonLdBlocks',
