@@ -64,6 +64,7 @@ export const parseArgs = (argv) => {
     formats: undefined,
     diffOnly: false,
     open: false,
+    profile: undefined,
   }
   const userAgentValues = []
 
@@ -110,6 +111,10 @@ export const parseArgs = (argv) => {
       case '--open':
         options.open = true
         break
+      case '--profile':
+        options.profile = readOptionValue(argv, index, arg)
+        index += 1
+        break
       default:
         if (arg.startsWith('--')) {
           exitWithError(`Unknown flag "${ arg }".\n\n${ buildHelpText() }`)
@@ -133,8 +138,12 @@ export const runCli = async (argv = process.argv.slice(2)) => {
   }
 
   const { runAudit } = await import('./run-audit.mjs')
+  const env = options.profile
+    ? { ...process.env, SEO_SNAPSHOT_PROFILE: options.profile }
+    : process.env
   const result = await runAudit(options, {
     cwd: process.cwd(),
+    env,
     onProgress: (message) => process.stderr.write(`${ message }\n`),
   })
   const primaryOutputPath = result.htmlOutputPath ?? result.outputPaths[0] ?? null

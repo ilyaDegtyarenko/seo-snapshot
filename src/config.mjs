@@ -371,6 +371,16 @@ export const readSeoConfig = async (configPath, cwd, env = process.env) => {
     }
   }
 
+  const profileName = parseEnvString(env.SEO_SNAPSHOT_PROFILE || '') || null
+
+  if (profileName) {
+    if (isPlainObject(config.profiles?.[profileName])) {
+      config = mergeSeoConfig(config, config.profiles[profileName])
+    } else {
+      exitWithError(`Profile "${ profileName }" is not defined in config.profiles.`)
+    }
+  }
+
   if (envOverrideConfig) {
     config = mergeSeoConfig(config, envOverrideConfig)
   }

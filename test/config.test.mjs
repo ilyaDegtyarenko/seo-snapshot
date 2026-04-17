@@ -146,6 +146,38 @@ test('readSeoConfig supports diffOnly env override', async () => {
   }
 })
 
+test('readSeoConfig merges profile config on top of base config', async (context) => {
+  const tempDir = await createTempDir()
+
+  context.after(async () => {
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  const configPath = path.join(tempDir, 'seo-snapshot.config.mjs')
+
+  await writeFile(configPath, `export default {
+  baseUrl: 'https://prod.example.com',
+  targets: [ '/' ],
+  profiles: {
+    staging: {
+      baseUrl: 'https://staging.example.com',
+      compare: {
+        baseUrl: 'https://prod.example.com',
+      },
+    },
+  },
+}
+`, 'utf8')
+
+  const result = await readSeoConfig('./seo-snapshot.config.mjs', tempDir, {
+    SEO_SNAPSHOT_PROFILE: 'staging',
+  })
+
+  assert.equal(result.config.baseUrl, 'https://staging.example.com')
+  assert.deepEqual(result.config.compare, { baseUrl: 'https://prod.example.com' })
+  assert.deepEqual(result.config.targets, [ '/' ])
+})
+
 test('resolveTargets reads plain-text targets files and deduplicates merged targets', async (context) => {
   const tempDir = await createTempDir()
 

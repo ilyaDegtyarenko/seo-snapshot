@@ -38,3 +38,9 @@ test('parseArgs recognizes --open flag', () => {
 
   assert.equal(options.open, true)
 })
+
+test('parseArgs recognizes --profile flag', () => {
+  const options = parseArgs([ '--profile', 'staging' ])
+
+  assert.equal(options.profile, 'staging')
+})
