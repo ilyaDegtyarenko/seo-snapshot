@@ -25,6 +25,7 @@ test('buildPageIssues reports critical SEO gaps', () => {
         imageCount: 0,
         imagesWithoutAlt: 0,
         internalLinkCount: 0,
+        headingHierarchy: [],
       },
       meta: {
         description: null,
@@ -94,6 +95,7 @@ test('buildPageIssues handles page with undefined headers gracefully', () => {
         imageCount: 0,
         imagesWithoutAlt: 0,
         internalLinkCount: 0,
+        headingHierarchy: [ 1 ],
       },
       meta: {
         description: 'A description that is long enough for the audit to pass without warnings.',
@@ -171,4 +173,51 @@ test('buildSummary aggregates issue and severity counts', () => {
     { code: 'missing_description', count: 1 },
     { code: 'missing_og_image', count: 1 },
   ])
+})
+
+test('buildPageIssues detects heading hierarchy skip', () => {
+  const page = {
+    targetPath: '/test',
+    status: 200,
+    error: null,
+    parseSkippedReason: null,
+    headers: {
+      xRobotsTag: null,
+      links: { canonical: null, llms: null },
+    },
+    seo: {
+      document: {
+        title: 'A page title long enough',
+        h1: [ 'Hello' ],
+        lang: 'en',
+        bodyTextLength: 500,
+        imageCount: 0,
+        imagesWithoutAlt: 0,
+        internalLinkCount: 0,
+        headingHierarchy: [ 1, 2, 4 ],
+      },
+      meta: {
+        description: 'A description that is long enough for audit to pass the minimum length check.',
+        robots: 'index,follow',
+        openGraph: { title: 'OG', description: 'OG desc', image: '/img.jpg' },
+        twitter: { card: 'summary' },
+      },
+      links: {
+        canonical: 'https://example.com/test',
+        alternates: [],
+      },
+      jsonLd: {
+        scriptCount: 1,
+        parseErrors: 0,
+        hasWebSite: false,
+        hasOrganization: false,
+      },
+      head: { duplicates: [] },
+    },
+  }
+
+  const issues = buildPageIssues(page, DEFAULT_AUDIT_RULES)
+  const codes = issues.map(issue => issue.code)
+
+  assert.equal(codes.includes('heading_hierarchy_skip'), true)
 })

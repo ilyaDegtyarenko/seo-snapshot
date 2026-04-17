@@ -323,6 +323,18 @@ export const buildPageIssues = (page, rules) => {
     pushIssue(issues, 'warning', 'images_missing_alt', `${ imagesWithoutAlt } image(s) missing alt attribute.`)
   }
 
+  const headingHierarchy = page.seo?.document.headingHierarchy ?? []
+
+  for (let index = 1; index < headingHierarchy.length; index += 1) {
+    const current = headingHierarchy[index]
+    const previous = headingHierarchy[index - 1]
+
+    if (current > previous + 1) {
+      pushIssue(issues, 'warning', 'heading_hierarchy_skip', `Heading hierarchy skips from H${ previous } to H${ current }.`)
+      break
+    }
+  }
+
   return issues
 }
 

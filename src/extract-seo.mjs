@@ -408,6 +408,18 @@ const countInternalLinks = (html, pageUrl) => {
   return internalLinkCount
 }
 
+const getHeadingHierarchy = (html) => {
+  const bodyMatch = String(html || '').match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)
+  const bodyHtml = bodyMatch?.[1] ?? String(html || '')
+  const hierarchy = []
+
+  for (const match of bodyHtml.matchAll(/<h([1-6])\b[^>]*>/gi)) {
+    hierarchy.push(Number(match[1]))
+  }
+
+  return hierarchy
+}
+
 const buildHeadCounts = ({
   alternateLinks,
   alternateResources,
@@ -529,6 +541,7 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
       imageCount: imageStats.imageCount,
       imagesWithoutAlt: imageStats.imagesWithoutAlt,
       internalLinkCount,
+      headingHierarchy: getHeadingHierarchy(normalizedHtml),
     },
     meta: {
       charset: normalizeAttributeValue(metaTags.find(attributes => attributes.charset)?.charset),

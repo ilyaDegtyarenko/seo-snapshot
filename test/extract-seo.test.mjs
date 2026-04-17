@@ -103,3 +103,20 @@ test('extractSeoInfoFromHtml counts images without alt and internal links', () =
   assert.equal(result.document.imagesWithoutAlt, 2)
   assert.equal(result.document.internalLinkCount, 3)
 })
+
+test('extractSeoInfoFromHtml extracts heading hierarchy', () => {
+  const html = `<!doctype html>
+  <html lang="en">
+    <head><title>Headings</title></head>
+    <body>
+      <h1>Title</h1>
+      <h2>Section</h2>
+      <h4>Skipped H3</h4>
+      <h2>Another section</h2>
+    </body>
+  </html>`
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/')
+
+  assert.deepEqual(result.document.headingHierarchy, [ 1, 2, 4, 2 ])
+})
