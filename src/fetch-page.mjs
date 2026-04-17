@@ -16,6 +16,7 @@ export const isHtmlResponse = (contentType, body) => {
 export const fetchWithRedirects = async (url, options) => {
   let currentUrl = url
   const redirectChain = []
+  const startTime = Date.now()
 
   for (let step = 0; step <= options.maxRedirects; step += 1) {
     const response = await fetch(currentUrl, {
@@ -24,6 +25,7 @@ export const fetchWithRedirects = async (url, options) => {
         'user-agent': options.userAgent,
         'accept': 'text/html,application/xhtml+xml',
         ...(options.cookies ? { cookie: options.cookies } : {}),
+        ...(options.headers ?? {}),
       },
       signal: AbortSignal.timeout(options.timeoutMs),
     })
@@ -43,6 +45,7 @@ export const fetchWithRedirects = async (url, options) => {
         redirectChain,
         response,
         body: await response.text(),
+        responseTimeMs: Date.now() - startTime,
       }
     }
 

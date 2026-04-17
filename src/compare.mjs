@@ -225,6 +225,11 @@ const DIFFERENCE_SPECS = [
     getValue: page => page.status ?? null,
   },
   {
+    key: 'responseTimeMs',
+    label: 'Response time (ms)',
+    getValue: page => page.responseTimeMs ?? null,
+  },
+  {
     key: 'finalUrl',
     label: 'Final URL',
     getValue: page => normalizeComparableUrl(page.finalUrl, page),

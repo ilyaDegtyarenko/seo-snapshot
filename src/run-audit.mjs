@@ -69,6 +69,7 @@ const buildPageReport = async (target, requestOptions) => {
       status: fetched.response.status,
       ok: fetched.response.ok,
       redirectChain: fetched.redirectChain,
+      responseTimeMs: fetched.responseTimeMs,
       headers,
       seo: null,
       parseSkippedReason: null,
@@ -96,6 +97,7 @@ const buildPageReport = async (target, requestOptions) => {
       status: null,
       ok: false,
       redirectChain: [],
+      responseTimeMs: null,
       headers: {
         contentType: null,
         contentLength: null,

@@ -81,3 +81,34 @@ test('runAudit records the expanded target count when variants are enabled', asy
     'variant-2',
   ])
 })
+
+test('runAudit records responseTimeMs for each page', async (context) => {
+  const tempDir = await createTempDir()
+  const originalFetch = globalThis.fetch
+
+  context.after(async () => {
+    globalThis.fetch = originalFetch
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  globalThis.fetch = async () => {
+    return new Response('<!doctype html><html><head><title>Test</title></head><body><h1>Hi</h1><p>content word </p></body></html>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    })
+  }
+
+  const result = await runAudit({}, {
+    cwd: tempDir,
+    env: {
+      SEO_SNAPSHOT_CONFIG: JSON.stringify({
+        baseUrl: 'https://example.com',
+        targets: [ '/' ],
+        output: { dir: './reports', formats: [ 'json' ] },
+      }),
+    },
+  })
+
+  assert.equal(typeof result.report.pages[0].responseTimeMs, 'number')
+  assert.equal(result.report.pages[0].responseTimeMs >= 0, true)
+})
