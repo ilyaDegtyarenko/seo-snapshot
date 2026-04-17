@@ -149,3 +149,37 @@ test('runAudit captures security headers from response', async (context) => {
   assert.equal(result.report.pages[0].headers.contentSecurityPolicy, "default-src 'self'")
   assert.equal(result.report.pages[0].headers.xFrameOptions, 'DENY')
 })
+
+test('runAudit emits progress messages via onProgress callback', async (context) => {
+  const tempDir = await createTempDir()
+  const originalFetch = globalThis.fetch
+  const progressMessages = []
+
+  context.after(async () => {
+    globalThis.fetch = originalFetch
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  globalThis.fetch = async () => {
+    return new Response('<!doctype html><html><head><title>T</title></head><body><h1>H</h1><p>text</p></body></html>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    })
+  }
+
+  await runAudit({}, {
+    cwd: tempDir,
+    env: {
+      SEO_SNAPSHOT_CONFIG: JSON.stringify({
+        baseUrl: 'https://example.com',
+        targets: [ '/', '/news' ],
+        output: { dir: './reports', formats: [ 'json' ] },
+      }),
+    },
+    onProgress: (message) => progressMessages.push(message),
+  })
+
+  assert.equal(progressMessages.length, 2)
+  assert.match(progressMessages[0], /\[1\/2\]/)
+  assert.match(progressMessages[1], /\[2\/2\]/)
+})

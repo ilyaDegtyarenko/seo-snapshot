@@ -126,6 +126,7 @@ export const runCli = async (argv = process.argv.slice(2)) => {
   const { runAudit } = await import('./run-audit.mjs')
   const result = await runAudit(options, {
     cwd: process.cwd(),
+    onProgress: (message) => process.stderr.write(`${ message }\n`),
   })
   const primaryOutputPath = result.htmlOutputPath ?? result.outputPaths[0] ?? null
 

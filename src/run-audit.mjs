@@ -163,9 +163,19 @@ export const runAudit = async (cliOptions, runtime = {}) => {
   const targets = runtimeOptions.variants
     ? baseTargets.flatMap(target => runtimeOptions.variants.map(variant => ({ ...target, variant })))
     : baseTargets
+  const onProgress = runtime.onProgress ?? null
+  let completedCount = 0
+  const totalCount = targets.length
 
   const pages = await mapWithConcurrency(targets, runtimeOptions.request.concurrency, async (target) => {
     const page = await buildPageReport(target, runtimeOptions.request)
+    completedCount += 1
+
+    if (onProgress) {
+      const label = target.path ?? target.input ?? target.url
+
+      onProgress(`[${ completedCount }/${ totalCount }] ${ label }`)
+    }
 
     return {
       ...page,
