@@ -250,6 +250,7 @@ const ENV_OVERRIDE_MAPPINGS = [
   [ 'SEO_SNAPSHOT_REQUEST_CONCURRENCY', [ 'request', 'concurrency' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_USER_AGENT', [ 'request', 'userAgent' ], parseEnvUserAgent ],
   [ 'SEO_SNAPSHOT_REQUEST_COOKIES', [ 'request', 'cookies' ], parseEnvCookies ],
+  [ 'SEO_SNAPSHOT_REQUEST_HEADERS', [ 'request', 'headers' ], (value, envName) => parseJsonObjectEnv(value, envName) ],
   [ 'SEO_SNAPSHOT_DIFF_ONLY', [ 'diffOnly' ], (value) => String(value).trim().toLowerCase() === 'true' ],
   [ 'SEO_SNAPSHOT_AUDIT_MIN_TITLE_LENGTH', [ 'audit', 'minTitleLength' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_AUDIT_MAX_TITLE_LENGTH', [ 'audit', 'maxTitleLength' ], parseEnvPositiveInt ],
@@ -604,6 +605,7 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions }) => {
     ? variants[0].userAgent
     : (isNonEmptyString(userAgentRaw) ? userAgentRaw : DEFAULT_USER_AGENT)
   const cookies = normalizeCookies(request.cookies ?? null)
+  const headers = isPlainObject(request.headers) ? { ...request.headers } : null
   const outputDir = normalizePathLikeValue(cliOptions.outputDir ?? output.dir ?? DEFAULT_REPORTS_DIR, configDir)
   const formats = normalizeFormats(cliOptions.formats ?? output.formats ?? DEFAULT_FORMATS)
 
@@ -614,6 +616,7 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions }) => {
       concurrency,
       userAgent,
       ...(cookies !== null ? { cookies } : {}),
+      ...(headers !== null ? { headers } : {}),
     },
     output: {
       dir: outputDir,

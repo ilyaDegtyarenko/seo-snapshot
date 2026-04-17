@@ -52,6 +52,7 @@ Environment:
   SEO_SNAPSHOT_REQUEST_CONCURRENCY
   SEO_SNAPSHOT_REQUEST_USER_AGENT
   SEO_SNAPSHOT_REQUEST_COOKIES
+  SEO_SNAPSHOT_REQUEST_HEADERS  Custom request headers as JSON object.
   SEO_SNAPSHOT_DIFF_ONLY        Only output targets with differences (comparison mode).
   SEO_SNAPSHOT_OPEN             Open report after generation (true/false).
   SEO_SNAPSHOT_PROFILE          Named profile to activate from config.profiles.
@@ -87,6 +88,7 @@ Config file format:
       maxRedirects: ${ DEFAULT_MAX_REDIRECTS },
       concurrency: ${ DEFAULT_CONCURRENCY },
       userAgent: '${ DEFAULT_USER_AGENT }',
+      headers: { Authorization: 'Bearer token' },
       // Or multiple variants:
       // userAgent: [
       //   { label: 'Desktop', userAgent: 'Mozilla/5.0 (Macintosh...)' },

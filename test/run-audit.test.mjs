@@ -230,3 +230,43 @@ test('runAudit filters comparison output when diffOnly is enabled', async (conte
   assert.equal(result.report.comparison.comparisons.length, 1)
   assert.equal(result.report.comparison.comparisons[0].targetPath, '/different')
 })
+
+test('runAudit passes custom request headers to fetch', async (context) => {
+  const tempDir = await createTempDir()
+  const originalFetch = globalThis.fetch
+  const capturedHeaders = []
+
+  context.after(async () => {
+    globalThis.fetch = originalFetch
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  globalThis.fetch = async (url, options = {}) => {
+    capturedHeaders.push(options.headers)
+
+    return new Response('<!doctype html><html><head><title>T</title></head><body><h1>H</h1><p>text</p></body></html>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    })
+  }
+
+  await runAudit({}, {
+    cwd: tempDir,
+    env: {
+      SEO_SNAPSHOT_CONFIG: JSON.stringify({
+        baseUrl: 'https://example.com',
+        targets: [ '/' ],
+        output: { dir: './reports', formats: [ 'json' ] },
+        request: {
+          headers: {
+            Authorization: 'Bearer test-token',
+            'X-Custom': 'value',
+          },
+        },
+      }),
+    },
+  })
+
+  assert.equal(capturedHeaders[0].Authorization, 'Bearer test-token')
+  assert.equal(capturedHeaders[0]['X-Custom'], 'value')
+})
