@@ -256,6 +256,7 @@ const ENV_OVERRIDE_MAPPINGS = [
   [ 'SEO_SNAPSHOT_AUDIT_MIN_DESCRIPTION_LENGTH', [ 'audit', 'minDescriptionLength' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_AUDIT_MAX_DESCRIPTION_LENGTH', [ 'audit', 'maxDescriptionLength' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_AUDIT_MIN_BODY_TEXT_LENGTH', [ 'audit', 'minBodyTextLength' ], parseEnvPositiveInt ],
+  [ 'SEO_SNAPSHOT_AUDIT_IGNORE', [ 'audit', 'ignore' ], parseEnvList ],
 ]
 
 const readEnvOverrideConfig = (env) => {

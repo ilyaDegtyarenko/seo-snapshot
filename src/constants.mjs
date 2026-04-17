@@ -60,6 +60,7 @@ Environment:
   SEO_SNAPSHOT_AUDIT_MIN_DESCRIPTION_LENGTH
   SEO_SNAPSHOT_AUDIT_MAX_DESCRIPTION_LENGTH
   SEO_SNAPSHOT_AUDIT_MIN_BODY_TEXT_LENGTH
+  SEO_SNAPSHOT_AUDIT_IGNORE     Issue codes to suppress. Comma-separated or JSON array.
 
 Config file format:
   export default {
@@ -98,6 +99,7 @@ Config file format:
       minDescriptionLength: ${ DEFAULT_AUDIT_RULES.minDescriptionLength },
       maxDescriptionLength: ${ DEFAULT_AUDIT_RULES.maxDescriptionLength },
       minBodyTextLength: ${ DEFAULT_AUDIT_RULES.minBodyTextLength },
+      ignore: [ 'missing_twitter_card', 'missing_og_image' ],
     },
   }
 

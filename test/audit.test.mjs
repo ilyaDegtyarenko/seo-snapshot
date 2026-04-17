@@ -368,3 +368,58 @@ test('buildPageIssues detects missing required schema properties', () => {
 
   assert.equal(codes.includes('schema_missing_properties'), true)
 })
+
+test('buildPageIssues filters out ignored issue codes', () => {
+  const page = {
+    targetPath: '/',
+    status: 200,
+    error: null,
+    parseSkippedReason: null,
+    headers: {
+      xRobotsTag: null,
+      links: { canonical: null, llms: null },
+    },
+    seo: {
+      document: {
+        title: 'Short',
+        h1: [],
+        lang: null,
+        bodyTextLength: 50,
+        imageCount: 0,
+        imagesWithoutAlt: 0,
+        internalLinkCount: 0,
+        headingHierarchy: [],
+      },
+      meta: {
+        description: null,
+        robots: null,
+        openGraph: {},
+        twitter: {},
+      },
+      links: {
+        canonical: null,
+        alternates: [],
+      },
+      jsonLd: {
+        scriptCount: 0,
+        parseErrors: 0,
+        hasWebSite: false,
+        hasOrganization: false,
+      },
+      head: { duplicates: [] },
+    },
+  }
+
+  const rules = {
+    ...DEFAULT_AUDIT_RULES,
+    ignore: [ 'missing_description', 'missing_h1', 'thin_content' ],
+  }
+
+  const issues = buildPageIssues(page, rules)
+  const codes = issues.map(issue => issue.code)
+
+  assert.equal(codes.includes('missing_description'), false)
+  assert.equal(codes.includes('missing_h1'), false)
+  assert.equal(codes.includes('thin_content'), false)
+  assert.equal(codes.includes('short_title'), true)
+})

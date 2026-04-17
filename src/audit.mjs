@@ -10,6 +10,16 @@ const pushIssue = (issues, severity, code, message) => {
   })
 }
 
+const filterIgnoredIssues = (issues, rules) => {
+  const ignoredCodes = new Set((rules.ignore ?? []).map(code => String(code || '').trim()).filter(Boolean))
+
+  if (ignoredCodes.size === 0) {
+    return issues
+  }
+
+  return issues.filter(issue => !ignoredCodes.has(issue.code))
+}
+
 const DUPLICATE_SIGNAL_ISSUE_MAP = {
   title: {
     code: 'duplicate_title',
@@ -157,7 +167,7 @@ export const buildPageIssues = (page, rules) => {
 
   if (page.error) {
     pushIssue(issues, 'error', 'fetch_error', page.error)
-    return issues
+    return filterIgnoredIssues(issues, rules)
   }
 
   if (page.status >= 500) {
@@ -168,7 +178,7 @@ export const buildPageIssues = (page, rules) => {
 
   if (page.parseSkippedReason) {
     pushIssue(issues, 'warning', 'non_html', page.parseSkippedReason)
-    return issues
+    return filterIgnoredIssues(issues, rules)
   }
 
   const title = page.seo?.document.title
@@ -379,7 +389,7 @@ export const buildPageIssues = (page, rules) => {
     }
   }
 
-  return issues
+  return filterIgnoredIssues(issues, rules)
 }
 
 export const buildSummary = (pages) => {
