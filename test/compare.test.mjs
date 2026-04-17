@@ -9,10 +9,12 @@ const comparisonSources = [
 
 const createComparablePage = ({
   alternates = [],
+  responseTimeMs = 100,
   bodyTextLength = 400,
   imageCount = 0,
   imagesWithoutAlt = 0,
   internalLinkCount = 0,
+  headingHierarchy = [ 1, 2 ],
   canonical,
   description = 'Catalog description',
   finalUrl,
@@ -54,6 +56,7 @@ const createComparablePage = ({
   requestedUrl: finalUrl,
   finalUrl,
   status,
+  responseTimeMs,
   error: null,
   parseSkippedReason: null,
   headers: {
@@ -75,6 +78,7 @@ const createComparablePage = ({
       imageCount,
       imagesWithoutAlt,
       internalLinkCount,
+      headingHierarchy,
     },
     meta: {
       description,
@@ -115,10 +119,12 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       finalUrl: 'https://www.example.com/news',
       title: 'Prod title',
       description: 'Prod description',
+      responseTimeMs: 100,
       bodyTextLength: 800,
       imageCount: 5,
       imagesWithoutAlt: 0,
       internalLinkCount: 24,
+      headingHierarchy: [ 1, 2 ],
       h1: [ 'News' ],
       canonical: 'https://www.example.com/news',
       alternates: [
@@ -155,10 +161,12 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       finalUrl: 'https://stage.example.com/latest-news',
       title: 'Stage title',
       description: 'Stage description',
+      responseTimeMs: 220,
       bodyTextLength: 620,
       imageCount: 3,
       imagesWithoutAlt: 2,
       internalLinkCount: 18,
+      headingHierarchy: [ 1, 3 ],
       h1: [ 'Latest News' ],
       canonical: 'https://stage.example.com/latest-news',
       alternates: [
@@ -227,6 +235,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
   assert.equal(differenceKeys.includes('ogImage'), true)
   assert.equal(differenceKeys.includes('ogTitle'), true)
   assert.equal(differenceKeys.includes('ogUrl'), true)
+  assert.equal(differenceKeys.includes('responseTimeMs'), true)
   assert.equal(differenceKeys.includes('title'), true)
   assert.equal(differenceKeys.includes('twitterCard'), true)
   assert.equal(differenceKeys.includes('twitterDescription'), true)
