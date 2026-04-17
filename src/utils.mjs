@@ -293,12 +293,12 @@ export const isSourceLocalUrl = (url, page) => {
   }
 }
 
-export const sortByCountDesc = (entries) => {
+export const sortByCountDesc = (entries, labelKey = 'code') => {
   return [ ...entries ].sort((left, right) => {
     if (right.count !== left.count) {
       return right.count - left.count
     }
 
-    return left.code.localeCompare(right.code)
+    return String(left[labelKey] ?? '').localeCompare(String(right[labelKey] ?? ''))
   })
 }

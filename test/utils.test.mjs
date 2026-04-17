@@ -58,3 +58,18 @@ test('isSourceLocalUrl returns true for same-host URLs and false for foreign hos
   assert.equal(isSourceLocalUrl(null, page), null)
   assert.equal(isSourceLocalUrl('not-a-url', page), null)
 })
+
+test('sortByCountDesc sorts by count descending then by label alphabetically', () => {
+  const input = [
+    { label: 'b', count: 2 },
+    { label: 'a', count: 2 },
+    { label: 'c', count: 5 },
+  ]
+  const result = sortByCountDesc(input, 'label')
+
+  assert.deepEqual(result, [
+    { label: 'c', count: 5 },
+    { label: 'a', count: 2 },
+    { label: 'b', count: 2 },
+  ])
+})

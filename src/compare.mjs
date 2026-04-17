@@ -1,4 +1,4 @@
-import { isSourceLocalUrl } from './utils.mjs'
+import { isSourceLocalUrl, sortByCountDesc } from './utils.mjs'
 
 const normalizeScalar = (value) => {
   if (value === null || value === undefined) {
@@ -207,16 +207,6 @@ const getIssueCodes = (page) => {
 }
 
 const areEqual = (left, right) => JSON.stringify(left) === JSON.stringify(right)
-
-const sortByCountDesc = (entries) => {
-  return [ ...entries ].sort((left, right) => {
-    if (right.count !== left.count) {
-      return right.count - left.count
-    }
-
-    return left.key.localeCompare(right.key)
-  })
-}
 
 const DIFFERENCE_SPECS = [
   {
@@ -672,7 +662,7 @@ export const buildComparisonReport = (pages, compareOptions) => {
         label,
         count,
       }
-    })),
+    }), 'key'),
     comparisons,
   }
 }
