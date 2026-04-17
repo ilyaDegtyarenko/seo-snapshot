@@ -1,4 +1,4 @@
-import { getLength, sortByCountDesc } from './utils.mjs'
+import { getLength, isSourceLocalUrl, sortByCountDesc } from './utils.mjs'
 
 const HOMEPAGE_PATH_PATTERN = /^\/(?:[a-z]{2}(?:-[a-z]{2})?)?\/?$/i
 
@@ -108,43 +108,6 @@ const isHomepageLikePage = (page) => {
   }
 
   return HOMEPAGE_PATH_PATTERN.test(pathname)
-}
-
-const getSourceHosts = (page) => {
-  const sourceHosts = new Set()
-
-  for (const candidate of [ page.source?.url, page.finalUrl, page.requestedUrl ]) {
-    if (!candidate) {
-      continue
-    }
-
-    try {
-      sourceHosts.add(new URL(String(candidate)).host.toLowerCase())
-    } catch {
-      continue
-    }
-  }
-
-  return sourceHosts
-}
-
-const isSourceLocalUrl = (url, page) => {
-  if (!url) {
-    return null
-  }
-
-  try {
-    const parsed = new URL(String(url))
-    const sourceHosts = getSourceHosts(page)
-
-    if (sourceHosts.size === 0) {
-      return null
-    }
-
-    return sourceHosts.has(parsed.host.toLowerCase())
-  } catch {
-    return null
-  }
 }
 
 const countInvalidHreflangLinks = (alternates) => {

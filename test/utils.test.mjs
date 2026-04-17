@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseLinkHeader } from '../src/utils.mjs'
+import { getSourceHosts, isSourceLocalUrl, parseLinkHeader, sortByCountDesc } from '../src/utils.mjs'
 
 test('parseLinkHeader extracts canonical, llms, and hreflang entries from response headers', () => {
   const entries = parseLinkHeader(
@@ -34,4 +34,27 @@ test('parseLinkHeader extracts canonical, llms, and hreflang entries from respon
       type: null,
     },
   ])
+})
+
+test('getSourceHosts collects unique lowercase hosts from page URL candidates', () => {
+  const hosts = getSourceHosts({
+    source: { url: 'https://WWW.Example.Com/page' },
+    finalUrl: 'https://www.example.com/page',
+    requestedUrl: 'https://www.example.com/page',
+  })
+
+  assert.deepEqual(hosts, new Set([ 'www.example.com' ]))
+})
+
+test('isSourceLocalUrl returns true for same-host URLs and false for foreign hosts', () => {
+  const page = {
+    source: { url: 'https://www.example.com/' },
+    finalUrl: 'https://www.example.com/page',
+    requestedUrl: 'https://www.example.com/page',
+  }
+
+  assert.equal(isSourceLocalUrl('https://www.example.com/other', page), true)
+  assert.equal(isSourceLocalUrl('https://other.example.com/page', page), false)
+  assert.equal(isSourceLocalUrl(null, page), null)
+  assert.equal(isSourceLocalUrl('not-a-url', page), null)
 })

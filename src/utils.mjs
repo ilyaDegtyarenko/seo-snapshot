@@ -256,6 +256,43 @@ export const getHighestSeverity = (issues) => {
   return 'info'
 }
 
+export const getSourceHosts = (page) => {
+  const sourceHosts = new Set()
+
+  for (const candidate of [ page.source?.url, page.finalUrl, page.requestedUrl ]) {
+    if (!candidate) {
+      continue
+    }
+
+    try {
+      sourceHosts.add(new URL(String(candidate)).host.toLowerCase())
+    } catch {
+      continue
+    }
+  }
+
+  return sourceHosts
+}
+
+export const isSourceLocalUrl = (url, page) => {
+  if (!url) {
+    return null
+  }
+
+  try {
+    const parsed = new URL(String(url))
+    const sourceHosts = getSourceHosts(page)
+
+    if (sourceHosts.size === 0) {
+      return null
+    }
+
+    return sourceHosts.has(parsed.host.toLowerCase())
+  } catch {
+    return null
+  }
+}
+
 export const sortByCountDesc = (entries) => {
   return [ ...entries ].sort((left, right) => {
     if (right.count !== left.count) {

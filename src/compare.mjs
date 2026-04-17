@@ -1,3 +1,5 @@
+import { isSourceLocalUrl } from './utils.mjs'
+
 const normalizeScalar = (value) => {
   if (value === null || value === undefined) {
     return null
@@ -53,43 +55,6 @@ const normalizeAbsoluteUrl = (url) => {
     return new URL(String(url)).toString()
   } catch {
     return normalizeScalar(url)
-  }
-}
-
-const getSourceHosts = (page) => {
-  const sourceHosts = new Set()
-
-  for (const candidate of [ page.source?.url, page.finalUrl, page.requestedUrl ]) {
-    if (!candidate) {
-      continue
-    }
-
-    try {
-      sourceHosts.add(new URL(String(candidate)).host.toLowerCase())
-    } catch {
-      continue
-    }
-  }
-
-  return sourceHosts
-}
-
-const isSourceLocalUrl = (url, page) => {
-  if (!url) {
-    return null
-  }
-
-  try {
-    const parsed = new URL(String(url))
-    const sourceHosts = getSourceHosts(page)
-
-    if (sourceHosts.size === 0) {
-      return null
-    }
-
-    return sourceHosts.has(parsed.host.toLowerCase())
-  } catch {
-    return null
   }
 }
 
