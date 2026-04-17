@@ -542,6 +542,21 @@ const DIFFERENCE_SPECS = [
     getValue: page => page.seo?.document.bodyTextLength ?? null,
   },
   {
+    key: 'imageCount',
+    label: 'Image count',
+    getValue: page => page.seo?.document.imageCount ?? null,
+  },
+  {
+    key: 'imagesWithoutAlt',
+    label: 'Images without alt',
+    getValue: page => page.seo?.document.imagesWithoutAlt ?? null,
+  },
+  {
+    key: 'internalLinkCount',
+    label: 'Internal link count',
+    getValue: page => page.seo?.document.internalLinkCount ?? null,
+  },
+  {
     key: 'issueCodes',
     label: 'Issue codes',
     getValue: page => getIssueCodes(page),

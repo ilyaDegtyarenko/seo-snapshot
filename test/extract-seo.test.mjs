@@ -80,3 +80,26 @@ test('extractSeoInfoFromHtml parses detailed SEO fields from head and JSON-LD', 
     },
   ])
 })
+
+test('extractSeoInfoFromHtml counts images without alt and internal links', () => {
+  const html = `<!doctype html>
+  <html lang="en">
+    <head><title>Image test</title></head>
+    <body>
+      <img src="/a.jpg" alt="Photo A">
+      <img src="/b.jpg" alt="">
+      <img src="/c.jpg">
+      <a href="/page1">Internal</a>
+      <a href="/page2">Internal 2</a>
+      <a href="https://external.com/page">External</a>
+      <a href="https://example.com/page3">Same host</a>
+      <a href="mailto:test@example.com">Mail</a>
+    </body>
+  </html>`
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/test')
+
+  assert.equal(result.document.imageCount, 3)
+  assert.equal(result.document.imagesWithoutAlt, 2)
+  assert.equal(result.document.internalLinkCount, 3)
+})

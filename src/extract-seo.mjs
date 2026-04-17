@@ -356,6 +356,58 @@ const getBodyTextLength = (html) => {
   return stripTags(stripped).length
 }
 
+const countImages = (html) => {
+  const imgTags = findTagAttributes(String(html || ''), 'img')
+  let imagesWithoutAlt = 0
+
+  for (const attributes of imgTags) {
+    const alt = normalizeAttributeValue(attributes.alt)
+
+    if (alt === null) {
+      imagesWithoutAlt += 1
+    }
+  }
+
+  return {
+    imageCount: imgTags.length,
+    imagesWithoutAlt,
+  }
+}
+
+const countInternalLinks = (html, pageUrl) => {
+  const bodyMatch = String(html || '').match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)
+  const bodyHtml = bodyMatch?.[1] ?? ''
+  const aTags = findTagAttributes(bodyHtml, 'a')
+  let pageHost = null
+  let internalLinkCount = 0
+
+  try {
+    pageHost = new URL(pageUrl).host.toLowerCase()
+  } catch {
+    return 0
+  }
+
+  for (const attributes of aTags) {
+    const href = normalizeAttributeValue(attributes.href)
+
+    if (!href || href.startsWith('#') || (/^[a-z][a-z0-9+.-]*:/i.test(href) && !/^https?:/i.test(href))) {
+      continue
+    }
+
+    try {
+      const resolved = new URL(href, pageUrl)
+
+      if (resolved.host.toLowerCase() === pageHost) {
+        internalLinkCount += 1
+      }
+    } catch {
+      internalLinkCount += 1
+    }
+  }
+
+  return internalLinkCount
+}
+
 const buildHeadCounts = ({
   alternateLinks,
   alternateResources,
@@ -464,6 +516,8 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
     .map(type => normalizeJsonLdType(type))
     .filter(Boolean)
   const jsonLdTypeSet = new Set(normalizedJsonLdTypes)
+  const imageStats = countImages(normalizedHtml)
+  const internalLinkCount = countInternalLinks(normalizedHtml, pageUrl)
 
   return {
     document: {
@@ -472,6 +526,9 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
       title,
       h1,
       bodyTextLength: getBodyTextLength(normalizedHtml),
+      imageCount: imageStats.imageCount,
+      imagesWithoutAlt: imageStats.imagesWithoutAlt,
+      internalLinkCount,
     },
     meta: {
       charset: normalizeAttributeValue(metaTags.find(attributes => attributes.charset)?.charset),

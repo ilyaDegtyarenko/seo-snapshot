@@ -317,6 +317,12 @@ export const buildPageIssues = (page, rules) => {
     pushIssue(issues, 'warning', 'thin_content', `Visible text is too short (${ bodyTextLength } chars).`)
   }
 
+  const imagesWithoutAlt = page.seo?.document.imagesWithoutAlt ?? 0
+
+  if (imagesWithoutAlt > 0) {
+    pushIssue(issues, 'warning', 'images_missing_alt', `${ imagesWithoutAlt } image(s) missing alt attribute.`)
+  }
+
   return issues
 }
 

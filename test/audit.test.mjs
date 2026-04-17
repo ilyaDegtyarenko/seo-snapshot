@@ -22,6 +22,9 @@ test('buildPageIssues reports critical SEO gaps', () => {
         h1: [],
         lang: null,
         bodyTextLength: 50,
+        imageCount: 0,
+        imagesWithoutAlt: 0,
+        internalLinkCount: 0,
       },
       meta: {
         description: null,
@@ -88,6 +91,9 @@ test('buildPageIssues handles page with undefined headers gracefully', () => {
         h1: [ 'Hello' ],
         lang: 'en',
         bodyTextLength: 500,
+        imageCount: 0,
+        imagesWithoutAlt: 0,
+        internalLinkCount: 0,
       },
       meta: {
         description: 'A description that is long enough for the audit to pass without warnings.',

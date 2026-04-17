@@ -10,6 +10,9 @@ const comparisonSources = [
 const createComparablePage = ({
   alternates = [],
   bodyTextLength = 400,
+  imageCount = 0,
+  imagesWithoutAlt = 0,
+  internalLinkCount = 0,
   canonical,
   description = 'Catalog description',
   finalUrl,
@@ -68,6 +71,9 @@ const createComparablePage = ({
       h1,
       lang,
       bodyTextLength,
+      imageCount,
+      imagesWithoutAlt,
+      internalLinkCount,
     },
     meta: {
       description,
@@ -108,6 +114,9 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       title: 'Prod title',
       description: 'Prod description',
       bodyTextLength: 800,
+      imageCount: 5,
+      imagesWithoutAlt: 0,
+      internalLinkCount: 24,
       h1: [ 'News' ],
       canonical: 'https://www.example.com/news',
       alternates: [
@@ -144,6 +153,9 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       title: 'Stage title',
       description: 'Stage description',
       bodyTextLength: 620,
+      imageCount: 3,
+      imagesWithoutAlt: 2,
+      internalLinkCount: 18,
       h1: [ 'Latest News' ],
       canonical: 'https://stage.example.com/latest-news',
       alternates: [
@@ -194,6 +206,9 @@ test('buildComparisonReport highlights SEO field differences across two domains'
   assert.equal(differenceKeys.includes('finalUrl'), true)
   assert.equal(differenceKeys.includes('h1'), true)
   assert.equal(differenceKeys.includes('hreflang'), true)
+  assert.equal(differenceKeys.includes('imageCount'), true)
+  assert.equal(differenceKeys.includes('imagesWithoutAlt'), true)
+  assert.equal(differenceKeys.includes('internalLinkCount'), true)
   assert.equal(differenceKeys.includes('issueCodes'), true)
   assert.equal(differenceKeys.includes('jsonLdTypes'), true)
   assert.equal(differenceKeys.includes('jsonLdHasOrganization'), true)
