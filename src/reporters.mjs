@@ -1492,7 +1492,7 @@ export const renderHtmlReport = (report) => {
   <main>
     <header class="page-header">
       <div class="page-header-top">
-        <span class="eyebrow">Minimal Audit View</span>
+        <span class="eyebrow">SEO Snapshot</span>
         <span class="header-time">${ escapeHtml(generatedAtLabel) }</span>
       </div>
       <h1>SEO Snapshot</h1>
