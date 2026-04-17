@@ -61,6 +61,7 @@ export const parseArgs = (argv) => {
     concurrency: undefined,
     userAgent: undefined,
     formats: undefined,
+    diffOnly: false,
   }
   const userAgentValues = []
 
@@ -100,6 +101,9 @@ export const parseArgs = (argv) => {
       case '--user-agent':
         userAgentValues.push(readOptionValue(argv, index, arg))
         index += 1
+        break
+      case '--diff-only':
+        options.diffOnly = true
         break
       default:
         if (arg.startsWith('--')) {

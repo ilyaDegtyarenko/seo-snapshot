@@ -129,6 +129,23 @@ test('readSeoConfig supports single compare domain from env override', async () 
   }
 })
 
+test('readSeoConfig supports diffOnly env override', async () => {
+  const tempDir = await createTempDir()
+
+  try {
+    const result = await readSeoConfig(undefined, tempDir, {
+      SEO_SNAPSHOT_BASE_URL: 'https://www.example.com',
+      SEO_SNAPSHOT_COMPARE_BASE_URL: 'https://stage.example.com',
+      SEO_SNAPSHOT_TARGETS: '/news',
+      SEO_SNAPSHOT_DIFF_ONLY: 'true',
+    })
+
+    assert.equal(result.config.diffOnly, true)
+  } finally {
+    await rm(tempDir, { recursive: true, force: true })
+  }
+})
+
 test('resolveTargets reads plain-text targets files and deduplicates merged targets', async (context) => {
   const tempDir = await createTempDir()
 

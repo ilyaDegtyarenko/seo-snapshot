@@ -159,6 +159,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
     configDir,
     cliOptions,
   })
+  const diffOnly = cliOptions.diffOnly || config.diffOnly || false
   const baseTargets = await resolveTargets(config, configDir)
   const targets = runtimeOptions.variants
     ? baseTargets.flatMap(target => runtimeOptions.variants.map(variant => ({ ...target, variant })))
@@ -185,6 +186,13 @@ export const runAudit = async (cliOptions, runtime = {}) => {
   const summary = buildSummary(pages)
   const comparison = buildComparisonReport(pages, runtimeOptions.compare)
 
+  if (diffOnly && comparison) {
+    comparison.comparisons = comparison.comparisons.filter(comparisonItem => comparisonItem.differences.length > 0)
+    comparison.targetCount = comparison.comparisons.length
+    comparison.variants = [ ...new Set(comparison.comparisons.map(c => c.variant).filter(Boolean)) ]
+    comparison.variants = comparison.variants.length > 0 ? comparison.variants : null
+  }
+
   const report = {
     generatedAt: new Date().toISOString(),
     options: {
@@ -199,6 +207,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
       targetCount: targets.length,
       formats: runtimeOptions.output.formats,
       outputDir: runtimeOptions.output.dir,
+      diffOnly,
       audit: runtimeOptions.audit,
     },
     summary,
