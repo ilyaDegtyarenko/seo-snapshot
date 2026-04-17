@@ -34,6 +34,7 @@ Options:
   --concurrency <n>       Maximum parallel requests. Default: ${ DEFAULT_CONCURRENCY }.
   --user-agent <value>    Override the request User-Agent. Repeat the flag to enable variants; repeated values may use "Label=UA".
   --diff-only             Only output paths with differences in comparison mode.
+  --open                  Open the HTML report in the default browser after generation.
   --help                  Show this help.
 
 Environment:
@@ -51,6 +52,7 @@ Environment:
   SEO_SNAPSHOT_REQUEST_USER_AGENT
   SEO_SNAPSHOT_REQUEST_COOKIES
   SEO_SNAPSHOT_DIFF_ONLY        Only output targets with differences (comparison mode).
+  SEO_SNAPSHOT_OPEN             Open report after generation (true/false).
   SEO_SNAPSHOT_AUDIT_MIN_TITLE_LENGTH
   SEO_SNAPSHOT_AUDIT_MAX_TITLE_LENGTH
   SEO_SNAPSHOT_AUDIT_MIN_DESCRIPTION_LENGTH

@@ -32,3 +32,9 @@ test('parseArgs recognizes --diff-only flag', () => {
 
   assert.equal(options.diffOnly, true)
 })
+
+test('parseArgs recognizes --open flag', () => {
+  const options = parseArgs([ '--open' ])
+
+  assert.equal(options.open, true)
+})

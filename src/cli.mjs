@@ -1,3 +1,4 @@
+import { exec } from 'node:child_process'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 import {
@@ -62,6 +63,7 @@ export const parseArgs = (argv) => {
     userAgent: undefined,
     formats: undefined,
     diffOnly: false,
+    open: false,
   }
   const userAgentValues = []
 
@@ -105,6 +107,9 @@ export const parseArgs = (argv) => {
       case '--diff-only':
         options.diffOnly = true
         break
+      case '--open':
+        options.open = true
+        break
       default:
         if (arg.startsWith('--')) {
           exitWithError(`Unknown flag "${ arg }".\n\n${ buildHelpText() }`)
@@ -143,6 +148,14 @@ export const runCli = async (argv = process.argv.slice(2)) => {
   if (primaryOutputPath) {
     const primaryLabel = result.htmlOutputPath ? 'Open report' : 'Open output'
     process.stdout.write(`${ primaryLabel }: ${ pathToFileURL(primaryOutputPath).href }\n`)
+  }
+
+  const shouldOpen = options.open || String(process.env.SEO_SNAPSHOT_OPEN ?? '').trim().toLowerCase() === 'true'
+
+  if (shouldOpen && result.htmlOutputPath) {
+    const openCommand = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open'
+
+    exec(`${ openCommand } ${ JSON.stringify(result.htmlOutputPath) }`, () => {})
   }
 
   if (result.hasFailures) {
