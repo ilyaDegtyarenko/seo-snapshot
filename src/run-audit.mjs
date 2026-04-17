@@ -157,6 +157,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
     config,
     configDir,
     cliOptions,
+    cwd,
   })
   const baseTargets = await resolveTargets(config, configDir)
   const targets = runtimeOptions.variants

@@ -596,7 +596,7 @@ const normalizeCookies = (value) => {
   return null
 }
 
-export const buildRuntimeOptions = ({ config, configDir, cliOptions }) => {
+export const buildRuntimeOptions = ({ config, configDir, cliOptions, cwd = process.cwd() }) => {
   const request = config.request ?? {}
   const output = config.output ?? {}
   const audit = config.audit ?? {}
@@ -612,7 +612,16 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions }) => {
     : (isNonEmptyString(userAgentRaw) ? userAgentRaw : DEFAULT_USER_AGENT)
   const cookies = normalizeCookies(request.cookies ?? null)
   const headers = isPlainObject(request.headers) ? { ...request.headers } : null
-  const outputDir = normalizePathLikeValue(cliOptions.outputDir ?? output.dir ?? DEFAULT_REPORTS_DIR, configDir)
+  const hasCliOutputDir = cliOptions.outputDir !== undefined
+  const hasConfigOutputDir = output.dir !== undefined
+  const outputDir = normalizePathLikeValue(
+    hasCliOutputDir
+      ? cliOptions.outputDir
+      : (hasConfigOutputDir ? output.dir : DEFAULT_REPORTS_DIR),
+    hasCliOutputDir || !hasConfigOutputDir
+      ? cwd
+      : configDir,
+  )
   const formats = normalizeFormats(cliOptions.formats ?? output.formats ?? DEFAULT_FORMATS)
 
   return {

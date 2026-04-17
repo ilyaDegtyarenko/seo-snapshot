@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { runAudit } from '../src/run-audit.mjs'
@@ -111,6 +111,39 @@ test('runAudit records responseTimeMs for each page', async (context) => {
 
   assert.equal(typeof result.report.pages[0].responseTimeMs, 'number')
   assert.equal(result.report.pages[0].responseTimeMs >= 0, true)
+})
+
+test('runAudit writes default reports to cwd when config omits output.dir', async (context) => {
+  const tempDir = await createTempDir()
+  const configDir = path.join(tempDir, 'config')
+  const configPath = path.join(configDir, 'seo-snapshot.mjs')
+  const originalFetch = globalThis.fetch
+
+  context.after(async () => {
+    globalThis.fetch = originalFetch
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  await mkdir(configDir, { recursive: true })
+  await writeFile(configPath, `export default {
+  baseUrl: 'https://example.com',
+  targets: [ '/' ],
+}
+`, 'utf8')
+
+  globalThis.fetch = async () => {
+    return new Response('<!doctype html><html><head><title>Test</title></head><body><h1>Hi</h1><p>content word </p></body></html>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    })
+  }
+
+  const result = await runAudit({}, {
+    cwd: tempDir,
+    env: {},
+  })
+
+  assert.equal(path.dirname(result.outputPaths[0]), path.join(tempDir, 'reports'))
 })
 
 test('runAudit captures security headers from response', async (context) => {
