@@ -174,6 +174,7 @@ Supported overrides:
 - `SEO_SNAPSHOT_TARGETS` as a JSON array or comma/newline-separated list
 - `SEO_SNAPSHOT_OUTPUT_DIR`
 - `SEO_SNAPSHOT_OUTPUT_FORMATS`
+- `SEO_SNAPSHOT_OUTPUT_HIDE_RESPONSE_TIME` as `true` or `false`
 - `SEO_SNAPSHOT_REQUEST_TIMEOUT_MS`
 - `SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS`
 - `SEO_SNAPSHOT_REQUEST_CONCURRENCY`
@@ -216,6 +217,7 @@ export default {
   output: {
     dir: '../reports',
     formats: [ 'html', 'json' ],
+    hideResponseTime: false,
   },
   request: {
     timeoutMs: 15_000,
@@ -299,6 +301,8 @@ export default {
 | `duplicate_apple_itunes_app` | warning | Multiple `apple-itunes-app` tags |
 
 Copy it to `config/seo-snapshot.mjs` and trim it down to the settings you actually need. `config/seo-snapshot.mjs` is the runtime config file loaded by default; there is no automatic `.local` overlay anymore. This keeps the committed template stable while real machine-specific settings stay ignored.
+
+`output.hideResponseTime` — set to `true` to omit the Response time field from all page cards in the HTML report. Useful when response times are not meaningful (e.g. local dev, CI environments). Defaults to `false`.
 
 Comparison mode notes:
 

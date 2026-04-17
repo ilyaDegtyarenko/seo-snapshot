@@ -66,6 +66,15 @@ const parseJsonArrayEnv = (value, envName) => {
 
 const parseEnvString = (value) => String(value ?? '').trim()
 
+const parseEnvBoolean = (value, envName) => {
+  const normalized = String(value ?? '').trim().toLowerCase()
+
+  if (normalized === 'true' || normalized === '1') return true
+  if (normalized === 'false' || normalized === '0') return false
+
+  exitWithError(`Expected ${ envName } to be true or false, received "${ value }".`)
+}
+
 const parseEnvPositiveInt = (value, envName) => {
   const parsed = Number.parseInt(String(value), 10)
 
@@ -245,6 +254,7 @@ const ENV_OVERRIDE_MAPPINGS = [
   [ 'SEO_SNAPSHOT_TARGETS', [ 'targets' ], parseEnvList ],
   [ 'SEO_SNAPSHOT_OUTPUT_DIR', [ 'output', 'dir' ], parseEnvString ],
   [ 'SEO_SNAPSHOT_OUTPUT_FORMATS', [ 'output', 'formats' ], parseEnvList ],
+  [ 'SEO_SNAPSHOT_OUTPUT_HIDE_RESPONSE_TIME', [ 'output', 'hideResponseTime' ], parseEnvBoolean ],
   [ 'SEO_SNAPSHOT_REQUEST_TIMEOUT_MS', [ 'request', 'timeoutMs' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS', [ 'request', 'maxRedirects' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_CONCURRENCY', [ 'request', 'concurrency' ], parseEnvPositiveInt ],
@@ -636,6 +646,7 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions, cwd = proce
     output: {
       dir: outputDir,
       formats,
+      hideResponseTime: Boolean(output.hideResponseTime),
     },
     variants,
     compare: compareSources

@@ -53,6 +53,7 @@ Environment:
   SEO_SNAPSHOT_TARGETS        Override config.targets. Accepts JSON array or comma/newline list.
   SEO_SNAPSHOT_OUTPUT_DIR     Override config.output.dir.
   SEO_SNAPSHOT_OUTPUT_FORMATS Override config.output.formats.
+  SEO_SNAPSHOT_OUTPUT_HIDE_RESPONSE_TIME  Hide response time from HTML report (true/false).
   SEO_SNAPSHOT_REQUEST_TIMEOUT_MS
   SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS
   SEO_SNAPSHOT_REQUEST_CONCURRENCY
@@ -87,6 +88,7 @@ Config file format:
     output: {
       dir: '../reports',
       formats: [ 'html', 'json' ],
+      hideResponseTime: false,
     },
     request: {
       timeoutMs: ${ DEFAULT_TIMEOUT_MS },

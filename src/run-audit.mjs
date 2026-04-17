@@ -199,6 +199,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
       targetCount: targets.length,
       formats: runtimeOptions.output.formats,
       outputDir: runtimeOptions.output.dir,
+      hideResponseTime: runtimeOptions.output.hideResponseTime,
       audit: runtimeOptions.audit,
     },
     summary,

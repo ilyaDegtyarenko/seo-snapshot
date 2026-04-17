@@ -20,6 +20,7 @@ export default {
   output: {
     dir: '../reports',
     formats: [ 'html', 'json' ],
+    // hideResponseTime: true,
   },
   request: {
     timeoutMs: 15_000,

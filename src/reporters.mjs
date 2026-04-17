@@ -473,7 +473,7 @@ const renderPageIndexItem = (entry) => {
   `
 }
 
-const renderPageCard = (entry) => {
+const renderPageCard = (entry, options = {}) => {
   const { page, anchorId, source, title } = entry
   const statusTone = getStatusTone(page)
   const issuesTone = page.issues.length > 0
@@ -521,7 +521,7 @@ const renderPageCard = (entry) => {
         ${ renderKeyValueRow('Final URL', page.finalUrl) }
         ${ renderKeyValueRow('Content-Type', page.headers.contentType) }
         ${ renderKeyValueRow('Content-Length', page.headers.contentLength) }
-        ${ renderKeyValueRow('Response time', page.responseTimeMs !== null && page.responseTimeMs !== undefined ? `${ page.responseTimeMs } ms` : null) }
+        ${ options.hideResponseTime ? '' : renderKeyValueRow('Response time', page.responseTimeMs !== null && page.responseTimeMs !== undefined ? `${ page.responseTimeMs } ms` : null) }
         ${ renderKeyValueRow('Charset', page.seo?.meta.charset) }
         ${ renderKeyValueRow('Title', page.seo?.document.title) }
         ${ renderKeyValueRow('Description', page.seo?.meta.description) }
@@ -814,24 +814,24 @@ const buildVariantGroups = (entries) => {
   return groups
 }
 
-const renderVariantGroupedCards = (pageEntries) => {
+const renderVariantGroupedCards = (pageEntries, options = {}) => {
   const groups = buildVariantGroups(pageEntries)
 
   return [ ...groups.entries() ].map(([ variantLabel, entries ]) => `
     <details class="variant-group" open>
       <summary class="variant-group-title">${ escapeHtml(variantLabel || 'Default') }</summary>
-      <section class="page-list">${ entries.map(renderPageCard).join('') }</section>
+      <section class="page-list">${ entries.map(entry => renderPageCard(entry, options)).join('') }</section>
     </details>
   `).join('')
 }
 
-const renderPagesTab = (pageEntries, comparison) => {
+const renderPagesTab = (pageEntries, comparison, options = {}) => {
   const hasVariants = pageEntries.some(entry => entry.variant !== null)
   const sourceFilters = comparison ? buildSourceFilters(pageEntries, entry => entry.source) : []
 
   const cardsHtml = hasVariants
-    ? renderVariantGroupedCards(pageEntries)
-    : `<section class="page-list">${ pageEntries.map(renderPageCard).join('') }</section>`
+    ? renderVariantGroupedCards(pageEntries, options)
+    : `<section class="page-list">${ pageEntries.map(entry => renderPageCard(entry, options)).join('') }</section>`
 
   return renderIndexedSection({
     cardsHtml,
@@ -862,6 +862,7 @@ export const renderHtmlReport = (report) => {
   const summary = report.summary ?? buildSummary(report.pages)
   const comparison = report.comparison ?? null
   const pageEntries = buildPageEntries(report.pages)
+  const pageCardOptions = { hideResponseTime: Boolean(report.options?.hideResponseTime) }
   const generatedAtLabel = new Date(report.generatedAt).toLocaleString('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'medium',
@@ -1575,7 +1576,7 @@ export const renderHtmlReport = (report) => {
     ` : '' }
 
     <div class="tab-panel${ defaultTab !== 'pages' ? ' hidden' : '' }" id="tab-pages">
-      ${ renderPagesTab(pageEntries, comparison) }
+      ${ renderPagesTab(pageEntries, comparison, pageCardOptions) }
     </div>
   </main>
 
