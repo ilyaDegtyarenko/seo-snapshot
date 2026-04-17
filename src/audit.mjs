@@ -343,6 +343,16 @@ export const buildPageIssues = (page, rules) => {
     pushIssue(issues, 'info', 'missing_schema_organization', 'Homepage-like route is missing Organization JSON-LD.')
   }
 
+  const missingSchemaProperties = page.seo?.jsonLd?.missingRequiredProperties ?? []
+
+  if (missingSchemaProperties.length > 0) {
+    const summary = missingSchemaProperties
+      .map(issue => `${ issue.type }.${ issue.property }`)
+      .join(', ')
+
+    pushIssue(issues, 'warning', 'schema_missing_properties', `JSON-LD is missing required properties: ${ summary }.`)
+  }
+
   if (headerLlms && isSourceLocalUrl(headerLlms, page) === false) {
     pushIssue(issues, 'warning', 'llms_link_cross_domain', 'Response Link llms target points to a different host.')
   }

@@ -331,6 +331,23 @@ const buildJsonLdBlock = (value, pageUrl) => {
   }
 }
 
+const SCHEMA_REQUIRED_PROPERTIES = {
+  article: [ 'headline', 'author', 'datePublished' ],
+  newsarticle: [ 'headline', 'author', 'datePublished' ],
+  blogposting: [ 'headline', 'author', 'datePublished' ],
+  product: [ 'name' ],
+  offer: [ 'price', 'priceCurrency' ],
+  organization: [ 'name' ],
+  website: [ 'name', 'url' ],
+  person: [ 'name' ],
+  event: [ 'name', 'startDate' ],
+  localbusiness: [ 'name', 'address' ],
+  recipe: [ 'name' ],
+  videoobject: [ 'name', 'uploadDate' ],
+  breadcrumblist: [ 'itemListElement' ],
+  faqpage: [ 'mainEntity' ],
+}
+
 const normalizeJsonLdType = (value) => {
   const normalizedValue = normalizeAttributeValue(value)
 
@@ -341,6 +358,55 @@ const normalizeJsonLdType = (value) => {
   return normalizedValue
     .toLowerCase()
     .replace(/^https?:\/\/schema\.org\//, '')
+}
+
+const validateJsonLdRequiredProperties = (value, collector) => {
+  if (!value || typeof value !== 'object') {
+    return
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      validateJsonLdRequiredProperties(item, collector)
+    }
+
+    return
+  }
+
+  const rawType = value['@type']
+  const types = Array.isArray(rawType) ? rawType : (rawType ? [ rawType ] : [])
+
+  for (const type of types) {
+    const normalizedType = normalizeJsonLdType(type)
+    const requiredProperties = normalizedType ? SCHEMA_REQUIRED_PROPERTIES[normalizedType] : null
+
+    if (!requiredProperties) {
+      continue
+    }
+
+    for (const property of requiredProperties) {
+      if (value[property] === undefined || value[property] === null || value[property] === '') {
+        collector.push({
+          type: String(type),
+          property,
+        })
+      }
+    }
+  }
+
+  if (value['@graph']) {
+    validateJsonLdRequiredProperties(value['@graph'], collector)
+  }
+
+  for (const [ key, nestedValue ] of Object.entries(value)) {
+    if (key.startsWith('@')) {
+      continue
+    }
+
+    if (nestedValue && typeof nestedValue === 'object') {
+      validateJsonLdRequiredProperties(nestedValue, collector)
+    }
+  }
 }
 
 const getBodyTextLength = (html) => {
@@ -491,6 +557,7 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
   const ogLocaleAlternates = getMetaContentsByProperty(metaTags, 'og:locale:alternate')
   const jsonLdTypes = new Set()
   const jsonLdBlocks = []
+  const jsonLdMissingRequiredProperties = []
   let jsonLdParseErrors = 0
   let jsonLdScriptCount = 0
 
@@ -510,6 +577,7 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
 
       appendJsonLdTypes(parsedJson, jsonLdTypes)
       jsonLdBlocks.push(buildJsonLdBlock(parsedJson, pageUrl))
+      validateJsonLdRequiredProperties(parsedJson, jsonLdMissingRequiredProperties)
     } catch {
       jsonLdParseErrors += 1
     }
@@ -598,6 +666,7 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
       hasWebSite: jsonLdTypeSet.has('website'),
       hasOrganization: jsonLdTypeSet.has('organization'),
       blocks: jsonLdBlocks,
+      missingRequiredProperties: jsonLdMissingRequiredProperties,
       signatures: jsonLdBlocks.map(block => `${ block.hash } | ${ block.summary }`).sort(),
     },
     head: {

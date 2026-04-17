@@ -36,6 +36,7 @@ const createComparablePage = ({
   variantId = null,
   jsonLdHasOrganization = undefined,
   jsonLdHasWebSite = undefined,
+  jsonLdMissingRequiredProperties = [],
   jsonLdTypes = [],
   twitterCard = null,
   twitterDescription = null,
@@ -98,6 +99,7 @@ const createComparablePage = ({
     jsonLd: {
       hasWebSite: jsonLdHasWebSite,
       hasOrganization: jsonLdHasOrganization,
+      missingRequiredProperties: jsonLdMissingRequiredProperties,
       types: jsonLdTypes,
     },
   },
@@ -140,6 +142,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       ],
       jsonLdHasWebSite: true,
       jsonLdHasOrganization: true,
+      jsonLdMissingRequiredProperties: [],
       jsonLdTypes: [ 'NewsArticle' ],
       issues: [
         { code: 'missing_og_image', severity: 'info' },
@@ -181,6 +184,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       ],
       jsonLdHasWebSite: false,
       jsonLdHasOrganization: false,
+      jsonLdMissingRequiredProperties: [ { type: 'Article', property: 'author' } ],
       jsonLdTypes: [ 'Article' ],
       issues: [
         { code: 'noindex', severity: 'warning' },
@@ -213,6 +217,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
   assert.equal(differenceKeys.includes('jsonLdTypes'), true)
   assert.equal(differenceKeys.includes('jsonLdHasOrganization'), true)
   assert.equal(differenceKeys.includes('jsonLdHasWebSite'), true)
+  assert.equal(differenceKeys.includes('jsonLdMissingRequiredProperties'), true)
   assert.equal(differenceKeys.includes('linkHeaderCanonical'), true)
   assert.equal(differenceKeys.includes('linkHeaderCanonicalCrossDomain'), true)
   assert.equal(differenceKeys.includes('linkHeaderEntries'), true)

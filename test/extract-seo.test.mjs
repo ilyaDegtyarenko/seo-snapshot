@@ -120,3 +120,33 @@ test('extractSeoInfoFromHtml extracts heading hierarchy', () => {
 
   assert.deepEqual(result.document.headingHierarchy, [ 1, 2, 4, 2 ])
 })
+
+test('extractSeoInfoFromHtml detects missing required schema properties', () => {
+  const html = `<!doctype html>
+  <html lang="en">
+    <head>
+      <title>Schema test</title>
+      <script type="application/ld+json">
+        {"@context":"https://schema.org","@type":"Article","headline":"Test"}
+      </script>
+      <script type="application/ld+json">
+        {"@context":"https://schema.org","@type":"Product","name":"Widget","offers":{"@type":"Offer"}}
+      </script>
+    </head>
+    <body><h1>Test</h1></body>
+  </html>`
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/test')
+
+  assert.equal(Array.isArray(result.jsonLd.missingRequiredProperties), true)
+  assert.equal(result.jsonLd.missingRequiredProperties.length > 0, true)
+
+  const articleIssues = result.jsonLd.missingRequiredProperties.filter(issue => issue.type === 'Article')
+  const issuePairs = result.jsonLd.missingRequiredProperties.map(issue => `${ issue.type }.${ issue.property }`)
+
+  assert.equal(articleIssues.length > 0, true)
+  assert.equal(issuePairs.includes('Article.author'), true)
+  assert.equal(issuePairs.includes('Article.datePublished'), true)
+  assert.equal(issuePairs.includes('Offer.price'), true)
+  assert.equal(issuePairs.includes('Offer.priceCurrency'), true)
+})

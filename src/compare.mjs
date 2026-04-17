@@ -202,6 +202,19 @@ const normalizeJsonLdBlocks = (blocks) => {
   }), { sort: true })
 }
 
+const normalizeJsonLdMissingRequiredProperties = (issues) => {
+  if (!Array.isArray(issues)) {
+    return []
+  }
+
+  return normalizeList(issues.map(issue => {
+    const type = normalizeScalar(issue?.type) ?? 'Unknown'
+    const property = normalizeScalar(issue?.property) ?? 'unknown'
+
+    return `${ type }.${ property }`
+  }), { sort: true })
+}
+
 const getIssueCodes = (page) => {
   return normalizeList(page.issues?.map(issue => issue.code), { sort: true })
 }
@@ -530,6 +543,11 @@ const DIFFERENCE_SPECS = [
     key: 'jsonLdBlocks',
     label: 'JSON-LD blocks',
     getValue: page => normalizeJsonLdBlocks(page.seo?.jsonLd?.blocks),
+  },
+  {
+    key: 'jsonLdMissingRequiredProperties',
+    label: 'JSON-LD missing required properties',
+    getValue: page => normalizeJsonLdMissingRequiredProperties(page.seo?.jsonLd?.missingRequiredProperties),
   },
   {
     key: 'headDuplicates',
