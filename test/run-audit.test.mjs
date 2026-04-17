@@ -112,3 +112,38 @@ test('runAudit records responseTimeMs for each page', async (context) => {
   assert.equal(typeof result.report.pages[0].responseTimeMs, 'number')
   assert.equal(result.report.pages[0].responseTimeMs >= 0, true)
 })
+
+test('runAudit captures security headers from response', async (context) => {
+  const tempDir = await createTempDir()
+  const originalFetch = globalThis.fetch
+
+  context.after(async () => {
+    globalThis.fetch = originalFetch
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  globalThis.fetch = async () => {
+    return new Response('<!doctype html><html><head><title>Sec</title></head><body><h1>Hi</h1><p>content text</p></body></html>', {
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'content-security-policy': "default-src 'self'",
+        'x-frame-options': 'DENY',
+      },
+    })
+  }
+
+  const result = await runAudit({}, {
+    cwd: tempDir,
+    env: {
+      SEO_SNAPSHOT_CONFIG: JSON.stringify({
+        baseUrl: 'https://example.com',
+        targets: [ '/' ],
+        output: { dir: './reports', formats: [ 'json' ] },
+      }),
+    },
+  })
+
+  assert.equal(result.report.pages[0].headers.contentSecurityPolicy, "default-src 'self'")
+  assert.equal(result.report.pages[0].headers.xFrameOptions, 'DENY')
+})

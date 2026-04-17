@@ -270,6 +270,16 @@ const DIFFERENCE_SPECS = [
     getValue: page => normalizeRobotsValue(page.headers?.xRobotsTag),
   },
   {
+    key: 'contentSecurityPolicy',
+    label: 'Content-Security-Policy',
+    getValue: page => normalizeScalar(page.headers?.contentSecurityPolicy),
+  },
+  {
+    key: 'xFrameOptions',
+    label: 'X-Frame-Options',
+    getValue: page => normalizeScalar(page.headers?.xFrameOptions),
+  },
+  {
     key: 'linkHeaderCanonical',
     label: 'Link header canonical',
     getValue: page => normalizeComparableUrl(page.headers?.links?.canonical, page),

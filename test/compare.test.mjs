@@ -38,6 +38,8 @@ const createComparablePage = ({
   twitterDescription = null,
   twitterImage = null,
   twitterTitle = null,
+  contentSecurityPolicy = null,
+  xFrameOptions = null,
   xRobotsTag = null,
 }) => ({
   input,
@@ -51,6 +53,8 @@ const createComparablePage = ({
   error: null,
   parseSkippedReason: null,
   headers: {
+    contentSecurityPolicy,
+    xFrameOptions,
     xRobotsTag,
     links: {
       canonical: headerCanonical,
@@ -117,6 +121,8 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       twitterTitle: 'Prod twitter title',
       twitterDescription: 'Prod twitter description',
       twitterImage: 'https://www.example.com/twitter.jpg',
+      contentSecurityPolicy: "default-src 'self'",
+      xFrameOptions: 'SAMEORIGIN',
       headerCanonical: 'https://www.example.com/news',
       headerLlms: 'https://www.example.com/llms.txt',
       headerLinkEntries: [
@@ -151,6 +157,8 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       twitterTitle: 'Stage twitter title',
       twitterDescription: 'Stage twitter description',
       twitterImage: 'https://stage.example.com/twitter.jpg',
+      contentSecurityPolicy: "default-src 'none'",
+      xFrameOptions: 'DENY',
       robots: null,
       xRobotsTag: 'noindex',
       headerCanonical: 'https://www.example.com/news',
@@ -181,6 +189,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
 
   assert.equal(differenceKeys.includes('bodyTextLength'), true)
   assert.equal(differenceKeys.includes('canonical'), true)
+  assert.equal(differenceKeys.includes('contentSecurityPolicy'), true)
   assert.equal(differenceKeys.includes('description'), true)
   assert.equal(differenceKeys.includes('finalUrl'), true)
   assert.equal(differenceKeys.includes('h1'), true)
@@ -203,6 +212,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
   assert.equal(differenceKeys.includes('twitterDescription'), true)
   assert.equal(differenceKeys.includes('twitterImage'), true)
   assert.equal(differenceKeys.includes('twitterTitle'), true)
+  assert.equal(differenceKeys.includes('xFrameOptions'), true)
   assert.equal(differenceKeys.includes('xRobotsTag'), true)
 })
 

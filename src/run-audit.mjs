@@ -33,6 +33,8 @@ const buildHeaderDetails = (response, finalUrl) => {
   const contentType = response.headers.get('content-type')
   const contentLength = response.headers.get('content-length')
   const xRobotsTag = response.headers.get('x-robots-tag')
+  const contentSecurityPolicy = response.headers.get('content-security-policy')
+  const xFrameOptions = response.headers.get('x-frame-options')
   const link = response.headers.get('link')
   const linkEntries = parseLinkHeader(link, finalUrl)
   const findLinkByRel = rel => linkEntries.find(entry => entry.relTokens?.includes(rel))?.href ?? null
@@ -41,6 +43,8 @@ const buildHeaderDetails = (response, finalUrl) => {
     contentType,
     contentLength,
     xRobotsTag,
+    contentSecurityPolicy,
+    xFrameOptions,
     link,
     links: {
       entries: linkEntries,
@@ -102,6 +106,8 @@ const buildPageReport = async (target, requestOptions) => {
         contentType: null,
         contentLength: null,
         xRobotsTag: null,
+        contentSecurityPolicy: null,
+        xFrameOptions: null,
         link: null,
         links: {
           entries: [],
