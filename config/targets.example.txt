@@ -3,7 +3,5 @@
 
 # Main routes
 /
-/tv
-/movie
-/cartoons
-/collections
+/about
+/contact

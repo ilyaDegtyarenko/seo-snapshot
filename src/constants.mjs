@@ -1,4 +1,5 @@
 export const DEFAULT_CONFIG_PATH = 'config/seo-snapshot.config.mjs'
+export const DEFAULT_LOCAL_CONFIG_PATH = 'config/seo-snapshot.local.mjs'
 export const DEFAULT_REPORTS_DIR = 'reports'
 export const DEFAULT_TIMEOUT_MS = 15_000
 export const DEFAULT_MAX_REDIRECTS = 10
@@ -36,6 +37,14 @@ Options:
   --open                  Open the HTML report in the default browser after generation.
   --profile <name>        Activate a named profile from config.profiles.
   --help                  Show this help.
+
+Config loading order:
+  - ${ DEFAULT_CONFIG_PATH } when present
+  - companion local config (for example ${ DEFAULT_LOCAL_CONFIG_PATH }) when present
+  - ${ ENV_CONFIG_JSON_VAR }
+  - config.profiles[SEO_SNAPSHOT_PROFILE]
+  - individual SEO_SNAPSHOT_* overrides
+  - CLI flags
 
 Environment:
   ${ ENV_CONFIG_PATH_VAR }     Config file path alternative to --config.

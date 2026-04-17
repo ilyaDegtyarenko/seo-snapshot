@@ -41,9 +41,13 @@ pnpm run snapshot
 
 Typical local setup:
 
-1. Copy `config/targets.example.txt` to `config/targets.txt` if you want a local text target list.
-2. Adjust `config/seo-snapshot.config.mjs`.
-3. Run `pnpm run snapshot`.
+1. Keep shared defaults in `config/seo-snapshot.config.mjs`.
+2. Copy `config/seo-snapshot.local.example.mjs` to `config/seo-snapshot.local.mjs` for local structured overrides.
+3. Copy `config/targets.example.txt` to `config/targets.txt` if you want a local text target list.
+4. Put secrets or small toggles in `.env` only when needed.
+5. Run `pnpm run snapshot`.
+
+The main example file for user overrides is `config/seo-snapshot.local.example.mjs`.
 
 During the crawl the CLI writes per-target progress lines to `stderr`. After each run it prints a short English summary and a `file://` link to the main report. The process exits with code `1` if at least one page fails to fetch or returns `>= 400`.
 
@@ -86,6 +90,22 @@ Additional CLI behaviors:
 
 `pnpm run snapshot` loads `.env` from the project root automatically via Node's `--env-file-if-exists`.
 
+Recommended split:
+
+- `config/seo-snapshot.config.mjs`: committed team-wide defaults and reusable profiles
+- `config/seo-snapshot.local.mjs`: ignored local structured overrides such as `baseUrl`, `compare.baseUrl`, `targetsFile`, or User-Agent variants
+- `.env`: ignored secrets and small scalar toggles such as cookies, headers, `SEO_SNAPSHOT_OPEN`, and one-off overrides
+- CLI flags: one-shot per-run overrides
+
+Config precedence:
+
+1. `config/seo-snapshot.config.mjs`
+2. companion local config such as `config/seo-snapshot.local.mjs`
+3. `SEO_SNAPSHOT_CONFIG`
+4. selected `config.profiles[...]`
+5. individual `SEO_SNAPSHOT_*` overrides
+6. CLI flags
+
 Basic run via env:
 
 ```bash
@@ -119,6 +139,8 @@ SEO_SNAPSHOT_AUDIT_IGNORE='["missing_twitter_card","missing_og_image"]'
 ```
 
 See `.env.example` for the full list.
+
+For complex local settings, prefer `config/seo-snapshot.local.mjs` over JSON-in-env strings.
 
 Alternatively, pass variables inline in two ways.
 
@@ -168,23 +190,33 @@ Supported overrides:
 
 ## Config
 
-Example `config/seo-snapshot.config.mjs`:
+Minimal committed `config/seo-snapshot.config.mjs`:
 
 ```js
 export default {
-  baseUrl: { url: 'http://127.0.0.1:3000', label: 'local' }, // or a plain string
+  // Committed project defaults belong here.
+  // Put machine-specific settings in ./seo-snapshot.local.mjs.
+  targetsFile: './targets.txt',
+}
+```
+
+Full example for the user overlay in `config/seo-snapshot.local.example.mjs`:
+
+```js
+export default {
+  baseUrl: { url: 'http://127.0.0.1:3000', label: 'Local' }, // or a plain string
   compare: {
-    baseUrl: { label: 'stage', url: 'https://stage.example.com' },
+    baseUrl: { url: 'https://www.example.com', label: 'Prod' },
   },
   profiles: {
     staging: {
-      baseUrl: { url: 'https://staging.example.com', label: 'staging' },
+      baseUrl: { url: 'https://staging.example.com', label: 'Staging' },
       compare: {
-        baseUrl: { label: 'prod', url: 'https://www.example.com' },
+        baseUrl: { url: 'https://www.example.com', label: 'Prod' },
       },
     },
   },
-  targetsFile: './targets.txt', // or './targets.local.xml' for a sitemap export
+  targetsFile: './targets.local.xml', // or './targets.txt' for a local text list
   targets: [
     '/',
     '/news',
@@ -214,6 +246,8 @@ export default {
   },
 }
 ```
+
+Copy it to `config/seo-snapshot.local.mjs` and trim it down to the settings you actually need. When `config/seo-snapshot.local.mjs` exists, it is merged automatically and should be the main place for developer-specific setup. This keeps the committed config stable and avoids carrying local settings as uncommitted tracked changes.
 
 Comparison mode notes:
 
@@ -246,6 +280,7 @@ The following fields are compared between domains:
 Recommended local setup for targets:
 
 - keep `config/targets.txt` ignored and local-only
+- keep `config/seo-snapshot.local.mjs` ignored and local-only
 - commit `config/targets.example.txt` as the shared template
 - for sitemap exports, point `targetsFile` to a local XML file such as `./targets.local.xml`
 
