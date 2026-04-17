@@ -27,12 +27,6 @@ test('parseArgs enables labeled variants when --user-agent is repeated', () => {
   ])
 })
 
-test('parseArgs recognizes --diff-only flag', () => {
-  const options = parseArgs([ '--diff-only' ])
-
-  assert.equal(options.diffOnly, true)
-})
-
 test('parseArgs recognizes --open flag', () => {
   const options = parseArgs([ '--open' ])
 

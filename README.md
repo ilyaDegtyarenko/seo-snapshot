@@ -13,7 +13,7 @@ A small CLI for checking the SEO state of a URL set. The tool crawls pages, capt
 - collect document metrics such as image counts, missing `alt` attributes, internal links, and heading hierarchy
 - check title, description, canonical, H1, `lang`, robots directives, response `Link` headers, `hreflang`, OpenGraph, Twitter Card, JSON-LD, and visible body text
 - detect page-level issues, duplicate head tags, and produce an overall issue breakdown
-- support named config profiles, diff-only comparison output, browser auto-open, audit-code suppression, custom cookies, and custom request headers
+- support named config profiles, browser auto-open, audit-code suppression, custom cookies, and custom request headers
 - write per-page crawl progress to `stderr` and save reports to `reports/`
 
 ## Requirements
@@ -70,7 +70,6 @@ pnpm run snapshot -- \
   --max-redirects 10 \
   --concurrency 4 \
   --profile staging \
-  --diff-only \
   --open \
   --user-agent "Desktop=Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)" \
   --user-agent "Mobile=Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"
@@ -80,7 +79,6 @@ Repeated `--user-agent` flags enable variants. Each target is fetched once per v
 
 Additional CLI behaviors:
 
-- `--diff-only` keeps only changed comparison cards in comparison mode
 - `--open` opens the generated HTML report in the default browser if HTML output is enabled
 - `--profile <name>` applies `config.profiles[name]` before env overrides
 
@@ -111,11 +109,10 @@ SEO_SNAPSHOT_REQUEST_USER_AGENT='[{"label":"Desktop","userAgent":"Mozilla/5.0 (M
 SEO_SNAPSHOT_REQUEST_COOKIES='{"session":"abc123","token":"xyz"}'
 ```
 
-Headers, profile, diff-only, and suppressed issue codes via env:
+Headers, profile, and suppressed issue codes via env:
 
 ```bash
 SEO_SNAPSHOT_PROFILE=staging
-SEO_SNAPSHOT_DIFF_ONLY=true
 SEO_SNAPSHOT_OPEN=true
 SEO_SNAPSHOT_REQUEST_HEADERS='{"Authorization":"Bearer token","X-Custom":"value"}'
 SEO_SNAPSHOT_AUDIT_IGNORE='["missing_twitter_card","missing_og_image"]'
@@ -160,7 +157,6 @@ Supported overrides:
 - `SEO_SNAPSHOT_REQUEST_USER_AGENT` as a single string or a JSON array of `{ "label": "...", "userAgent": "..." }`
 - `SEO_SNAPSHOT_REQUEST_COOKIES` as a header string or `{ "key": "value" }` JSON object
 - `SEO_SNAPSHOT_REQUEST_HEADERS` as a JSON object
-- `SEO_SNAPSHOT_DIFF_ONLY`
 - `SEO_SNAPSHOT_OPEN`
 - `SEO_SNAPSHOT_PROFILE`
 - `SEO_SNAPSHOT_AUDIT_MIN_TITLE_LENGTH`
@@ -177,7 +173,6 @@ Example `config/seo-snapshot.config.mjs`:
 ```js
 export default {
   baseUrl: { url: 'http://127.0.0.1:3000', label: 'local' }, // or a plain string
-  diffOnly: false,
   compare: {
     baseUrl: { label: 'stage', url: 'https://stage.example.com' },
   },
@@ -227,7 +222,6 @@ Comparison mode notes:
 - `baseUrl` is used as the primary domain.
 - The same target path is fetched on both domains and the report adds a dedicated diff section.
 - Absolute targets are normalized to `pathname + search + hash` before they are replayed on both domains.
-- `diffOnly` only filters the comparison block; the page crawl still runs for all configured targets.
 
 The following fields are compared between domains:
 

@@ -1,6 +1,5 @@
 export default {
   baseUrl: 'http://127.0.0.1:3000',
-  // diffOnly: true,
   // compare: {
   //   baseUrl: { label: 'stage', url: 'https://stage.example.com' },
   // },

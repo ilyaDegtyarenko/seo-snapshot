@@ -423,7 +423,9 @@ const getBodyTextLength = (html) => {
 }
 
 const countImages = (html) => {
-  const imgTags = findTagAttributes(String(html || ''), 'img')
+  const bodyMatch = String(html || '').match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)
+  const bodyHtml = bodyMatch?.[1] ?? ''
+  const imgTags = findTagAttributes(bodyHtml, 'img')
   let imagesWithoutAlt = 0
 
   for (const attributes of imgTags) {

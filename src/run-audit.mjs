@@ -6,8 +6,7 @@ import { buildRuntimeOptions, readSeoConfig, resolveTargets } from './config.mjs
 import { extractSeoInfoFromHtml } from './extract-seo.mjs'
 import { fetchWithRedirects, isHtmlResponse } from './fetch-page.mjs'
 import { renderHtmlReport, renderJsonReport } from './reporters.mjs'
-import { parseLinkHeader } from './utils.mjs'
-import { formatTimestamp } from './utils.mjs'
+import { parseLinkHeader, formatTimestamp } from './utils.mjs'
 
 const mapWithConcurrency = async (items, concurrency, worker) => {
   const results = new Array(items.length)
@@ -159,7 +158,6 @@ export const runAudit = async (cliOptions, runtime = {}) => {
     configDir,
     cliOptions,
   })
-  const diffOnly = cliOptions.diffOnly || config.diffOnly || false
   const baseTargets = await resolveTargets(config, configDir)
   const targets = runtimeOptions.variants
     ? baseTargets.flatMap(target => runtimeOptions.variants.map(variant => ({ ...target, variant })))
@@ -186,13 +184,6 @@ export const runAudit = async (cliOptions, runtime = {}) => {
   const summary = buildSummary(pages)
   const comparison = buildComparisonReport(pages, runtimeOptions.compare)
 
-  if (diffOnly && comparison) {
-    comparison.comparisons = comparison.comparisons.filter(comparisonItem => comparisonItem.differences.length > 0)
-    comparison.targetCount = comparison.comparisons.length
-    comparison.variants = [ ...new Set(comparison.comparisons.map(c => c.variant).filter(Boolean)) ]
-    comparison.variants = comparison.variants.length > 0 ? comparison.variants : null
-  }
-
   const report = {
     generatedAt: new Date().toISOString(),
     options: {
@@ -207,7 +198,6 @@ export const runAudit = async (cliOptions, runtime = {}) => {
       targetCount: targets.length,
       formats: runtimeOptions.output.formats,
       outputDir: runtimeOptions.output.dir,
-      diffOnly,
       audit: runtimeOptions.audit,
     },
     summary,

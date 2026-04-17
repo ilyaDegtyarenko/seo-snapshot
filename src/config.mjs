@@ -251,7 +251,6 @@ const ENV_OVERRIDE_MAPPINGS = [
   [ 'SEO_SNAPSHOT_REQUEST_USER_AGENT', [ 'request', 'userAgent' ], parseEnvUserAgent ],
   [ 'SEO_SNAPSHOT_REQUEST_COOKIES', [ 'request', 'cookies' ], parseEnvCookies ],
   [ 'SEO_SNAPSHOT_REQUEST_HEADERS', [ 'request', 'headers' ], (value, envName) => parseJsonObjectEnv(value, envName) ],
-  [ 'SEO_SNAPSHOT_DIFF_ONLY', [ 'diffOnly' ], (value) => String(value).trim().toLowerCase() === 'true' ],
   [ 'SEO_SNAPSHOT_AUDIT_MIN_TITLE_LENGTH', [ 'audit', 'minTitleLength' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_AUDIT_MAX_TITLE_LENGTH', [ 'audit', 'maxTitleLength' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_AUDIT_MIN_DESCRIPTION_LENGTH', [ 'audit', 'minDescriptionLength' ], parseEnvPositiveInt ],

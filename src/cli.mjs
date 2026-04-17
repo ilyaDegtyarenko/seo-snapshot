@@ -1,4 +1,4 @@
-import { exec } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 import {
@@ -62,7 +62,6 @@ export const parseArgs = (argv) => {
     concurrency: undefined,
     userAgent: undefined,
     formats: undefined,
-    diffOnly: false,
     open: false,
     profile: undefined,
   }
@@ -104,9 +103,6 @@ export const parseArgs = (argv) => {
       case '--user-agent':
         userAgentValues.push(readOptionValue(argv, index, arg))
         index += 1
-        break
-      case '--diff-only':
-        options.diffOnly = true
         break
       case '--open':
         options.open = true
@@ -164,7 +160,7 @@ export const runCli = async (argv = process.argv.slice(2)) => {
   if (shouldOpen && result.htmlOutputPath) {
     const openCommand = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open'
 
-    exec(`${ openCommand } ${ JSON.stringify(result.htmlOutputPath) }`, () => {})
+    execFile(openCommand, [ result.htmlOutputPath ], () => {})
   }
 
   if (result.hasFailures) {

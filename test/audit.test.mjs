@@ -369,6 +369,53 @@ test('buildPageIssues detects missing required schema properties', () => {
   assert.equal(codes.includes('schema_missing_properties'), true)
 })
 
+test('buildPageIssues detects images missing alt attribute', () => {
+  const page = {
+    targetPath: '/test',
+    status: 200,
+    error: null,
+    parseSkippedReason: null,
+    headers: {
+      xRobotsTag: null,
+      links: { canonical: null, llms: null },
+    },
+    seo: {
+      document: {
+        title: 'A page title long enough',
+        h1: [ 'Hello' ],
+        lang: 'en',
+        bodyTextLength: 500,
+        imageCount: 2,
+        imagesWithoutAlt: 2,
+        internalLinkCount: 0,
+        headingHierarchy: [ 1, 2 ],
+      },
+      meta: {
+        description: 'A description that is long enough for audit to pass the minimum length check.',
+        robots: 'index,follow',
+        openGraph: { title: 'OG', description: 'OG desc', image: '/img.jpg' },
+        twitter: { card: 'summary' },
+      },
+      links: {
+        canonical: 'https://example.com/test',
+        alternates: [],
+      },
+      jsonLd: {
+        scriptCount: 0,
+        parseErrors: 0,
+        hasWebSite: false,
+        hasOrganization: false,
+      },
+      head: { duplicates: [] },
+    },
+  }
+
+  const issues = buildPageIssues(page, DEFAULT_AUDIT_RULES)
+  const codes = issues.map(issue => issue.code)
+
+  assert.equal(codes.includes('images_missing_alt'), true)
+})
+
 test('buildPageIssues filters out ignored issue codes', () => {
   const page = {
     targetPath: '/',

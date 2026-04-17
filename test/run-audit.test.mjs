@@ -184,53 +184,6 @@ test('runAudit emits progress messages via onProgress callback', async (context)
   assert.match(progressMessages[1], /\[2\/2\]/)
 })
 
-test('runAudit filters comparison output when diffOnly is enabled', async (context) => {
-  const tempDir = await createTempDir()
-  const originalFetch = globalThis.fetch
-  const originalDateNow = Date.now
-
-  context.after(async () => {
-    globalThis.fetch = originalFetch
-    Date.now = originalDateNow
-    await rm(tempDir, { recursive: true, force: true })
-  })
-
-  Date.now = () => 1_000
-
-  globalThis.fetch = async (url) => {
-    const currentUrl = new URL(String(url))
-    const isDifferentPath = currentUrl.pathname === '/different'
-    const title = isDifferentPath && currentUrl.host === 'stage.example.com'
-      ? 'Different Stage Title'
-      : 'Shared Title'
-    const description = `${ title } ${ 'content '.repeat(20).trim() }`
-
-    return new Response(`<!doctype html><html lang="en"><head><title>${ title }</title><meta name="description" content="${ description }"></head><body><h1>${ title }</h1><p>${ 'content '.repeat(80).trim() }</p></body></html>`, {
-      status: 200,
-      headers: { 'content-type': 'text/html' },
-    })
-  }
-
-  const result = await runAudit({ diffOnly: true }, {
-    cwd: tempDir,
-    env: {
-      SEO_SNAPSHOT_CONFIG: JSON.stringify({
-        baseUrl: 'https://www.example.com',
-        compare: {
-          baseUrl: 'https://stage.example.com',
-        },
-        targets: [ '/same', '/different' ],
-        output: { dir: './reports', formats: [ 'json' ] },
-      }),
-    },
-  })
-
-  assert.equal(result.report.options.diffOnly, true)
-  assert.equal(result.report.comparison.targetCount, 1)
-  assert.equal(result.report.comparison.comparisons.length, 1)
-  assert.equal(result.report.comparison.comparisons[0].targetPath, '/different')
-})
-
 test('runAudit passes custom request headers to fetch', async (context) => {
   const tempDir = await createTempDir()
   const originalFetch = globalThis.fetch
