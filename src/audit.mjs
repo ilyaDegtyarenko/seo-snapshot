@@ -231,6 +231,21 @@ export const buildPageIssues = (page, rules) => {
     pushIssue(issues, 'warning', 'canonical_cross_domain', 'Canonical points to a different host.')
   }
 
+  if (canonical && page.finalUrl) {
+    try {
+      const canonicalPath = new URL(canonical).pathname
+      const finalPath = new URL(page.finalUrl).pathname
+      const canonicalHasTrailing = canonicalPath.length > 1 && canonicalPath.endsWith('/')
+      const finalHasTrailing = finalPath.length > 1 && finalPath.endsWith('/')
+
+      if (canonicalHasTrailing !== finalHasTrailing) {
+        pushIssue(issues, 'warning', 'canonical_trailing_slash_mismatch', 'Canonical URL trailing slash does not match the page URL.')
+      }
+    } catch {
+      // skip if either URL is unparseable
+    }
+  }
+
   if (headerCanonical && canonical) {
     let normalizedHeaderCanonical = headerCanonical
     let normalizedHtmlCanonical = canonical

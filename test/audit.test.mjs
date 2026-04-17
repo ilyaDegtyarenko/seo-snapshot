@@ -221,3 +221,51 @@ test('buildPageIssues detects heading hierarchy skip', () => {
 
   assert.equal(codes.includes('heading_hierarchy_skip'), true)
 })
+
+test('buildPageIssues detects trailing slash mismatch between canonical and final URL', () => {
+  const page = {
+    targetPath: '/catalog',
+    finalUrl: 'https://example.com/catalog',
+    status: 200,
+    error: null,
+    parseSkippedReason: null,
+    headers: {
+      xRobotsTag: null,
+      links: { canonical: null, llms: null },
+    },
+    seo: {
+      document: {
+        title: 'A page title long enough',
+        h1: [ 'Catalog' ],
+        lang: 'en',
+        bodyTextLength: 500,
+        imageCount: 0,
+        imagesWithoutAlt: 0,
+        internalLinkCount: 0,
+        headingHierarchy: [ 1, 2 ],
+      },
+      meta: {
+        description: 'A description that is long enough for audit to pass the minimum length check.',
+        robots: 'index,follow',
+        openGraph: { title: 'OG', description: 'OG desc', image: '/img.jpg' },
+        twitter: { card: 'summary' },
+      },
+      links: {
+        canonical: 'https://example.com/catalog/',
+        alternates: [],
+      },
+      jsonLd: {
+        scriptCount: 1,
+        parseErrors: 0,
+        hasWebSite: false,
+        hasOrganization: false,
+      },
+      head: { duplicates: [] },
+    },
+  }
+
+  const issues = buildPageIssues(page, DEFAULT_AUDIT_RULES)
+  const codes = issues.map(issue => issue.code)
+
+  assert.equal(codes.includes('canonical_trailing_slash_mismatch'), true)
+})
