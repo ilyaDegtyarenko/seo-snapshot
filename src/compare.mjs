@@ -593,8 +593,12 @@ const buildIssueDelta = (leftPage, rightPage) => {
   }
 }
 
-const buildDifferences = (leftPage, rightPage) => {
-  return DIFFERENCE_SPECS.flatMap((spec) => {
+const buildDifferences = (leftPage, rightPage, hideResponseTime = false) => {
+  const specs = hideResponseTime
+    ? DIFFERENCE_SPECS.filter(spec => spec.key !== 'responseTimeMs')
+    : DIFFERENCE_SPECS
+
+  return specs.flatMap((spec) => {
     const leftValue = spec.getValue(leftPage)
     const rightValue = spec.getValue(rightPage)
 
@@ -611,7 +615,7 @@ const buildDifferences = (leftPage, rightPage) => {
   })
 }
 
-export const buildComparisonReport = (pages, compareOptions) => {
+export const buildComparisonReport = (pages, compareOptions, hideResponseTime = false) => {
   if (!compareOptions?.sources || compareOptions.sources.length !== 2) {
     return null
   }
@@ -648,7 +652,7 @@ export const buildComparisonReport = (pages, compareOptions) => {
       continue
     }
 
-    const differences = buildDifferences(leftPage, rightPage)
+    const differences = buildDifferences(leftPage, rightPage, hideResponseTime)
     const issueDelta = buildIssueDelta(leftPage, rightPage)
 
     for (const difference of differences) {

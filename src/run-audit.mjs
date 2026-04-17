@@ -183,7 +183,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
     }
   })
   const summary = buildSummary(pages)
-  const comparison = buildComparisonReport(pages, runtimeOptions.compare)
+  const comparison = buildComparisonReport(pages, runtimeOptions.compare, runtimeOptions.output.hideResponseTime)
 
   const report = {
     generatedAt: new Date().toISOString(),
