@@ -9,7 +9,7 @@ A small CLI for checking the SEO state of a URL set. The tool crawls pages, capt
 - compare the same target path across a primary and secondary domain and show SEO differences
 - repeat the audit per User-Agent variant and keep variant labels in the reports
 - follow redirects and store the redirect chain
-- measure response time and capture security headers such as `Content-Security-Policy` and `X-Frame-Options`
+- measure TTFB and capture security headers such as `Content-Security-Policy` and `X-Frame-Options`
 - collect document metrics such as image counts, missing `alt` attributes, internal links, and heading hierarchy
 - check title, description, canonical, H1, `lang`, robots directives, response `Link` headers, `hreflang`, OpenGraph, Twitter Card, JSON-LD, and visible body text
 - detect page-level issues, duplicate head tags, and produce an overall issue breakdown
@@ -174,7 +174,7 @@ Supported overrides:
 - `SEO_SNAPSHOT_TARGETS` as a JSON array or comma/newline-separated list
 - `SEO_SNAPSHOT_OUTPUT_DIR`
 - `SEO_SNAPSHOT_OUTPUT_FORMATS`
-- `SEO_SNAPSHOT_OUTPUT_HIDE_RESPONSE_TIME` as `true` or `false`
+- `SEO_SNAPSHOT_OUTPUT_HIDE_TTFB` as `true` or `false`
 - `SEO_SNAPSHOT_REQUEST_TIMEOUT_MS`
 - `SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS`
 - `SEO_SNAPSHOT_REQUEST_CONCURRENCY`
@@ -217,7 +217,7 @@ export default {
   output: {
     dir: '../reports',
     formats: [ 'html', 'json' ],
-    hideResponseTime: false,
+    hideTtfb: false,
   },
   request: {
     timeoutMs: 15_000,
@@ -302,7 +302,7 @@ export default {
 
 Copy it to `config/seo-snapshot.mjs` and trim it down to the settings you actually need. `config/seo-snapshot.mjs` is the runtime config file loaded by default; there is no automatic `.local` overlay anymore. This keeps the committed template stable while real machine-specific settings stay ignored.
 
-`output.hideResponseTime` — set to `true` to omit the Response time field from all page cards in the HTML report. Useful when response times are not meaningful (e.g. local dev, CI environments). Defaults to `false`.
+`output.hideTtfb` — set to `true` to omit the TTFB field from page cards and comparison diffs. Useful when TTFB is not meaningful (e.g. local dev, CI environments). Defaults to `false`.
 
 Comparison mode notes:
 
@@ -315,7 +315,7 @@ Comparison mode notes:
 The following fields are compared between domains:
 
 - fetch error, parse-skipped reason
-- HTTP status, response time, final URL (path-normalized for source-local URLs)
+- HTTP status, TTFB, final URL (path-normalized for source-local URLs)
 - charset, title, meta description, canonical (path-normalized), canonical cross-domain flag
 - meta robots, `X-Robots-Tag`, `Content-Security-Policy`, `X-Frame-Options`
 - response `Link` header canonical, canonical cross-domain flag, `llms`, and parsed header entries
@@ -350,7 +350,7 @@ Each page record contains:
 - source domain label in compare mode
 - variant label and variant ID when User-Agent variants are enabled
 - page status and fetch errors
-- response time in milliseconds
+- TTFB in milliseconds
 - redirect chain
 - extracted SEO, security, and crawl metrics (see below)
 - parse-skipped reason for non-HTML responses
@@ -390,7 +390,7 @@ Some of the following fields are display-only, while others are also used by aud
 
 The following fields are collected and shown in the report:
 
-- response time, `charset`, `Content-Language`, viewport value, application name, theme color
+- TTFB, `charset`, `Content-Language`, viewport value, application name, theme color
 - `Content-Security-Policy`, `X-Frame-Options`
 - raw response `Link` header plus parsed relation entries
 - manifest URL, favicon, all icon links

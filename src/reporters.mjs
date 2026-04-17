@@ -5,6 +5,10 @@ const renderBadge = (label, tone = 'neutral') => {
   return `<span class="badge badge-${ tone }">${ escapeHtml(label) }</span>`
 }
 
+const getTtfbMs = (page) => {
+  return page.ttfbMs ?? null
+}
+
 const renderKeyValueRow = (label, value) => {
   const normalizedValue = (value === null || value === undefined || value === '')
     ? '<span class="muted">-</span>'
@@ -521,7 +525,7 @@ const renderPageCard = (entry, options = {}) => {
         ${ renderKeyValueRow('Final URL', page.finalUrl) }
         ${ renderKeyValueRow('Content-Type', page.headers.contentType) }
         ${ renderKeyValueRow('Content-Length', page.headers.contentLength) }
-        ${ options.hideResponseTime ? '' : renderKeyValueRow('Response time', page.responseTimeMs !== null && page.responseTimeMs !== undefined ? `${ page.responseTimeMs } ms` : null) }
+        ${ options.hideTtfb ? '' : renderKeyValueRow('TTFB', getTtfbMs(page) !== null ? `${ getTtfbMs(page) } ms` : null) }
         ${ renderKeyValueRow('Charset', page.seo?.meta.charset) }
         ${ renderKeyValueRow('Title', page.seo?.document.title) }
         ${ renderKeyValueRow('Description', page.seo?.meta.description) }
@@ -862,7 +866,7 @@ export const renderHtmlReport = (report) => {
   const summary = report.summary ?? buildSummary(report.pages)
   const comparison = report.comparison ?? null
   const pageEntries = buildPageEntries(report.pages)
-  const pageCardOptions = { hideResponseTime: Boolean(report.options?.hideResponseTime) }
+  const pageCardOptions = { hideTtfb: Boolean(report.options?.hideTtfb) }
   const generatedAtLabel = new Date(report.generatedAt).toLocaleString('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'medium',

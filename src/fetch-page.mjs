@@ -1,3 +1,4 @@
+import { performance } from 'node:perf_hooks'
 import { HTML_CONTENT_TYPE_PATTERN } from './constants.mjs'
 import { resolveMaybeUrl } from './utils.mjs'
 
@@ -13,10 +14,14 @@ export const isHtmlResponse = (contentType, body) => {
     || normalizedBody.includes('<head')
 }
 
+const toDurationMs = (startTime) => {
+  return Math.max(0, Math.round(performance.now() - startTime))
+}
+
 export const fetchWithRedirects = async (url, options) => {
   let currentUrl = url
   const redirectChain = []
-  const startTime = Date.now()
+  const startTime = performance.now()
 
   for (let step = 0; step <= options.maxRedirects; step += 1) {
     const response = await fetch(currentUrl, {
@@ -40,12 +45,14 @@ export const fetchWithRedirects = async (url, options) => {
     })
 
     if (!locationHeader || ![ 301, 302, 303, 307, 308 ].includes(response.status)) {
+      const ttfbMs = toDurationMs(startTime)
+
       return {
         finalUrl: currentUrl,
         redirectChain,
         response,
         body: await response.text(),
-        responseTimeMs: Date.now() - startTime,
+        ttfbMs,
       }
     }
 

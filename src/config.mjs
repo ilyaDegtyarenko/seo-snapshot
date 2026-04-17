@@ -254,7 +254,7 @@ const ENV_OVERRIDE_MAPPINGS = [
   [ 'SEO_SNAPSHOT_TARGETS', [ 'targets' ], parseEnvList ],
   [ 'SEO_SNAPSHOT_OUTPUT_DIR', [ 'output', 'dir' ], parseEnvString ],
   [ 'SEO_SNAPSHOT_OUTPUT_FORMATS', [ 'output', 'formats' ], parseEnvList ],
-  [ 'SEO_SNAPSHOT_OUTPUT_HIDE_RESPONSE_TIME', [ 'output', 'hideResponseTime' ], parseEnvBoolean ],
+  [ 'SEO_SNAPSHOT_OUTPUT_HIDE_TTFB', [ 'output', 'hideTtfb' ], parseEnvBoolean ],
   [ 'SEO_SNAPSHOT_REQUEST_TIMEOUT_MS', [ 'request', 'timeoutMs' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS', [ 'request', 'maxRedirects' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_CONCURRENCY', [ 'request', 'concurrency' ], parseEnvPositiveInt ],
@@ -646,7 +646,7 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions, cwd = proce
     output: {
       dir: outputDir,
       formats,
-      hideResponseTime: Boolean(output.hideResponseTime),
+      hideTtfb: Boolean(output.hideTtfb),
     },
     variants,
     compare: compareSources

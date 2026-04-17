@@ -9,7 +9,7 @@ const comparisonSources = [
 
 const createComparablePage = ({
   alternates = [],
-  responseTimeMs = 100,
+  ttfbMs = 100,
   bodyTextLength = 400,
   imageCount = 0,
   imagesWithoutAlt = 0,
@@ -56,7 +56,7 @@ const createComparablePage = ({
   requestedUrl: finalUrl,
   finalUrl,
   status,
-  responseTimeMs,
+  ttfbMs,
   error: null,
   parseSkippedReason: null,
   headers: {
@@ -119,7 +119,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       finalUrl: 'https://www.example.com/news',
       title: 'Prod title',
       description: 'Prod description',
-      responseTimeMs: 100,
+      ttfbMs: 100,
       bodyTextLength: 800,
       imageCount: 5,
       imagesWithoutAlt: 0,
@@ -161,7 +161,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
       finalUrl: 'https://stage.example.com/latest-news',
       title: 'Stage title',
       description: 'Stage description',
-      responseTimeMs: 220,
+      ttfbMs: 220,
       bodyTextLength: 620,
       imageCount: 3,
       imagesWithoutAlt: 2,
@@ -235,7 +235,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
   assert.equal(differenceKeys.includes('ogImage'), true)
   assert.equal(differenceKeys.includes('ogTitle'), true)
   assert.equal(differenceKeys.includes('ogUrl'), true)
-  assert.equal(differenceKeys.includes('responseTimeMs'), true)
+  assert.equal(differenceKeys.includes('ttfbMs'), true)
   assert.equal(differenceKeys.includes('title'), true)
   assert.equal(differenceKeys.includes('twitterCard'), true)
   assert.equal(differenceKeys.includes('twitterDescription'), true)

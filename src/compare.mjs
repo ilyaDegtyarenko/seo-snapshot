@@ -238,9 +238,9 @@ const DIFFERENCE_SPECS = [
     getValue: page => page.status ?? null,
   },
   {
-    key: 'responseTimeMs',
-    label: 'Response time (ms)',
-    getValue: page => page.responseTimeMs ?? null,
+    key: 'ttfbMs',
+    label: 'TTFB (ms)',
+    getValue: page => page.ttfbMs ?? null,
   },
   {
     key: 'finalUrl',
@@ -593,9 +593,9 @@ const buildIssueDelta = (leftPage, rightPage) => {
   }
 }
 
-const buildDifferences = (leftPage, rightPage, hideResponseTime = false) => {
-  const specs = hideResponseTime
-    ? DIFFERENCE_SPECS.filter(spec => spec.key !== 'responseTimeMs')
+const buildDifferences = (leftPage, rightPage, hideTtfb = false) => {
+  const specs = hideTtfb
+    ? DIFFERENCE_SPECS.filter(spec => spec.key !== 'ttfbMs')
     : DIFFERENCE_SPECS
 
   return specs.flatMap((spec) => {
@@ -615,7 +615,7 @@ const buildDifferences = (leftPage, rightPage, hideResponseTime = false) => {
   })
 }
 
-export const buildComparisonReport = (pages, compareOptions, hideResponseTime = false) => {
+export const buildComparisonReport = (pages, compareOptions, hideTtfb = false) => {
   if (!compareOptions?.sources || compareOptions.sources.length !== 2) {
     return null
   }
@@ -652,7 +652,7 @@ export const buildComparisonReport = (pages, compareOptions, hideResponseTime = 
       continue
     }
 
-    const differences = buildDifferences(leftPage, rightPage, hideResponseTime)
+    const differences = buildDifferences(leftPage, rightPage, hideTtfb)
     const issueDelta = buildIssueDelta(leftPage, rightPage)
 
     for (const difference of differences) {

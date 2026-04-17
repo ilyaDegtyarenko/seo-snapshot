@@ -74,7 +74,7 @@ const buildPageReport = async (target, requestOptions) => {
       status: fetched.response.status,
       ok: fetched.response.ok,
       redirectChain: fetched.redirectChain,
-      responseTimeMs: fetched.responseTimeMs,
+      ttfbMs: fetched.ttfbMs,
       headers,
       seo: null,
       parseSkippedReason: null,
@@ -102,7 +102,7 @@ const buildPageReport = async (target, requestOptions) => {
       status: null,
       ok: false,
       redirectChain: [],
-      responseTimeMs: null,
+      ttfbMs: null,
       headers: {
         contentType: null,
         contentLength: null,
@@ -183,7 +183,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
     }
   })
   const summary = buildSummary(pages)
-  const comparison = buildComparisonReport(pages, runtimeOptions.compare, runtimeOptions.output.hideResponseTime)
+  const comparison = buildComparisonReport(pages, runtimeOptions.compare, runtimeOptions.output.hideTtfb)
 
   const report = {
     generatedAt: new Date().toISOString(),
@@ -199,7 +199,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
       targetCount: targets.length,
       formats: runtimeOptions.output.formats,
       outputDir: runtimeOptions.output.dir,
-      hideResponseTime: runtimeOptions.output.hideResponseTime,
+      hideTtfb: runtimeOptions.output.hideTtfb,
       audit: runtimeOptions.audit,
     },
     summary,
