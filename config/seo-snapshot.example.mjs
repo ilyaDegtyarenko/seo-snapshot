@@ -11,7 +11,8 @@ export default {
       },
     },
   },
-  targetsFile: './targets.local.xml',
+  // targetsFile: './targets.txt',
+  // targetsFile: './targets.xml',
   targets: [
     '/',
     '/news',

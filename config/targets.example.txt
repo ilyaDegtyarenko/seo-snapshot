@@ -1,5 +1,5 @@
 # Copy this file to ./targets.txt for local plain-text targets
-# or switch targetsFile to ./targets.local.xml for a sitemap export.
+# or switch targetsFile to ./targets.xml for a sitemap export.
 
 # Main routes
 /

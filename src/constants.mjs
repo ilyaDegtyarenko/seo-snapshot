@@ -1,5 +1,4 @@
-export const DEFAULT_CONFIG_PATH = 'config/seo-snapshot.config.mjs'
-export const DEFAULT_LOCAL_CONFIG_PATH = 'config/seo-snapshot.local.mjs'
+export const DEFAULT_CONFIG_PATH = 'config/seo-snapshot.mjs'
 export const DEFAULT_REPORTS_DIR = 'reports'
 export const DEFAULT_TIMEOUT_MS = 15_000
 export const DEFAULT_MAX_REDIRECTS = 10
@@ -23,7 +22,7 @@ export const SUPPORTED_FORMATS = [ 'html', 'json' ]
 export const buildHelpText = () => `
 Usage:
   pnpm run snapshot
-  pnpm run snapshot -- --config ./config/seo-snapshot.config.mjs
+  pnpm run snapshot -- --config ./config/seo-snapshot.mjs
   node ./bin/seo-snapshot.mjs --format html,json --output-dir ./reports
 
 Options:
@@ -40,7 +39,6 @@ Options:
 
 Config loading order:
   - ${ DEFAULT_CONFIG_PATH } when present
-  - companion local config (for example ${ DEFAULT_LOCAL_CONFIG_PATH }) when present
   - ${ ENV_CONFIG_JSON_VAR }
   - config.profiles[SEO_SNAPSHOT_PROFILE]
   - individual SEO_SNAPSHOT_* overrides
@@ -84,7 +82,7 @@ Config file format:
         },
       },
     },
-    targetsFile: './targets.txt',
+    targetsFile: './targets.txt', // or './targets.xml'
     targets: [ '/', '/news' ],
     output: {
       dir: '../reports',

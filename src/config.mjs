@@ -7,7 +7,6 @@ import {
   DEFAULT_CONCURRENCY,
   DEFAULT_CONFIG_PATH,
   DEFAULT_FORMATS,
-  DEFAULT_LOCAL_CONFIG_PATH,
   DEFAULT_MAX_REDIRECTS,
   DEFAULT_REPORTS_DIR,
   DEFAULT_TIMEOUT_MS,
@@ -231,20 +230,6 @@ const mergeSeoConfig = (baseConfig, overrideConfig) => {
   return mergedConfig
 }
 
-const resolveLocalConfigPath = (absoluteConfigPath, cwd) => {
-  if (!absoluteConfigPath) {
-    return normalizePathLikeValue(DEFAULT_LOCAL_CONFIG_PATH, cwd)
-  }
-
-  const extension = path.extname(absoluteConfigPath)
-  const baseName = path.basename(absoluteConfigPath, extension)
-  const localBaseName = baseName.endsWith('.config')
-    ? `${ baseName.slice(0, -'.config'.length) }.local`
-    : `${ baseName }.local`
-
-  return path.join(path.dirname(absoluteConfigPath), `${ localBaseName }${ extension }`)
-}
-
 const readEnvJsonConfig = (env) => {
   if (!isNonEmptyString(env[ENV_CONFIG_JSON_VAR])) {
     return null
@@ -360,7 +345,6 @@ export const readSeoConfig = async (configPath, cwd, env = process.env) => {
   const envJsonConfig = readEnvJsonConfig(env)
   const envOverrideConfig = readEnvOverrideConfig(env)
   let absoluteConfigPath = null
-  let absoluteLocalConfigPath = null
   let configDir = cwd
   let config = {}
   const configSources = []
@@ -372,31 +356,19 @@ export const readSeoConfig = async (configPath, cwd, env = process.env) => {
     config = fileConfig.config
     configDir = path.dirname(absoluteConfigPath)
     configSources.push(absoluteConfigPath)
-    absoluteLocalConfigPath = resolveLocalConfigPath(absoluteConfigPath, cwd)
   } else if (envJsonConfig) {
     config = envJsonConfig
   } else {
     const defaultConfigPath = normalizePathLikeValue(DEFAULT_CONFIG_PATH, cwd)
-    const defaultLocalConfigPath = resolveLocalConfigPath(defaultConfigPath, cwd)
 
     if (await fileExists(defaultConfigPath)) {
       absoluteConfigPath = defaultConfigPath
       configDir = path.dirname(defaultConfigPath)
       config = (await loadConfigFromFile(defaultConfigPath)).config
       configSources.push(defaultConfigPath)
-      absoluteLocalConfigPath = defaultLocalConfigPath
-    } else if (await fileExists(defaultLocalConfigPath)) {
-      absoluteLocalConfigPath = defaultLocalConfigPath
     } else if (!envOverrideConfig) {
       exitWithError(`Config is not defined. Provide ${ DEFAULT_CONFIG_PATH }, --config, ${ ENV_CONFIG_PATH_VAR }, or ${ ENV_CONFIG_JSON_VAR }.`)
     }
-  }
-
-  if (absoluteLocalConfigPath && await fileExists(absoluteLocalConfigPath)) {
-    const localFileConfig = await loadConfigFromFile(absoluteLocalConfigPath)
-    config = mergeSeoConfig(config, localFileConfig.config)
-    configDir = path.dirname(absoluteLocalConfigPath)
-    configSources.push(absoluteLocalConfigPath)
   }
 
   if (envJsonConfig) {
@@ -501,7 +473,7 @@ export const resolveTargets = async (config, configDir) => {
   ]
 
   if (mergedTargets.length === 0) {
-    exitWithError('No targets configured. Add URLs to config/targets.txt, provide a sitemap XML dump, or set config.targets.')
+    exitWithError('No targets configured. Add URLs to config/targets.txt or config/targets.xml, or set config.targets.')
   }
 
   const normalizedTargets = []

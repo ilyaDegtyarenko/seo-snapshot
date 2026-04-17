@@ -4,7 +4,7 @@ A small CLI for checking the SEO state of a URL set. The tool crawls pages, capt
 
 ## Features
 
-- read URLs from `config/targets.txt`, local sitemap XML dumps, inline config, and/or env overrides
+- read URLs from `config/targets.txt`, `config/targets.xml`, inline config, and/or env overrides
 - support `baseUrl` for relative paths
 - compare the same target path across a primary and secondary domain and show SEO differences
 - repeat the audit per User-Agent variant and keep variant labels in the reports
@@ -41,13 +41,13 @@ pnpm run snapshot
 
 Typical local setup:
 
-1. Keep shared defaults in `config/seo-snapshot.config.mjs`.
-2. Copy `config/seo-snapshot.local.example.mjs` to `config/seo-snapshot.local.mjs` for local structured overrides.
-3. Copy `config/targets.example.txt` to `config/targets.txt` if you want a local text target list.
+1. Copy `config/seo-snapshot.example.mjs` to `config/seo-snapshot.mjs`.
+2. Copy `config/targets.example.txt` to `config/targets.txt` for a text list, or copy `config/targets.example.xml` to `config/targets.xml` for a sitemap dump.
+3. Point `targetsFile` in `config/seo-snapshot.mjs` to `./targets.txt` or `./targets.xml`, or keep inline `targets`.
 4. Put secrets or small toggles in `.env` only when needed.
 5. Run `pnpm run snapshot`.
 
-The main example file for user overrides is `config/seo-snapshot.local.example.mjs`.
+The main config template is `config/seo-snapshot.example.mjs`.
 
 During the crawl the CLI writes per-target progress lines to `stderr`. After each run it prints a short English summary and a `file://` link to the main report. The process exits with code `1` if at least one page fails to fetch or returns `>= 400`.
 
@@ -67,7 +67,7 @@ node ./bin/seo-snapshot.mjs --help
 
 ```bash
 pnpm run snapshot -- \
-  --config ./config/seo-snapshot.config.mjs \
+  --config ./config/seo-snapshot.mjs \
   --output-dir ./reports \
   --format html,json \
   --timeout-ms 15000 \
@@ -92,19 +92,20 @@ Additional CLI behaviors:
 
 Recommended split:
 
-- `config/seo-snapshot.config.mjs`: committed team-wide defaults and reusable profiles
-- `config/seo-snapshot.local.mjs`: ignored local structured overrides such as `baseUrl`, `compare.baseUrl`, `targetsFile`, or User-Agent variants
+- `config/seo-snapshot.example.mjs`: committed template for the runtime config
+- `config/seo-snapshot.mjs`: ignored runtime config with local structured settings such as `baseUrl`, `compare.baseUrl`, `targetsFile`, profiles, or User-Agent variants
+- `config/targets.example.txt` / `config/targets.example.xml`: committed target templates
+- `config/targets.txt` / `config/targets.xml`: ignored runtime target inputs
 - `.env`: ignored secrets and small scalar toggles such as cookies, headers, `SEO_SNAPSHOT_OPEN`, and one-off overrides
 - CLI flags: one-shot per-run overrides
 
 Config precedence:
 
-1. `config/seo-snapshot.config.mjs`
-2. companion local config such as `config/seo-snapshot.local.mjs`
-3. `SEO_SNAPSHOT_CONFIG`
-4. selected `config.profiles[...]`
-5. individual `SEO_SNAPSHOT_*` overrides
-6. CLI flags
+1. `config/seo-snapshot.mjs`
+2. `SEO_SNAPSHOT_CONFIG`
+3. selected `config.profiles[...]`
+4. individual `SEO_SNAPSHOT_*` overrides
+5. CLI flags
 
 Basic run via env:
 
@@ -124,7 +125,7 @@ SEO_SNAPSHOT_TARGETS=/,/news
 User-Agent variants and cookies via env:
 
 ```bash
-SEO_SNAPSHOT_CONFIG_PATH=./config/seo-snapshot.config.mjs
+SEO_SNAPSHOT_CONFIG_PATH=./config/seo-snapshot.mjs
 SEO_SNAPSHOT_REQUEST_USER_AGENT='[{"label":"Desktop","userAgent":"Mozilla/5.0 (Macintosh...)"},{"label":"Mobile","userAgent":"Mozilla/5.0 (iPhone...)"}]'
 SEO_SNAPSHOT_REQUEST_COOKIES='{"session":"abc123","token":"xyz"}'
 ```
@@ -140,7 +141,7 @@ SEO_SNAPSHOT_AUDIT_IGNORE='["missing_twitter_card","missing_og_image"]'
 
 See `.env.example` for the full list.
 
-For complex local settings, prefer `config/seo-snapshot.local.mjs` over JSON-in-env strings.
+For complex local settings, prefer `config/seo-snapshot.mjs` over JSON-in-env strings.
 
 Alternatively, pass variables inline in two ways.
 
@@ -154,7 +155,7 @@ node ./bin/seo-snapshot.mjs
 File config plus env overrides:
 
 ```bash
-SEO_SNAPSHOT_CONFIG_PATH=./config/seo-snapshot.config.mjs \
+SEO_SNAPSHOT_CONFIG_PATH=./config/seo-snapshot.mjs \
 SEO_SNAPSHOT_BASE_URL=http://127.0.0.1:3000 \
 SEO_SNAPSHOT_COMPARE_BASE_URL=https://stage.example.com \
 SEO_SNAPSHOT_TARGETS="/,/news,/movies" \
@@ -190,17 +191,7 @@ Supported overrides:
 
 ## Config
 
-Minimal committed `config/seo-snapshot.config.mjs`:
-
-```js
-export default {
-  // Committed project defaults belong here.
-  // Put machine-specific settings in ./seo-snapshot.local.mjs.
-  targetsFile: './targets.txt',
-}
-```
-
-Full example for the user overlay in `config/seo-snapshot.local.example.mjs`:
+Committed template in `config/seo-snapshot.example.mjs`:
 
 ```js
 export default {
@@ -216,7 +207,8 @@ export default {
       },
     },
   },
-  targetsFile: './targets.local.xml', // or './targets.txt' for a local text list
+  // targetsFile: './targets.txt',
+  // targetsFile: './targets.xml',
   targets: [
     '/',
     '/news',
@@ -247,7 +239,7 @@ export default {
 }
 ```
 
-Copy it to `config/seo-snapshot.local.mjs` and trim it down to the settings you actually need. When `config/seo-snapshot.local.mjs` exists, it is merged automatically and should be the main place for developer-specific setup. This keeps the committed config stable and avoids carrying local settings as uncommitted tracked changes.
+Copy it to `config/seo-snapshot.mjs` and trim it down to the settings you actually need. `config/seo-snapshot.mjs` is the runtime config file loaded by default; there is no automatic `.local` overlay anymore. This keeps the committed template stable while real machine-specific settings stay ignored.
 
 Comparison mode notes:
 
@@ -279,10 +271,9 @@ The following fields are compared between domains:
 
 Recommended local setup for targets:
 
-- keep `config/targets.txt` ignored and local-only
-- keep `config/seo-snapshot.local.mjs` ignored and local-only
-- commit `config/targets.example.txt` as the shared template
-- for sitemap exports, point `targetsFile` to a local XML file such as `./targets.local.xml`
+- keep `config/seo-snapshot.mjs`, `config/targets.txt`, and `config/targets.xml` ignored and local-only
+- commit `config/seo-snapshot.example.mjs`, `config/targets.example.txt`, and `config/targets.example.xml` as shared templates
+- point `targetsFile` to `./targets.txt` for plain text input or `./targets.xml` for sitemap exports
 
 Supported `targetsFile` inputs:
 

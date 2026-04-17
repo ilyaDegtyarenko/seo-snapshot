@@ -78,7 +78,7 @@ const createPage = ({
 const createReport = ({ pages, comparison = null }) => ({
   generatedAt: '2026-04-09T12:00:00.000Z',
   options: {
-    configPath: 'config/seo-snapshot.config.mjs',
+    configPath: 'config/seo-snapshot.mjs',
     baseUrl: 'https://www.example.com/',
     compare: comparison,
     timeoutMs: 15000,

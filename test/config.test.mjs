@@ -16,7 +16,7 @@ test('readSeoConfig merges file config with env overrides', async (context) => {
     await rm(tempDir, { recursive: true, force: true })
   })
 
-  const configPath = path.join(tempDir, 'seo-snapshot.config.mjs')
+  const configPath = path.join(tempDir, 'seo-snapshot.mjs')
 
   await writeFile(configPath, `export default {
   baseUrl: 'https://file.example',
@@ -35,7 +35,7 @@ test('readSeoConfig merges file config with env overrides', async (context) => {
 }
 `, 'utf8')
 
-  const result = await readSeoConfig('./seo-snapshot.config.mjs', tempDir, {
+  const result = await readSeoConfig('./seo-snapshot.mjs', tempDir, {
     SEO_SNAPSHOT_BASE_URL: 'https://env.example',
     SEO_SNAPSHOT_TARGETS: '/,/news',
     SEO_SNAPSHOT_OUTPUT_FORMATS: 'html,json',
@@ -129,18 +129,20 @@ test('readSeoConfig supports single compare domain from env override', async () 
   }
 })
 
-test('readSeoConfig merges companion local config before env overrides', async (context) => {
+test('readSeoConfig uses the default runtime config path without any local overlay', async (context) => {
   const tempDir = await createTempDir()
 
   context.after(async () => {
     await rm(tempDir, { recursive: true, force: true })
   })
 
-  const configPath = path.join(tempDir, 'seo-snapshot.config.mjs')
-  const localConfigPath = path.join(tempDir, 'seo-snapshot.local.mjs')
+  const configDir = path.join(tempDir, 'config')
+  const configPath = path.join(configDir, 'seo-snapshot.mjs')
 
+  await mkdir(configDir, { recursive: true })
   await writeFile(configPath, `export default {
-  baseUrl: 'https://prod.example.com',
+  baseUrl: 'https://runtime.example.com',
+  targets: [ '/from-file' ],
   output: {
     formats: [ 'html', 'json' ],
   },
@@ -151,54 +153,37 @@ test('readSeoConfig merges companion local config before env overrides', async (
 }
 `, 'utf8')
 
-  await writeFile(localConfigPath, `export default {
-  baseUrl: 'https://local.example.com',
-  targets: [ '/from-local' ],
-  request: {
-    concurrency: 5,
-  },
-}
-`, 'utf8')
-
-  const result = await readSeoConfig('./seo-snapshot.config.mjs', tempDir, {
+  const result = await readSeoConfig(undefined, tempDir, {
     SEO_SNAPSHOT_REQUEST_CONCURRENCY: '8',
   })
 
   assert.equal(result.absoluteConfigPath, configPath)
-  assert.equal(result.configDir, tempDir)
-  assert.equal(result.config.baseUrl, 'https://local.example.com')
-  assert.deepEqual(result.config.targets, [ '/from-local' ])
+  assert.equal(result.configDir, configDir)
+  assert.equal(result.config.baseUrl, 'https://runtime.example.com')
+  assert.deepEqual(result.config.targets, [ '/from-file' ])
   assert.equal(result.config.request.timeoutMs, 3000)
   assert.equal(result.config.request.concurrency, 8)
-  assert.match(result.configLabel, /seo-snapshot\.config\.mjs \+ .*seo-snapshot\.local\.mjs \+ env$/)
+  assert.match(result.configLabel, /seo-snapshot\.mjs \+ env$/)
 })
 
-test('readSeoConfig supports default local config without committed base config', async (context) => {
+test('readSeoConfig supports env-only overrides without a runtime config file', async (context) => {
   const tempDir = await createTempDir()
 
   context.after(async () => {
     await rm(tempDir, { recursive: true, force: true })
   })
 
-  const configDir = path.join(tempDir, 'config')
-  const localConfigPath = path.join(configDir, 'seo-snapshot.local.mjs')
-
-  await mkdir(configDir, { recursive: true })
-  await writeFile(localConfigPath, `export default {
-  baseUrl: 'https://local-only.example.com',
-  targets: [ '/' ],
-}
-`, 'utf8')
-
-  const result = await readSeoConfig(undefined, tempDir, {})
+  const result = await readSeoConfig(undefined, tempDir, {
+    SEO_SNAPSHOT_BASE_URL: 'https://env-only.example.com',
+    SEO_SNAPSHOT_TARGETS: '/',
+  })
 
   assert.equal(result.absoluteConfigPath, null)
-  assert.equal(result.configDir, configDir)
-  assert.equal(result.config.baseUrl, 'https://local-only.example.com')
+  assert.equal(result.configDir, tempDir)
+  assert.equal(result.config.baseUrl, 'https://env-only.example.com')
   assert.deepEqual(result.config.targets, [ '/' ])
-  assert.equal(result.configLabel, localConfigPath)
+  assert.equal(result.configLabel, 'env')
 })
-
 
 test('readSeoConfig merges profile config on top of base config', async (context) => {
   const tempDir = await createTempDir()
@@ -207,7 +192,7 @@ test('readSeoConfig merges profile config on top of base config', async (context
     await rm(tempDir, { recursive: true, force: true })
   })
 
-  const configPath = path.join(tempDir, 'seo-snapshot.config.mjs')
+  const configPath = path.join(tempDir, 'seo-snapshot.mjs')
 
   await writeFile(configPath, `export default {
   baseUrl: 'https://prod.example.com',
@@ -223,7 +208,7 @@ test('readSeoConfig merges profile config on top of base config', async (context
 }
 `, 'utf8')
 
-  const result = await readSeoConfig('./seo-snapshot.config.mjs', tempDir, {
+  const result = await readSeoConfig('./seo-snapshot.mjs', tempDir, {
     SEO_SNAPSHOT_PROFILE: 'staging',
   })
 
@@ -265,7 +250,7 @@ test('resolveTargets reads sitemap XML dumps from targetsFile', async (context) 
     await rm(tempDir, { recursive: true, force: true })
   })
 
-  await writeFile(path.join(tempDir, 'targets.local.xml'), `<?xml version="1.0" encoding="UTF-8"?>
+  await writeFile(path.join(tempDir, 'targets.xml'), `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://example.com/</loc>
@@ -277,7 +262,7 @@ test('resolveTargets reads sitemap XML dumps from targetsFile', async (context) 
 `, 'utf8')
 
   const targets = await resolveTargets({
-    targetsFile: './targets.local.xml',
+    targetsFile: './targets.xml',
   }, tempDir)
 
   assert.deepEqual(targets, [
