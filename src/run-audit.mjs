@@ -32,6 +32,7 @@ const mapWithConcurrency = async (items, concurrency, worker) => {
 const buildHeaderDetails = (response, finalUrl) => {
   const contentType = response.headers.get('content-type')
   const contentLength = response.headers.get('content-length')
+  const contentLanguage = response.headers.get('content-language')
   const xRobotsTag = response.headers.get('x-robots-tag')
   const contentSecurityPolicy = response.headers.get('content-security-policy')
   const xFrameOptions = response.headers.get('x-frame-options')
@@ -42,6 +43,7 @@ const buildHeaderDetails = (response, finalUrl) => {
   return {
     contentType,
     contentLength,
+    contentLanguage,
     xRobotsTag,
     contentSecurityPolicy,
     xFrameOptions,
@@ -105,6 +107,7 @@ const buildPageReport = async (target, requestOptions) => {
       headers: {
         contentType: null,
         contentLength: null,
+        contentLanguage: null,
         xRobotsTag: null,
         contentSecurityPolicy: null,
         xFrameOptions: null,

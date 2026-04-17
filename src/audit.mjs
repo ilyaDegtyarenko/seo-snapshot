@@ -215,6 +215,25 @@ export const buildPageIssues = (page, rules) => {
     pushIssue(issues, 'warning', 'missing_lang', 'Missing lang attribute on <html>.')
   }
 
+  const contentLanguage = page.headers?.contentLanguage ?? page.seo?.document.contentLanguage
+
+  if (lang && contentLanguage) {
+    const normalizedLang = normalizeLocaleCode(lang)
+    const normalizedContentLanguages = String(contentLanguage)
+      .split(',')
+      .map(value => normalizeLocaleCode(value))
+      .filter(Boolean)
+    const hasCompatibleContentLanguage = normalizedContentLanguages.some(contentLanguageValue =>
+      normalizedLang === contentLanguageValue
+      || normalizedLang.startsWith(`${ contentLanguageValue }-`)
+      || contentLanguageValue.startsWith(`${ normalizedLang }-`)
+    )
+
+    if (normalizedLang && normalizedContentLanguages.length > 0 && !hasCompatibleContentLanguage) {
+      pushIssue(issues, 'warning', 'lang_content_language_mismatch', `html lang "${ lang }" does not match Content-Language "${ contentLanguage }".`)
+    }
+  }
+
   for (const duplicate of page.seo?.head?.duplicates ?? []) {
     const duplicateIssue = DUPLICATE_SIGNAL_ISSUE_MAP[duplicate.key]
 

@@ -127,6 +127,7 @@ test('runAudit captures security headers from response', async (context) => {
       status: 200,
       headers: {
         'content-type': 'text/html',
+        'content-language': 'uk',
         'content-security-policy': "default-src 'self'",
         'x-frame-options': 'DENY',
       },
@@ -144,6 +145,7 @@ test('runAudit captures security headers from response', async (context) => {
     },
   })
 
+  assert.equal(result.report.pages[0].headers.contentLanguage, 'uk')
   assert.equal(result.report.pages[0].headers.contentSecurityPolicy, "default-src 'self'")
   assert.equal(result.report.pages[0].headers.xFrameOptions, 'DENY')
 })

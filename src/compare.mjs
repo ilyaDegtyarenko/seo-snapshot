@@ -307,7 +307,7 @@ const DIFFERENCE_SPECS = [
   {
     key: 'contentLanguage',
     label: 'Content-Language',
-    getValue: page => normalizeScalar(page.seo?.document.contentLanguage),
+    getValue: page => normalizeScalar(page.headers?.contentLanguage ?? page.seo?.document.contentLanguage),
   },
   {
     key: 'viewport',
