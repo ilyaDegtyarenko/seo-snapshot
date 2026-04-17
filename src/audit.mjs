@@ -178,7 +178,7 @@ export const buildPageIssues = (page, rules) => {
   const canonical = page.seo?.links.canonical
   const headerCanonical = page.headers?.links?.canonical
   const headerLlms = page.headers?.links?.llms
-  const robots = `${ page.seo?.meta.robots || '' } ${ page.headers.xRobotsTag || '' }`.toLowerCase()
+  const robots = `${ page.seo?.meta.robots || '' } ${ page.headers?.xRobotsTag || '' }`.toLowerCase()
   const openGraph = page.seo?.meta.openGraph ?? {}
   const twitter = page.seo?.meta.twitter ?? {}
   const jsonLd = page.seo?.jsonLd ?? { scriptCount: 0, parseErrors: 0 }

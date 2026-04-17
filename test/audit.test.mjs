@@ -75,6 +75,48 @@ test('buildPageIssues reports critical SEO gaps', () => {
   ])
 })
 
+test('buildPageIssues handles page with undefined headers gracefully', () => {
+  const page = {
+    targetPath: '/test',
+    status: 200,
+    error: null,
+    parseSkippedReason: null,
+    headers: undefined,
+    seo: {
+      document: {
+        title: 'A valid page title for testing',
+        h1: [ 'Hello' ],
+        lang: 'en',
+        bodyTextLength: 500,
+      },
+      meta: {
+        description: 'A description that is long enough for the audit to pass without warnings.',
+        robots: 'index,follow',
+        openGraph: { title: 'OG', description: 'OG desc', image: '/img.jpg' },
+        twitter: { card: 'summary' },
+      },
+      links: {
+        canonical: 'https://example.com/test',
+        alternates: [],
+      },
+      jsonLd: {
+        scriptCount: 1,
+        parseErrors: 0,
+        hasWebSite: false,
+        hasOrganization: false,
+      },
+      head: {
+        duplicates: [],
+      },
+    },
+  }
+
+  const issues = buildPageIssues(page, DEFAULT_AUDIT_RULES)
+  const codes = issues.map(issue => issue.code)
+
+  assert.equal(codes.includes('fetch_error'), false)
+})
+
 test('buildSummary aggregates issue and severity counts', () => {
   const pages = [
     {
