@@ -140,8 +140,10 @@ export const runCli = async (argv = process.argv.slice(2)) => {
   const result = await runAudit(options, {
     cwd: process.cwd(),
     env,
-    onProgress: (message) => process.stderr.write(`${ message }\n`),
+    onProgress: (message) => process.stderr.write(`\r\x1B[K${ message }`),
   })
+
+  process.stderr.write('\r\x1B[K')
   const primaryOutputPath = result.htmlOutputPath ?? result.outputPaths[0] ?? null
 
   process.stdout.write(`SEO snapshot completed: ${ result.summary.total } pages checked, ${ result.summary.pagesWithIssues } with issues, ${ result.summary.failedPages } failed.\n`)
