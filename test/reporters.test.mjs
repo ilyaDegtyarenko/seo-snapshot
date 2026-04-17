@@ -10,6 +10,13 @@ const createPage = ({
   source = null,
   title = 'Home',
   description = 'Home description',
+  responseTimeMs = 123,
+  imageCount = 4,
+  imagesWithoutAlt = 1,
+  internalLinkCount = 12,
+  headingHierarchy = [ 1, 2, 4 ],
+  contentSecurityPolicy = "default-src 'self'",
+  xFrameOptions = 'SAMEORIGIN',
   issues = [],
 } = {}) => ({
   input,
@@ -18,11 +25,14 @@ const createPage = ({
   requestedUrl,
   finalUrl,
   status: 200,
+  responseTimeMs,
   error: null,
   parseSkippedReason: null,
   headers: {
     contentType: 'text/html; charset=utf-8',
     contentLength: '1024',
+    contentSecurityPolicy,
+    xFrameOptions,
     xRobotsTag: null,
   },
   seo: {
@@ -30,6 +40,11 @@ const createPage = ({
       title,
       h1: [ title ],
       lang: 'en',
+      bodyTextLength: 640,
+      imageCount,
+      imagesWithoutAlt,
+      internalLinkCount,
+      headingHierarchy,
     },
     meta: {
       description,
@@ -162,6 +177,23 @@ test('renderHtmlReport keeps page index without comparison filter', () => {
   assert.doesNotMatch(html, /<select class="field-select" data-page-domain-filter/)
   assert.match(html, /href="#page-1-pricing"/)
   assert.match(html, /Use the anchor list to move through long reports faster\./)
+})
+
+test('renderHtmlReport displays new crawl, security, and content detail fields', () => {
+  const html = renderHtmlReport(createReport({
+    pages: [
+      createPage(),
+    ],
+  }))
+
+  assert.match(html, /Response time<\/dt><dd>123 ms<\/dd>/)
+  assert.match(html, /Content-Security-Policy<\/dt><dd>default-src &#39;self&#39;<\/dd>/)
+  assert.match(html, /X-Frame-Options<\/dt><dd>SAMEORIGIN<\/dd>/)
+  assert.match(html, /Body text length<\/dt><dd>640<\/dd>/)
+  assert.match(html, /Images<\/dt><dd>4<\/dd>/)
+  assert.match(html, /Images without alt<\/dt><dd>1<\/dd>/)
+  assert.match(html, /Internal links<\/dt><dd>12<\/dd>/)
+  assert.match(html, /Heading hierarchy<\/dt><dd>H1 → H2 → H4<\/dd>/)
 })
 
 test('renderHtmlReport adds Comparison sidebar anchors and routes hashes to the comparison tab', () => {

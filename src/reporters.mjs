@@ -521,17 +521,25 @@ const renderPageCard = (entry) => {
         ${ renderKeyValueRow('Final URL', page.finalUrl) }
         ${ renderKeyValueRow('Content-Type', page.headers.contentType) }
         ${ renderKeyValueRow('Content-Length', page.headers.contentLength) }
+        ${ renderKeyValueRow('Response time', page.responseTimeMs !== null && page.responseTimeMs !== undefined ? `${ page.responseTimeMs } ms` : null) }
         ${ renderKeyValueRow('Charset', page.seo?.meta.charset) }
         ${ renderKeyValueRow('Title', page.seo?.document.title) }
         ${ renderKeyValueRow('Description', page.seo?.meta.description) }
         ${ renderKeyValueRow('Meta robots', page.seo?.meta.robots) }
         ${ renderKeyValueRow('X-Robots-Tag', page.headers.xRobotsTag) }
+        ${ renderKeyValueRow('Content-Security-Policy', page.headers?.contentSecurityPolicy) }
+        ${ renderKeyValueRow('X-Frame-Options', page.headers?.xFrameOptions) }
         ${ renderKeyValueRow('Link header', page.headers.link) }
         ${ renderKeyValueRow('Canonical', page.seo?.links.canonical) }
         ${ renderKeyValueRow('Header canonical', page.headers?.links?.canonical) }
         ${ renderKeyValueRow('Header llms', page.headers?.links?.llms) }
         ${ renderKeyValueRow('Lang', page.seo?.document.lang) }
         ${ renderKeyValueRow('Content-Language', page.seo?.document.contentLanguage) }
+        ${ renderKeyValueRow('Body text length', page.seo?.document.bodyTextLength) }
+        ${ renderKeyValueRow('Images', page.seo?.document.imageCount ?? '-') }
+        ${ renderKeyValueRow('Images without alt', page.seo?.document.imagesWithoutAlt ?? '-') }
+        ${ renderKeyValueRow('Internal links', page.seo?.document.internalLinkCount ?? '-') }
+        ${ renderKeyValueRow('Heading hierarchy', page.seo?.document.headingHierarchy?.length > 0 ? page.seo.document.headingHierarchy.map(level => `H${ level }`).join(' → ') : null) }
         ${ renderKeyValueRow('Viewport', page.seo?.meta.viewport) }
         ${ renderKeyValueRow('Application name', page.seo?.meta.applicationName) }
         ${ renderKeyValueRow('Theme color', page.seo?.meta.themeColor) }
