@@ -239,6 +239,65 @@ export default {
 }
 ```
 
+**Available issue codes for `audit.ignore`:**
+
+| Code | Severity | Description |
+|------|----------|-------------|
+| `fetch_error` | error | Network or fetch error |
+| `http_5xx` | error | Server returned 5xx status |
+| `http_4xx` | warning | Page returned 4xx status |
+| `non_html` | warning | Response is not HTML |
+| `missing_title` | error | Missing `<title>` |
+| `short_title` | warning | Title too short |
+| `long_title` | warning | Title too long |
+| `missing_description` | warning | Missing meta description |
+| `short_description` | warning | Meta description too short |
+| `long_description` | warning | Meta description too long |
+| `missing_h1` | warning | Missing H1 |
+| `multiple_h1` | warning | More than one H1 |
+| `missing_lang` | warning | Missing `lang` on `<html>` |
+| `lang_content_language_mismatch` | warning | `html[lang]` doesn't match `Content-Language` header |
+| `missing_canonical` | warning | Missing canonical link |
+| `canonical_cross_domain` | warning | Canonical points to a different host |
+| `canonical_trailing_slash_mismatch` | warning | Canonical trailing slash doesn't match page URL |
+| `header_canonical_mismatch` | warning | Response `Link` canonical doesn't match HTML canonical |
+| `noindex` | warning | Page is marked noindex |
+| `missing_meta_robots` | info | Missing meta robots tag |
+| `missing_hreflang` | info | Missing hreflang on homepage-like route |
+| `invalid_hreflang` | warning | hreflang links missing href or hreflang value |
+| `hreflang_missing_x_default` | warning | hreflang links missing `x-default` |
+| `hreflang_missing_self` | warning | hreflang links missing self entry for page lang |
+| `hreflang_cross_domain` | warning | hreflang links point to a different host |
+| `missing_og_title` | info | Missing `og:title` |
+| `missing_og_description` | info | Missing `og:description` |
+| `missing_og_image` | info | Missing `og:image` |
+| `missing_twitter_card` | info | Missing `twitter:card` |
+| `missing_jsonld` | info | No JSON-LD found |
+| `invalid_jsonld` | warning | JSON-LD parse error |
+| `missing_schema_website` | info | Homepage missing `WebSite` JSON-LD |
+| `missing_schema_organization` | info | Homepage missing `Organization` JSON-LD |
+| `schema_missing_properties` | warning | JSON-LD missing required properties |
+| `llms_link_cross_domain` | warning | `Link: llms` header points to a different host |
+| `thin_content` | warning | Visible body text too short |
+| `images_missing_alt` | warning | Images missing `alt` attribute |
+| `heading_hierarchy_skip` | warning | Heading hierarchy skips a level |
+| `duplicate_title` | warning | Multiple `<title>` tags |
+| `duplicate_description` | warning | Multiple meta description tags |
+| `duplicate_robots` | warning | Multiple meta robots tags |
+| `duplicate_canonical` | warning | Multiple canonical links |
+| `duplicate_viewport` | warning | Multiple viewport meta tags |
+| `duplicate_og_title` | warning | Multiple `og:title` tags |
+| `duplicate_og_description` | warning | Multiple `og:description` tags |
+| `duplicate_og_type` | warning | Multiple `og:type` tags |
+| `duplicate_og_url` | warning | Multiple `og:url` tags |
+| `duplicate_og_image` | warning | Multiple `og:image` tags |
+| `duplicate_twitter_card` | warning | Multiple `twitter:card` tags |
+| `duplicate_twitter_title` | warning | Multiple `twitter:title` tags |
+| `duplicate_twitter_description` | warning | Multiple `twitter:description` tags |
+| `duplicate_twitter_image` | warning | Multiple `twitter:image` tags |
+| `duplicate_manifest` | warning | Multiple manifest links |
+| `duplicate_apple_itunes_app` | warning | Multiple `apple-itunes-app` tags |
+
 Copy it to `config/seo-snapshot.mjs` and trim it down to the settings you actually need. `config/seo-snapshot.mjs` is the runtime config file loaded by default; there is no automatic `.local` overlay anymore. This keeps the committed template stable while real machine-specific settings stay ignored.
 
 Comparison mode notes:
