@@ -1020,7 +1020,6 @@ export const renderHtmlReport = (report) => {
       border: 1px solid var(--border);
       border-radius: 20px;
       background: rgba(17, 17, 17, 0.94);
-      box-shadow: var(--shadow);
     }
     .summary-card {
       padding: 18px;
@@ -1057,7 +1056,7 @@ export const renderHtmlReport = (report) => {
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--muted);
-      padding: 8px 0 6px;
+      padding: 8px 6px 6px 0px;
       border-bottom: 1px solid var(--border);
       cursor: pointer;
       list-style: none;
@@ -1190,9 +1189,11 @@ export const renderHtmlReport = (report) => {
       padding: 12px 14px;
       border-radius: 14px;
       border: 1px solid var(--border);
-      background: var(--bg-muted);
+      background: var(--bg-muted) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a1a1a1' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
       color: var(--text);
       font: inherit;
+      appearance: none;
+      -webkit-appearance: none;
     }
     .pages-counter {
       font-size: 13px;
@@ -1312,6 +1313,9 @@ export const renderHtmlReport = (report) => {
     .kv-row dd {
       margin: 0;
       word-break: break-word;
+    }
+    .subsection > .muted {
+      margin-top: 8px;
     }
     .subsection:not(:only-child) {
       margin-top: 16px;
