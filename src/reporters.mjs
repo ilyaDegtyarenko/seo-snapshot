@@ -904,7 +904,7 @@ export const renderHtmlReport = (report) => {
       color: var(--text);
       font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
       line-height: 1.55;
-      background: linear-gradient(180deg, #0d0d0d 0%, var(--bg) 100%);
+      background: var(--bg);
       min-height: 100vh;
     }
     main {
