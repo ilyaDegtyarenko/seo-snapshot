@@ -72,6 +72,8 @@ test('extractSeoInfoFromHtml parses detailed SEO fields from head and JSON-LD', 
   assert.equal(result.jsonLd.hasOrganization, true)
   assert.equal(result.jsonLd.blocks.length, 2)
   assert.match(result.jsonLd.blocks[0].summary, /Movie/)
+  assert.match(result.jsonLd.blocks[0].json, /"@type": "Movie"/)
+  assert.match(result.jsonLd.blocks[0].json, /"name": "Movie title"/)
   assert.deepEqual(result.head.duplicates, [
     {
       key: 'twitterImage',

@@ -357,7 +357,8 @@ const buildJsonLdBlock = (value, pageUrl) => {
   collectJsonLdStrings(value, '@id', ids)
   collectJsonLdStrings(value, 'url', urls)
 
-  const normalizedValue = JSON.stringify(sortJsonValue(value))
+  const normalizedJsonValue = sortJsonValue(value)
+  const normalizedValue = JSON.stringify(normalizedJsonValue)
 
   // Strip the page origin from JSON content before hashing so that structurally
   // identical schemas only differing by domain (local vs prod) hash identically.
@@ -407,6 +408,7 @@ const buildJsonLdBlock = (value, pageUrl) => {
 
   return {
     hash,
+    json: JSON.stringify(normalizedJsonValue, null, 2),
     normalizedLength: normalizedValue.length,
     preview: normalizedValue.length > 280
       ? `${ normalizedValue.slice(0, 280) }...`

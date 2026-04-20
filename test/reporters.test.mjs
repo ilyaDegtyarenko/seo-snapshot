@@ -267,6 +267,37 @@ test('renderHtmlReport displays new crawl, security, and content detail fields',
   assert.match(html, /Heading hierarchy<\/dt><dd>H1 → H2 → H4<\/dd>/)
 })
 
+test('renderHtmlReport shows expandable full JSON-LD schemas on page cards', () => {
+  const page = createPage()
+  page.seo.jsonLd.blocks = [
+    {
+      hash: 'abc123',
+      json: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        author: {
+          '@type': 'Person',
+          name: 'Ada Lovelace',
+        },
+        headline: 'Example headline',
+      }, null, 2),
+      preview: '{"@context":"https://schema.org","@type":"Article","headline":"Example headline"}',
+      summary: 'Article | Example headline',
+    },
+  ]
+
+  const html = renderHtmlReport(createReport({
+    pages: [ page ],
+  }))
+
+  assert.match(html, /<h3>JSON-LD blocks<\/h3>/)
+  assert.match(html, /<details class="jsonld-details">\s*<summary>Full schema<\/summary>\s*<pre>/)
+  assert.match(html, /&quot;@context&quot;: &quot;https:\/\/schema\.org&quot;/)
+  assert.match(html, /&quot;headline&quot;: &quot;Example headline&quot;/)
+  assert.match(html, /\.jsonld-details pre \{[\s\S]*max-height: 420px;[\s\S]*white-space: pre-wrap;[\s\S]*overflow-wrap: anywhere;/)
+  assert.doesNotMatch(html, /<div class="muted"><code>\{&quot;@context&quot;/)
+})
+
 test('renderHtmlReport adds Comparison sidebar anchors and routes hashes to the comparison tab', () => {
   const comparison = {
     sources: [
@@ -396,6 +427,80 @@ test('renderHtmlReport adds Comparison sidebar anchors and routes hashes to the 
   assert.match(html, /group\.filter\.value = 'all'/)
   assert.match(html, /group\.diffOnlyToggle\.checked = false/)
   assert.match(html, /filterMatchMode: 'multi'/)
+})
+
+test('renderHtmlReport highlights changed fragments inside comparison values', () => {
+  const comparison = {
+    sources: [
+      { label: 'prod', url: 'https://www.example.com/' },
+      { label: 'stage', url: 'https://stage.example.com/' },
+    ],
+    targetCount: 1,
+    targetsWithDifferences: 1,
+    totalDifferences: 5,
+    differenceBreakdown: [
+      { key: 'canonical', label: 'Canonical', count: 2 },
+    ],
+    comparisons: [
+      {
+        targetPath: '/home',
+        left: {
+          label: 'prod',
+          baseUrl: 'https://www.example.com/',
+          requestedUrl: 'https://www.example.com/home',
+          finalUrl: 'https://www.example.com/home',
+          status: 200,
+        },
+        right: {
+          label: 'stage',
+          baseUrl: 'https://stage.example.com/',
+          requestedUrl: 'https://stage.example.com/home',
+          finalUrl: 'https://stage.example.com/home',
+          status: 200,
+        },
+        differences: [
+          { key: 'canonical', label: 'Canonical', left: 'hello /uk es.', right: 'hello / es.' },
+          { key: 'alternate', label: 'Alternate', left: 'hello / es.', right: 'hello /uk es.' },
+          { key: 'bodyTextLength', label: 'Body text length', left: 12, right: 123 },
+          { key: 'jsonLdBlocks', label: 'JSON-LD blocks', left: [ 'hash-a | WebPage', 'hash-old | Article | Old' ], right: [ 'hash-b | WebPage', 'hash-new | Product' ] },
+          { key: 'issueCodes', label: 'Issue codes', left: [ 'missing_title' ], right: [ 'missing_description' ] },
+        ],
+        fields: [
+          { key: 'canonical', label: 'Canonical', left: 'hello /uk es.', right: 'hello / es.', changed: true },
+          { key: 'alternate', label: 'Alternate', left: 'hello / es.', right: 'hello /uk es.', changed: true },
+          { key: 'bodyTextLength', label: 'Body text length', left: 12, right: 123, changed: true },
+          { key: 'jsonLdBlocks', label: 'JSON-LD blocks', left: [ 'hash-a | WebPage', 'hash-old | Article | Old' ], right: [ 'hash-b | WebPage', 'hash-new | Product' ], changed: true },
+          { key: 'issueCodes', label: 'Issue codes', left: [ 'missing_title' ], right: [ 'missing_description' ], changed: true },
+        ],
+        issueDelta: {
+          onlyOnLeft: [],
+          onlyOnRight: [],
+        },
+      },
+    ],
+  }
+
+  const html = renderHtmlReport(createReport({
+    comparison,
+    pages: [
+      createPage({
+        input: '/home',
+        targetPath: '/home',
+        requestedUrl: 'https://www.example.com/home',
+        finalUrl: 'https://www.example.com/home',
+        source: comparison.sources[0],
+      }),
+    ],
+  }))
+
+  assert.match(html, /hello \/<span class="diff-inline-change diff-inline-change-old">uk<\/span> es\./)
+  assert.match(html, /hello \/<span class="diff-inline-change diff-inline-change-new">uk<\/span> es\./)
+  assert.match(html, /<span class="diff-inline-label">Body text length<\/span>\s*<span class="diff-inline-old">12<\/span>\s*<span class="diff-arrow">→<\/span>\s*<span class="diff-inline-new">123<\/span>/)
+  assert.match(html, /<span class="diff-inline-label">JSON-LD blocks<\/span>[\s\S]*<span class="jsonld-compare-status">Changed<\/span>[\s\S]*<span class="jsonld-block-summary">WebPage<\/span>[\s\S]*<span class="jsonld-block-hash">hash-a<\/span>[\s\S]*<span class="jsonld-block-hash">hash-b<\/span>/)
+  assert.match(html, /<span class="jsonld-compare-status">Removed<\/span>[\s\S]*<span class="jsonld-block-summary">Article \| Old<\/span>[\s\S]*<span class="jsonld-block-hash">hash-old<\/span>/)
+  assert.match(html, /<span class="jsonld-compare-status">Added<\/span>[\s\S]*<span class="jsonld-block-summary">Product<\/span>[\s\S]*<span class="jsonld-block-hash">hash-new<\/span>/)
+  assert.match(html, /<span class="diff-inline-label">Issue codes<\/span>\s*<span class="diff-inline-old">missing_title<\/span>\s*<span class="diff-arrow">→<\/span>\s*<span class="diff-inline-new">missing_description<\/span>/)
+  assert.match(html, /\.diff-inline-change-new \{[\s\S]*background: #064e3b;[\s\S]*color: #a7f3d0;/)
 })
 
 test('renderHtmlReport offsets anchors below sticky User-Agent variant headers', () => {

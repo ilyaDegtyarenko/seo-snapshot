@@ -112,12 +112,25 @@ const renderJsonLdBlocks = (blocks) => {
     return '<span class="muted">-</span>'
   }
 
-  return `<ul class="stack-list">${ blocks.map(block => `
-    <li>
+  return `<ul class="stack-list jsonld-block-list">${ blocks.map((block) => {
+    const fullJson = typeof block.json === 'string' && block.json.trim() ? block.json : null
+    const fallbackPreview = !fullJson && block.preview ? String(block.preview) : null
+    const schemaDetails = fullJson || fallbackPreview
+      ? `
+        <details class="jsonld-details">
+          <summary>${ fullJson ? 'Full schema' : 'Preview' }</summary>
+          <pre>${ escapeHtml(fullJson ?? fallbackPreview) }</pre>
+        </details>
+      `
+      : ''
+
+    return `
+    <li class="jsonld-block-item">
       <strong>${ escapeHtml(block.hash || 'unknown') }</strong>: ${ escapeHtml(block.summary || 'Unknown JSON-LD block') }
-      ${ block.preview ? `<div class="muted"><code>${ escapeHtml(block.preview) }</code></div>` : '' }
+      ${ schemaDetails }
     </li>
-  `).join('') }</ul>`
+  `
+  }).join('') }</ul>`
 }
 
 const renderRedirectChain = (redirectChain) => {
@@ -126,7 +139,7 @@ const renderRedirectChain = (redirectChain) => {
   }
 
   return `<ol class="stack-list">${ redirectChain.map((step) => {
-    const location = step.location ? ` -> ${ escapeHtml(step.location) }` : ''
+    const location = step.location ? ` → ${ escapeHtml(step.location) }` : ''
     return `<li><code>${ escapeHtml(step.url) }</code> <strong>${ escapeHtml(step.status) }</strong>${ location }</li>`
   }).join('') }</ol>`
 }
@@ -453,6 +466,256 @@ const renderDiffValue = (value) => {
   return escapeHtml(String(value))
 }
 
+const parseJsonLdBlockSignature = (value) => {
+  const signature = String(value ?? '').trim()
+
+  if (!signature) {
+    return null
+  }
+
+  const separator = ' | '
+  const separatorIndex = signature.indexOf(separator)
+
+  if (separatorIndex === -1) {
+    return {
+      hash: 'unknown',
+      signature,
+      summary: signature,
+    }
+  }
+
+  const hash = signature.slice(0, separatorIndex).trim() || 'unknown'
+  const summary = signature.slice(separatorIndex + separator.length).trim() || 'Unknown JSON-LD block'
+
+  return {
+    hash,
+    signature,
+    summary,
+  }
+}
+
+const parseJsonLdBlockSignatures = (value) => {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .map(parseJsonLdBlockSignature)
+    .filter(Boolean)
+}
+
+const buildJsonLdBlockComparisonRows = (leftValue, rightValue) => {
+  const leftBlocks = parseJsonLdBlockSignatures(leftValue)
+  const rightBlocks = parseJsonLdBlockSignatures(rightValue)
+  const usedRightIndexes = new Set()
+  const rows = []
+  const findUnusedRightIndex = predicate => rightBlocks.findIndex((block, index) => !usedRightIndexes.has(index) && predicate(block))
+
+  for (const leftBlock of leftBlocks) {
+    let rightIndex = findUnusedRightIndex(block => block.summary === leftBlock.summary)
+
+    if (rightIndex === -1 && leftBlock.hash !== 'unknown') {
+      rightIndex = findUnusedRightIndex(block => block.hash === leftBlock.hash)
+    }
+
+    if (rightIndex === -1) {
+      rows.push({
+        left: leftBlock,
+        right: null,
+        status: 'removed',
+      })
+      continue
+    }
+
+    const rightBlock = rightBlocks[rightIndex]
+    usedRightIndexes.add(rightIndex)
+
+    rows.push({
+      left: leftBlock,
+      right: rightBlock,
+      status: leftBlock.signature === rightBlock.signature ? 'same' : 'changed',
+    })
+  }
+
+  for (const [ index, rightBlock ] of rightBlocks.entries()) {
+    if (!usedRightIndexes.has(index)) {
+      rows.push({
+        left: null,
+        right: rightBlock,
+        status: 'added',
+      })
+    }
+  }
+
+  return rows
+}
+
+const renderJsonLdBlockSide = (block) => {
+  if (!block) {
+    return '<span class="muted">—</span>'
+  }
+
+  return `
+    <span class="jsonld-block-summary">${ escapeHtml(block.summary) }</span>
+    <span class="jsonld-block-hash">${ escapeHtml(block.hash) }</span>
+  `
+}
+
+const renderJsonLdComparisonField = (field) => {
+  const rows = buildJsonLdBlockComparisonRows(field.left, field.right)
+  const statusLabels = {
+    added: 'Added',
+    changed: 'Changed',
+    removed: 'Removed',
+    same: 'Same',
+  }
+
+  const renderedRows = rows.length === 0
+    ? '<span class="muted">—</span>'
+    : rows.map(row => `
+      <div class="jsonld-compare-row jsonld-compare-row-${ row.status }">
+        <span class="jsonld-compare-status">${ statusLabels[row.status] }</span>
+        <div class="jsonld-compare-sides">
+          <div class="jsonld-compare-side jsonld-compare-side-old">${ renderJsonLdBlockSide(row.left) }</div>
+          <span class="jsonld-compare-arrow">→</span>
+          <div class="jsonld-compare-side jsonld-compare-side-new">${ renderJsonLdBlockSide(row.right) }</div>
+        </div>
+      </div>
+    `).join('')
+
+  return `
+    <div
+      class="${ field.changed ? 'diff-inline-row diff-inline-row-jsonld' : 'diff-inline-row diff-inline-row-jsonld diff-inline-row-unchanged' }"
+      data-comparison-field-changed="${ field.changed ? 'true' : 'false' }"
+    >
+      <span class="diff-inline-label">${ escapeHtml(field.label) }</span>
+      <div class="jsonld-compare">${ renderedRows }</div>
+    </div>
+  `
+}
+
+const maxInlineDiffCells = 80000
+const inlineDiffExcludedKeys = new Set([
+  'issueCodes',
+  'jsonLdBlocks',
+])
+
+const isNumericDiffValue = (value) => {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+const shouldRenderInlineDiff = (field) => {
+  return field.changed &&
+    !inlineDiffExcludedKeys.has(field.key) &&
+    !isNumericDiffValue(field.left) &&
+    !isNumericDiffValue(field.right)
+}
+
+const normalizeDiffTextValue = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  if (Array.isArray(value)) {
+    return value.length === 0 ? null : value.join(', ')
+  }
+  return String(value)
+}
+
+const buildCommonSubsequenceMatrix = (leftChars, rightChars) => {
+  const matrix = Array.from({ length: leftChars.length + 1 }, () => Array(rightChars.length + 1).fill(0))
+
+  for (let leftIndex = leftChars.length - 1; leftIndex >= 0; leftIndex -= 1) {
+    for (let rightIndex = rightChars.length - 1; rightIndex >= 0; rightIndex -= 1) {
+      matrix[leftIndex][rightIndex] = leftChars[leftIndex] === rightChars[rightIndex]
+        ? matrix[leftIndex + 1][rightIndex + 1] + 1
+        : Math.max(matrix[leftIndex + 1][rightIndex], matrix[leftIndex][rightIndex + 1])
+    }
+  }
+
+  return matrix
+}
+
+const pushDiffSegment = (segments, text, changed) => {
+  if (!text) {
+    return
+  }
+
+  const previous = segments.at(-1)
+  if (previous?.changed === changed) {
+    previous.text += text
+    return
+  }
+
+  segments.push({ text, changed })
+}
+
+const buildInlineDiffSegments = (leftValue, rightValue) => {
+  const leftText = normalizeDiffTextValue(leftValue)
+  const rightText = normalizeDiffTextValue(rightValue)
+
+  if (leftText === null || rightText === null) {
+    return null
+  }
+
+  const leftChars = [ ...leftText ]
+  const rightChars = [ ...rightText ]
+
+  if (leftChars.length * rightChars.length > maxInlineDiffCells) {
+    return null
+  }
+
+  const matrix = buildCommonSubsequenceMatrix(leftChars, rightChars)
+  const leftSegments = []
+  const rightSegments = []
+  let leftIndex = 0
+  let rightIndex = 0
+
+  while (leftIndex < leftChars.length && rightIndex < rightChars.length) {
+    if (leftChars[leftIndex] === rightChars[rightIndex]) {
+      pushDiffSegment(leftSegments, leftChars[leftIndex], false)
+      pushDiffSegment(rightSegments, rightChars[rightIndex], false)
+      leftIndex += 1
+      rightIndex += 1
+    } else if (matrix[leftIndex + 1][rightIndex] >= matrix[leftIndex][rightIndex + 1]) {
+      pushDiffSegment(leftSegments, leftChars[leftIndex], true)
+      leftIndex += 1
+    } else {
+      pushDiffSegment(rightSegments, rightChars[rightIndex], true)
+      rightIndex += 1
+    }
+  }
+
+  while (leftIndex < leftChars.length) {
+    pushDiffSegment(leftSegments, leftChars[leftIndex], true)
+    leftIndex += 1
+  }
+
+  while (rightIndex < rightChars.length) {
+    pushDiffSegment(rightSegments, rightChars[rightIndex], true)
+    rightIndex += 1
+  }
+
+  return {
+    left: leftSegments,
+    right: rightSegments,
+  }
+}
+
+const renderDiffSegments = (segments, side) => {
+  return segments.map(segment => {
+    const text = escapeHtml(segment.text)
+    return segment.changed ? `<span class="diff-inline-change diff-inline-change-${ side }">${ text }</span>` : text
+  }).join('')
+}
+
+const renderComparedDiffValue = (value, segments, side) => {
+  if (!segments) {
+    return renderDiffValue(value)
+  }
+
+  return renderDiffSegments(segments, side)
+}
+
 const renderIssueDelta = (issueDelta, comparison) => {
   if (!issueDelta || (!issueDelta.onlyOnLeft.length && !issueDelta.onlyOnRight.length)) {
     return ''
@@ -480,17 +743,25 @@ const renderComparisonFields = (comparison) => {
     return '<p class="muted" data-comparison-no-fields>No compared fields found.</p>'
   }
 
-  return fields.map(field => `
+  return fields.map((field) => {
+    if (field.key === 'jsonLdBlocks') {
+      return renderJsonLdComparisonField(field)
+    }
+
+    const diffSegments = shouldRenderInlineDiff(field) ? buildInlineDiffSegments(field.left, field.right) : null
+
+    return `
     <div
       class="${ field.changed ? 'diff-inline-row' : 'diff-inline-row diff-inline-row-unchanged' }"
       data-comparison-field-changed="${ field.changed ? 'true' : 'false' }"
     >
       <span class="diff-inline-label">${ escapeHtml(field.label) }</span>
-      <span class="diff-inline-old">${ renderDiffValue(field.left) }</span>
+      <span class="diff-inline-old">${ renderComparedDiffValue(field.left, diffSegments?.left, 'old') }</span>
       <span class="diff-arrow">→</span>
-      <span class="diff-inline-new">${ renderDiffValue(field.right) }</span>
+      <span class="diff-inline-new">${ renderComparedDiffValue(field.right, diffSegments?.right, 'new') }</span>
     </div>
-  `).join('')
+    `
+  }).join('')
 }
 
 const renderCardLinks = (links) => {
@@ -1685,6 +1956,34 @@ export const renderHtmlReport = (report) => {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
+    .jsonld-block-list {
+      display: grid;
+      gap: 10px;
+    }
+    .jsonld-details {
+      margin-top: 8px;
+      max-width: 100%;
+      min-width: 0;
+    }
+    .jsonld-details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .jsonld-details pre {
+      margin: 10px 0 0;
+      padding: 12px;
+      overflow: auto;
+      max-width: 100%;
+      max-height: 420px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-code);
+      color: var(--tone-strong);
+      font-size: 12px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
     .diff-inline-list {
       display: grid;
     }
@@ -1724,6 +2023,82 @@ export const renderHtmlReport = (report) => {
       color: var(--success);
       border-radius: 4px;
       word-break: break-word;
+    }
+    .diff-inline-change {
+      border-radius: 3px;
+      padding: 0 2px;
+      font-weight: 700;
+    }
+    .diff-inline-change-old {
+      background: #3a1717;
+      color: #fca5a5;
+    }
+    .diff-inline-change-new {
+      background: #064e3b;
+      color: #a7f3d0;
+    }
+    .diff-inline-row-jsonld {
+      grid-template-columns: 130px 1fr;
+    }
+    .jsonld-compare {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+    .jsonld-compare-row {
+      display: grid;
+      grid-template-columns: 84px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-muted);
+    }
+    .jsonld-compare-status {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      padding-top: 3px;
+    }
+    .jsonld-compare-row-added .jsonld-compare-status,
+    .jsonld-compare-row-same .jsonld-compare-status {
+      color: var(--success);
+    }
+    .jsonld-compare-row-changed .jsonld-compare-status {
+      color: var(--warning);
+    }
+    .jsonld-compare-row-removed .jsonld-compare-status {
+      color: var(--error);
+    }
+    .jsonld-compare-sides {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+      min-width: 0;
+    }
+    .jsonld-compare-side {
+      min-width: 0;
+      word-break: break-word;
+    }
+    .jsonld-compare-arrow {
+      color: var(--muted);
+      font-size: 12px;
+      padding-top: 3px;
+    }
+    .jsonld-block-summary {
+      display: block;
+      color: var(--tone-strong);
+    }
+    .jsonld-block-hash {
+      display: inline-block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
     }
     .diff-inline-row-unchanged .diff-inline-old,
     .diff-inline-row-unchanged .diff-inline-new {
@@ -1797,6 +2172,16 @@ export const renderHtmlReport = (report) => {
       .page-header { padding: 20px; }
       .diff-inline-row { grid-template-columns: 1fr; }
       .diff-issue-badges { grid-column: 1; }
+      .jsonld-compare-sides,
+      .jsonld-compare-row {
+        grid-template-columns: 1fr;
+      }
+      .jsonld-compare {
+        grid-column: 1;
+      }
+      .jsonld-compare-arrow {
+        display: none;
+      }
       .page-index-nav {
         max-height: none;
       }
