@@ -40,7 +40,7 @@ export default {
     minDescriptionLength: 70,
     maxDescriptionLength: 160,
     minBodyTextLength: 250,
-    flagEmptyAlt: false, // set to true to warn on images with alt=""
+    flagEmptyAlt: true, // set to true to warn on images with alt=""
     ignore: [ 'missing_twitter_card', 'missing_og_image' ],
   },
 }
