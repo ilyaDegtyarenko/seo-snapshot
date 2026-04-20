@@ -172,7 +172,10 @@ const buildFullConfig = ({ config, runtimeOptions, baseTargets, targets }) => {
     ...currentConfig,
     targets: targetInputs,
     resolvedTargets,
-    request: runtimeOptions.request,
+    request: {
+      ...runtimeOptions.request,
+      ...(runtimeOptions.variants !== null ? { userAgents: runtimeOptions.variants.map(v => ({ label: v.label, userAgent: v.userAgent })) } : {}),
+    },
     output: runtimeOptions.output,
     compare: runtimeOptions.compare,
     variants: runtimeOptions.variants,
