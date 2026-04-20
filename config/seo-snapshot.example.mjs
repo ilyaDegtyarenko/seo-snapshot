@@ -11,8 +11,7 @@ export default {
       },
     },
   },
-  // targetsFile: './targets.txt',
-  // targetsFile: './targets.xml',
+  // targetsFile: null, // auto-detects targets.json/txt/xml in config dir; set only for a non-default path
   targets: [
     '/',
     '/news',
@@ -20,7 +19,7 @@ export default {
   output: {
     dir: '../reports',
     formats: [ 'html', 'json' ],
-    // hideTtfb: true,
+    hideTtfb: false, // set to true to hide TTFB from the report
   },
   request: {
     timeoutMs: 15_000,

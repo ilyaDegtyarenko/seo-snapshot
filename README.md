@@ -4,7 +4,7 @@ A small CLI for checking the SEO state of a URL set. The tool crawls pages, capt
 
 ## Features
 
-- read URLs from `config/targets.txt`, `config/targets.xml`, inline config, and/or env overrides
+- read URLs from `config/targets.json`, `config/targets.txt`, `config/targets.xml`, inline config, and/or env overrides
 - support `baseUrl` for relative paths
 - compare the same target path across a primary and secondary domain and show SEO differences
 - repeat the audit per User-Agent variant and keep variant labels in the reports
@@ -43,8 +43,8 @@ pnpm run snapshot
 Typical local setup:
 
 1. Copy `config/seo-snapshot.example.mjs` to `config/seo-snapshot.mjs`.
-2. Copy `config/targets.example.txt` to `config/targets.txt` for a text list, or copy `config/targets.example.xml` to `config/targets.xml` for a sitemap dump.
-3. Point `targetsFile` in `config/seo-snapshot.mjs` to `./targets.txt` or `./targets.xml`, or keep inline `targets`.
+2. Copy `config/targets.example.json` to `config/targets.json` for a JSON list, `config/targets.example.txt` to `config/targets.txt` for a plain-text list, or `config/targets.example.xml` to `config/targets.xml` for a sitemap dump.
+3. `config/targets.json`, `config/targets.txt`, and `config/targets.xml` are auto-detected — no `targetsFile` setting needed. Alternatively keep inline `targets` in the config.
 4. Put secrets or small toggles in `.env` only when needed.
 5. Run `pnpm run snapshot`.
 
@@ -95,8 +95,8 @@ Recommended split:
 
 - `config/seo-snapshot.example.mjs`: committed template for the runtime config
 - `config/seo-snapshot.mjs`: ignored runtime config with local structured settings such as `baseUrl`, `compare.baseUrl`, `targetsFile`, profiles, or User-Agent variants
-- `config/targets.example.txt` / `config/targets.example.xml`: committed target templates
-- `config/targets.txt` / `config/targets.xml`: ignored runtime target inputs
+- `config/targets.example.json` / `config/targets.example.txt` / `config/targets.example.xml`: committed target templates
+- `config/targets.json` / `config/targets.txt` / `config/targets.xml`: ignored runtime target inputs
 - `.env`: ignored secrets and small scalar toggles such as cookies, headers, `SEO_SNAPSHOT_OPEN`, and one-off overrides
 - CLI flags: one-shot per-run overrides
 
@@ -210,6 +210,7 @@ export default {
       },
     },
   },
+  // targetsFile: './targets.json',
   // targetsFile: './targets.txt',
   // targetsFile: './targets.xml',
   targets: [
@@ -340,12 +341,13 @@ The following fields are compared between domains:
 
 Recommended local setup for targets:
 
-- keep `config/seo-snapshot.mjs`, `config/targets.txt`, and `config/targets.xml` ignored and local-only
-- commit `config/seo-snapshot.example.mjs`, `config/targets.example.txt`, and `config/targets.example.xml` as shared templates
-- point `targetsFile` to `./targets.txt` for plain text input or `./targets.xml` for sitemap exports
+- keep `config/seo-snapshot.mjs`, `config/targets.json`, `config/targets.txt`, and `config/targets.xml` ignored and local-only
+- commit `config/seo-snapshot.example.mjs`, `config/targets.example.json`, `config/targets.example.txt`, and `config/targets.example.xml` as shared templates
+- `targets.json`, `targets.txt`, and `targets.xml` in the config directory are auto-detected; `targetsFile` only needs to be set for a non-default path
 
-Supported `targetsFile` inputs:
+Supported target file inputs:
 
+- JSON arrays with one URL string per element (default)
 - plain text lists with one target per line
 - sitemap XML dumps with `<url><loc>...</loc></url>` entries
 
