@@ -1637,7 +1637,7 @@ export const renderHtmlReport = (report) => {
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 6px 10px;
+      padding: 4px 10px;
       border-radius: 999px;
       font-size: 12px;
       font-weight: 600;
