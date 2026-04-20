@@ -609,6 +609,11 @@ const DIFFERENCE_SPECS = [
     getValue: page => page.seo?.document.imagesWithoutAlt ?? null,
   },
   {
+    key: 'imagesWithEmptyAlt',
+    label: 'Images with empty alt',
+    getValue: page => page.seo?.document.imagesWithEmptyAlt ?? null,
+  },
+  {
     key: 'internalLinkCount',
     label: 'Internal link count',
     getValue: page => page.seo?.document.internalLinkCount ?? null,

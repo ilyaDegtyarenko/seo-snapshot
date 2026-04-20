@@ -558,6 +558,7 @@ const renderPageCard = (entry, options = {}) => {
         ${ renderKeyValueRow('Body text length', page.seo?.document.bodyTextLength) }
         ${ renderKeyValueRow('Images', page.seo?.document.imageCount ?? '-') }
         ${ renderKeyValueRow('Images without alt', page.seo?.document.imagesWithoutAlt ?? '-') }
+        ${ renderKeyValueRow('Images with empty alt', page.seo?.document.imagesWithEmptyAlt ?? '-') }
         ${ renderKeyValueRow('Internal links', page.seo?.document.internalLinkCount ?? '-') }
         ${ renderKeyValueRow('Heading hierarchy', page.seo?.document.headingHierarchy?.length > 0 ? page.seo.document.headingHierarchy.map(level => `H${ level }`).join(' → ') : null) }
         ${ renderKeyValueRow('Viewport', page.seo?.meta.viewport) }

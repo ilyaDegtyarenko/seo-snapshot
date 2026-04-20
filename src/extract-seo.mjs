@@ -436,16 +436,20 @@ const countImages = (html) => {
   const bodyHtml = bodyMatch?.[1] ?? ''
   const imgTags = findTagAttributes(bodyHtml, 'img')
   let imagesWithoutAlt = 0
+  let imagesWithEmptyAlt = 0
 
   for (const attributes of imgTags) {
     if (!('alt' in attributes)) {
       imagesWithoutAlt += 1
+    } else if (!normalizeAttributeValue(attributes.alt)) {
+      imagesWithEmptyAlt += 1
     }
   }
 
   return {
     imageCount: imgTags.length,
     imagesWithoutAlt,
+    imagesWithEmptyAlt,
   }
 }
 
@@ -617,6 +621,7 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
       bodyTextLength: getBodyTextLength(normalizedHtml),
       imageCount: imageStats.imageCount,
       imagesWithoutAlt: imageStats.imagesWithoutAlt,
+      imagesWithEmptyAlt: imageStats.imagesWithEmptyAlt,
       internalLinkCount,
       headingHierarchy: getHeadingHierarchy(normalizedHtml),
     },

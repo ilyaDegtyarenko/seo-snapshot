@@ -377,6 +377,14 @@ export const buildPageIssues = (page, rules) => {
     pushIssue(issues, 'warning', 'images_missing_alt', `${ imagesWithoutAlt } image(s) missing alt attribute.`)
   }
 
+  if (rules.flagEmptyAlt) {
+    const imagesWithEmptyAlt = page.seo?.document.imagesWithEmptyAlt ?? 0
+
+    if (imagesWithEmptyAlt > 0) {
+      pushIssue(issues, 'warning', 'images_empty_alt', `${ imagesWithEmptyAlt } image(s) have an empty alt attribute.`)
+    }
+  }
+
   const headingHierarchy = page.seo?.document.headingHierarchy ?? []
 
   for (let index = 1; index < headingHierarchy.length; index += 1) {

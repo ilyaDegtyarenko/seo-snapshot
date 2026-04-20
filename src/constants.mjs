@@ -15,6 +15,7 @@ export const DEFAULT_AUDIT_RULES = {
   minDescriptionLength: 70,
   maxDescriptionLength: 160,
   minBodyTextLength: 250,
+  flagEmptyAlt: false,
 }
 
 export const SUPPORTED_FORMATS = [ 'html', 'json' ]

@@ -101,6 +101,7 @@ test('extractSeoInfoFromHtml counts images without alt and internal links', () =
 
   assert.equal(result.document.imageCount, 3)
   assert.equal(result.document.imagesWithoutAlt, 1)
+  assert.equal(result.document.imagesWithEmptyAlt, 1)
   assert.equal(result.document.internalLinkCount, 3)
 })
 

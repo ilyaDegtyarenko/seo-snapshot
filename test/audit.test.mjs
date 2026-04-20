@@ -416,6 +416,57 @@ test('buildPageIssues detects images missing alt attribute', () => {
   assert.equal(codes.includes('images_missing_alt'), true)
 })
 
+test('buildPageIssues flags images with empty alt when flagEmptyAlt is enabled', () => {
+  const page = {
+    targetPath: '/test',
+    status: 200,
+    error: null,
+    parseSkippedReason: null,
+    headers: {
+      xRobotsTag: null,
+      links: { canonical: null, llms: null },
+    },
+    seo: {
+      document: {
+        title: 'A page title long enough',
+        h1: [ 'Hello' ],
+        lang: 'en',
+        bodyTextLength: 500,
+        imageCount: 3,
+        imagesWithoutAlt: 0,
+        imagesWithEmptyAlt: 2,
+        internalLinkCount: 0,
+        headingHierarchy: [ 1, 2 ],
+      },
+      meta: {
+        description: 'A description that is long enough for audit to pass the minimum length check.',
+        robots: 'index,follow',
+        openGraph: { title: 'OG', description: 'OG desc', image: '/img.jpg' },
+        twitter: { card: 'summary' },
+      },
+      links: {
+        canonical: 'https://example.com/test',
+        alternates: [],
+      },
+      jsonLd: {
+        scriptCount: 0,
+        parseErrors: 0,
+        hasWebSite: false,
+        hasOrganization: false,
+      },
+      head: { duplicates: [] },
+    },
+  }
+
+  const codesDefault = buildPageIssues(page, DEFAULT_AUDIT_RULES).map(i => i.code)
+
+  assert.equal(codesDefault.includes('images_empty_alt'), false)
+
+  const codesEnabled = buildPageIssues(page, { ...DEFAULT_AUDIT_RULES, flagEmptyAlt: true }).map(i => i.code)
+
+  assert.equal(codesEnabled.includes('images_empty_alt'), true)
+})
+
 test('buildPageIssues filters out ignored issue codes', () => {
   const page = {
     targetPath: '/',
