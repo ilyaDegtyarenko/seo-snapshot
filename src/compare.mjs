@@ -202,6 +202,25 @@ const normalizeJsonLdBlocks = (blocks) => {
   }), { sort: true })
 }
 
+const normalizePreloadLinks = (preloads, page) => {
+  if (!Array.isArray(preloads)) {
+    return []
+  }
+
+  return normalizeList(preloads.map((preload) => {
+    const href = normalizeComparableUrl(preload?.href, page) ?? '-'
+    const as = normalizeScalar(preload?.as) ?? ''
+    const type = normalizeScalar(preload?.type) ?? ''
+    const parts = [ as || 'preload' ]
+
+    if (type) {
+      parts.push(type)
+    }
+
+    return `${ parts.join('/') }: ${ href }`
+  }), { sort: true })
+}
+
 const normalizeJsonLdMissingRequiredProperties = (issues) => {
   if (!Array.isArray(issues)) {
     return []
@@ -501,6 +520,26 @@ const DIFFERENCE_SPECS = [
     key: 'androidAppStoreUrl',
     label: 'Android app store URL',
     getValue: page => normalizeScalar(page.seo?.meta.appLinks?.androidAppStoreUrl),
+  },
+  {
+    key: 'facebookDomainVerification',
+    label: 'Facebook domain verification',
+    getValue: page => normalizeScalar(page.seo?.meta.facebookDomainVerification),
+  },
+  {
+    key: 'preloads',
+    label: 'Preload links',
+    getValue: page => normalizePreloadLinks(page.seo?.links.preloads, page),
+  },
+  {
+    key: 'preconnects',
+    label: 'Preconnect links',
+    getValue: page => normalizeList(page.seo?.links.preconnects, { sort: true }),
+  },
+  {
+    key: 'dnsPrefetches',
+    label: 'DNS-prefetch links',
+    getValue: page => normalizeList(page.seo?.links.dnsPrefetches, { sort: true }),
   },
   {
     key: 'jsonLdScriptCount',

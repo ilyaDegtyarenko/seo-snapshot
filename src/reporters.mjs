@@ -57,6 +57,22 @@ const renderAlternateResources = (items) => {
   }).join('') }</ul>`
 }
 
+const renderPreloadLinks = (preloads) => {
+  if (!Array.isArray(preloads) || preloads.length === 0) {
+    return '<span class="muted">-</span>'
+  }
+
+  return `<ul class="stack-list">${ preloads.map((preload) => {
+    const parts = [ preload.as || 'preload' ]
+
+    if (preload.type) {
+      parts.push(preload.type)
+    }
+
+    return `<li><strong>${ escapeHtml(parts.join('/')) }</strong>: ${ escapeHtml(preload.href || '-') }</li>`
+  }).join('') }</ul>`
+}
+
 const renderIconLinks = (icons) => {
   if (!Array.isArray(icons) || icons.length === 0) {
     return '<span class="muted">-</span>'
@@ -562,6 +578,7 @@ const renderPageCard = (entry, options = {}) => {
         ${ renderKeyValueRow('Twitter Image', page.seo?.meta.twitter.image) }
         ${ renderKeyValueRow('Twitter Image Alt', page.seo?.meta.twitter.imageAlt) }
         ${ renderKeyValueRow('Apple iTunes app', page.seo?.meta.appleItunesApp) }
+        ${ renderKeyValueRow('Facebook domain verification', page.seo?.meta.facebookDomainVerification) }
         ${ renderKeyValueRow('iOS deep link', page.seo?.meta.appLinks?.iosUrl) }
         ${ renderKeyValueRow('iOS App Store ID', page.seo?.meta.appLinks?.iosAppStoreId) }
         ${ renderKeyValueRow('Android deep link', page.seo?.meta.appLinks?.androidUrl) }
@@ -592,6 +609,21 @@ const renderPageCard = (entry, options = {}) => {
       <div class="subsection">
         <h3>Icons</h3>
         ${ renderIconLinks(page.seo?.links.icons) }
+      </div>
+
+      <div class="subsection">
+        <h3>Preload Links</h3>
+        ${ renderPreloadLinks(page.seo?.links.preloads) }
+      </div>
+
+      <div class="subsection">
+        <h3>Preconnect Links</h3>
+        ${ renderList(page.seo?.links.preconnects) }
+      </div>
+
+      <div class="subsection">
+        <h3>DNS-prefetch Links</h3>
+        ${ renderList(page.seo?.links.dnsPrefetches) }
       </div>
 
       <div class="subsection">
@@ -976,7 +1008,8 @@ export const renderHtmlReport = (report) => {
       border-radius: 16px;
       border: 1px solid var(--border);
       background: var(--bg-muted);
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 4px;
     }
     .header-meta-item strong {

@@ -12,6 +12,7 @@ A small CLI for checking the SEO state of a URL set. The tool crawls pages, capt
 - measure TTFB and capture security headers such as `Content-Security-Policy` and `X-Frame-Options`
 - collect document metrics such as image counts, missing `alt` attributes, internal links, and heading hierarchy
 - check title, description, canonical, H1, `lang`, robots directives, response `Link` headers, `hreflang`, OpenGraph, Twitter Card, JSON-LD, and visible body text
+- capture resource hints (`rel=preload`, `rel=preconnect`, `rel=dns-prefetch`) and site-verification meta tags such as `facebook-domain-verification`
 - detect page-level issues, duplicate head tags, and produce an overall issue breakdown
 - support named config profiles, browser auto-open, audit-code suppression, custom cookies, and custom request headers
 - write per-page crawl progress to `stderr` and save reports to `reports/`
@@ -327,6 +328,8 @@ The following fields are compared between domains:
 - OpenGraph: title, description, type, site name, locale, locale alternates, URL (path-normalized), URL cross-domain flag, image, image alt, video
 - Twitter: card, title, description, URL (path-normalized), image, image alt
 - App links: `apple-itunes-app`, `al:ios:*`, `al:android:*`
+- `facebook-domain-verification` meta tag
+- resource hints: preload links, preconnect links, DNS-prefetch links
 - JSON-LD: script count, parse errors, schema types, `WebSite`/`Organization` presence, block signatures, missing required properties
 - duplicate head-tag signals
 - visible body text length, image count, images without `alt`, internal link count
@@ -397,8 +400,10 @@ The following fields are collected and shown in the report:
 - full OpenGraph data: type, URL, site name, locale, locale alternates, image alt, video
 - full Twitter data: title, description, URL, image alt
 - app deep links: `apple-itunes-app`, `al:ios:*`, `al:android:*`
+- site-verification meta tag: `facebook-domain-verification`
 - hreflang alternates, alternate resources (feeds, etc.)
 - `rel=prev` / `rel=next` pagination links
+- resource hints: preload links (`href`, `as`, `type`), preconnect links, DNS-prefetch links
 - JSON-LD schema types, `WebSite`/`Organization` flags, block signatures, previews, and missing required properties
 - visible body text length, image count, images without `alt`, internal link count, heading hierarchy
 

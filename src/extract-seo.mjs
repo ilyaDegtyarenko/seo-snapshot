@@ -166,6 +166,15 @@ const buildIconLinks = (linkTags, pageUrl) => {
     }))
 }
 
+const buildPreloadLinks = (linkTags, pageUrl) => {
+  return getLinkTagsByRel(linkTags, 'preload')
+    .map(attributes => ({
+      href: buildResolvedLinkValue(attributes.href, pageUrl),
+      as: normalizeAttributeValue(attributes.as),
+      type: normalizeAttributeValue(attributes.type),
+    }))
+}
+
 const appendJsonLdTypes = (value, collector) => {
   if (!value) {
     return
@@ -621,6 +630,7 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
       applicationName: getFirstValue(getMetaContentsByName(metaTags, 'application-name')),
       themeColor: getFirstValue(getMetaContentsByName(metaTags, 'theme-color')),
       appleItunesApp: getFirstValue(getMetaContentsByName(metaTags, 'apple-itunes-app')),
+      facebookDomainVerification: getFirstValue(getMetaContentsByName(metaTags, 'facebook-domain-verification')),
       openGraph: {
         title: getFirstValue(getMetaContentsByProperty(metaTags, 'og:title')),
         description: getFirstValue(getMetaContentsByProperty(metaTags, 'og:description')),
@@ -660,6 +670,13 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
       favicon: iconLinks[0]?.href ?? null,
       prev: buildResolvedLinkValue(paginationLinks.prev, pageUrl),
       next: buildResolvedLinkValue(paginationLinks.next, pageUrl),
+      preloads: buildPreloadLinks(linkTags, pageUrl),
+      preconnects: getLinkTagsByRel(linkTags, 'preconnect')
+        .map(attributes => buildResolvedLinkValue(attributes.href, pageUrl))
+        .filter(Boolean),
+      dnsPrefetches: getLinkTagsByRel(linkTags, 'dns-prefetch')
+        .map(attributes => buildResolvedLinkValue(attributes.href, pageUrl))
+        .filter(Boolean),
     },
     jsonLd: {
       scriptCount: jsonLdScriptCount,
