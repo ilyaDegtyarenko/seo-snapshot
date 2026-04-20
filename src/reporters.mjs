@@ -152,6 +152,26 @@ const renderSummaryCard = (value, label, tone = 'neutral') => {
   return `<article class="summary-card${ toneClass }"><strong>${ escapeHtml(value) }</strong><span>${ escapeHtml(label) }</span></article>`
 }
 
+const stringifyReportJson = (value) => {
+  const seen = new WeakSet()
+
+  return JSON.stringify(value, (key, item) => {
+    if (typeof item === 'function') {
+      return `[Function ${ item.name || 'anonymous' }]`
+    }
+
+    if (typeof item === 'object' && item !== null) {
+      if (seen.has(item)) {
+        return '[Circular]'
+      }
+
+      seen.add(item)
+    }
+
+    return item
+  }, 2)
+}
+
 const getHostname = (value) => {
   if (!value) {
     return null
@@ -234,20 +254,46 @@ const buildPageAnchorId = (page, index) => {
     : `page-${ index + 1 }`
 }
 
+const buildComparisonSideKey = ({ targetPath, variantId, sourceUrl }) => {
+  return JSON.stringify([
+    String(targetPath || '').trim(),
+    variantId ?? '',
+    sourceUrl ?? '',
+  ])
+}
+
 const buildPageEntries = (pages) => {
   return pages.map((page, index) => {
     const source = getPageSourceMeta(page)
+    const targetPath = String(page.targetPath || page.input || '').trim()
+    const variantId = page.variantId ?? page.variant ?? null
 
     return {
       anchorId: buildPageAnchorId(page, index),
+      comparisonAnchorId: null,
+      comparisonLabel: null,
       index,
       navLabel: getPageNavLabel(page),
       source,
+      sourceUrl: page.source?.url ?? null,
+      targetPath,
       title: getPageTitle(page),
       variant: page.variant ?? null,
+      variantId,
       page,
     }
   })
+}
+
+const buildPageEntryLookup = (pageEntries) => {
+  return new Map(pageEntries.map(entry => [
+    buildComparisonSideKey({
+      targetPath: entry.targetPath,
+      variantId: entry.variantId,
+      sourceUrl: entry.sourceUrl,
+    }),
+    entry,
+  ]))
 }
 
 const buildSourceFilters = (entries, getSource) => {
@@ -294,11 +340,24 @@ const buildComparisonAnchorId = (comparison, index) => {
     : `comparison-${ index + 1 }`
 }
 
-const buildComparisonEntries = (comparisons) => {
+const buildComparisonEntries = (comparisons, pageEntries = []) => {
+  const pageEntryLookup = buildPageEntryLookup(pageEntries)
+
   return comparisons.map((comparison, index) => {
     const navLabel = getComparisonNavLabel(comparison)
     const diffCount = getComparisonDifferenceCount(comparison)
     const differenceKeys = [ ...new Set(comparison.differences.map(difference => difference.key)) ]
+    const variantId = comparison.variantId ?? comparison.variant ?? null
+    const leftPageEntry = pageEntryLookup.get(buildComparisonSideKey({
+      targetPath: comparison.targetPath,
+      variantId,
+      sourceUrl: comparison.left.baseUrl,
+    })) ?? null
+    const rightPageEntry = pageEntryLookup.get(buildComparisonSideKey({
+      targetPath: comparison.targetPath,
+      variantId,
+      sourceUrl: comparison.right.baseUrl,
+    })) ?? null
 
     return {
       anchorId: buildComparisonAnchorId(comparison, index),
@@ -307,6 +366,55 @@ const buildComparisonEntries = (comparisons) => {
       diffCount,
       index,
       navLabel,
+      pageLinks: [
+        {
+          anchorId: leftPageEntry?.anchorId ?? null,
+          label: comparison.left.label,
+          url: comparison.left.finalUrl || comparison.left.requestedUrl || null,
+        },
+        {
+          anchorId: rightPageEntry?.anchorId ?? null,
+          label: comparison.right.label,
+          url: comparison.right.finalUrl || comparison.right.requestedUrl || null,
+        },
+      ].filter(link => link.anchorId),
+    }
+  })
+}
+
+const attachComparisonLinksToPageEntries = (pageEntries, comparisonEntries) => {
+  const comparisonLookup = new Map()
+
+  for (const entry of comparisonEntries) {
+    const variantId = entry.comparison.variantId ?? entry.comparison.variant ?? null
+
+    comparisonLookup.set(buildComparisonSideKey({
+      targetPath: entry.comparison.targetPath,
+      variantId,
+      sourceUrl: entry.comparison.left.baseUrl,
+    }), entry)
+    comparisonLookup.set(buildComparisonSideKey({
+      targetPath: entry.comparison.targetPath,
+      variantId,
+      sourceUrl: entry.comparison.right.baseUrl,
+    }), entry)
+  }
+
+  return pageEntries.map((entry) => {
+    const comparisonEntry = comparisonLookup.get(buildComparisonSideKey({
+      targetPath: entry.targetPath,
+      variantId: entry.variantId,
+      sourceUrl: entry.sourceUrl,
+    })) ?? null
+
+    if (!comparisonEntry) {
+      return entry
+    }
+
+    return {
+      ...entry,
+      comparisonAnchorId: comparisonEntry.anchorId,
+      comparisonLabel: comparisonEntry.navLabel,
     }
   })
 }
@@ -385,6 +493,22 @@ const renderComparisonFields = (comparison) => {
   `).join('')
 }
 
+const renderCardLinks = (links) => {
+  const availableLinks = links.filter(link => link?.href && link?.label)
+
+  if (availableLinks.length === 0) {
+    return ''
+  }
+
+  return `
+    <div class="card-link-row">
+      ${ availableLinks.map(link => `
+        <a class="card-link" href="${ escapeHtml(link.href) }"${ link.title ? ` title="${ escapeHtml(link.title) }"` : '' }><span class="card-link-icon" aria-hidden="true">→</span><span>${ escapeHtml(link.label) }</span></a>
+      `).join('') }
+    </div>
+  `
+}
+
 const getComparisonSideTone = (side) => {
   if (!side.status) return 'neutral'
   if (side.status >= 500) return 'error'
@@ -425,6 +549,11 @@ const renderComparisonCard = (entry) => {
   const { comparison, anchorId, diffCount, navLabel } = entry
   const leftUrl = comparison.left.finalUrl || comparison.left.requestedUrl || '-'
   const rightUrl = comparison.right.finalUrl || comparison.right.requestedUrl || '-'
+  const pageLinks = entry.pageLinks.map(link => ({
+    href: `#${ link.anchorId }`,
+    label: `Go to ${ link.label } page`,
+    title: link.url,
+  }))
 
   return `
     <section
@@ -440,6 +569,7 @@ const renderComparisonCard = (entry) => {
         <div class="page-card-title">
           <h2>${ escapeHtml(navLabel) }</h2>
           <p class="page-url"><code>${ escapeHtml(leftUrl) }</code> → <code>${ escapeHtml(rightUrl) }</code></p>
+          ${ renderCardLinks(pageLinks) }
         </div>
         <div class="badge-row">
           ${ renderBadge(`${ comparison.left.label } ${ comparison.left.status ?? 'n/a' }`, getComparisonSideTone(comparison.left)) }
@@ -516,6 +646,13 @@ const renderPageCard = (entry, options = {}) => {
     : 'success'
   const robotsBadgeValue = page.seo?.meta.robots || page.headers.xRobotsTag || null
   const rawJson = escapeHtml(JSON.stringify(page, null, 2))
+  const comparisonLinks = entry.comparisonAnchorId
+    ? [{
+      href: `#${ entry.comparisonAnchorId }`,
+      label: 'Go to comparison',
+      title: entry.comparisonLabel,
+    }]
+    : []
 
   return `
     <section
@@ -530,6 +667,7 @@ const renderPageCard = (entry, options = {}) => {
         <div class="page-card-title">
           <h2>${ escapeHtml(title) }</h2>
           <p class="page-url"><code>${ escapeHtml(page.finalUrl || page.requestedUrl) }</code></p>
+          ${ renderCardLinks(comparisonLinks) }
         </div>
         <div class="badge-row">
           ${ source.badge ? renderBadge(source.badge, 'info') : '' }
@@ -769,8 +907,7 @@ const renderComparisonVariantGroupedCards = (comparisonEntries, variantLabels) =
   }).join('')
 }
 
-const renderComparisonTab = (comparison) => {
-  const comparisonEntries = buildComparisonEntries(comparison.comparisons)
+const renderComparisonTab = (comparison, comparisonEntries) => {
   const hasVariants = Boolean(comparison.variants?.length)
   const comparisonProblemFilter = renderIndexFilter({
     filters: comparison.differenceBreakdown,
@@ -916,8 +1053,12 @@ const renderPagesTab = (pageEntries, comparison, options = {}) => {
 export const renderHtmlReport = (report) => {
   const summary = report.summary ?? buildSummary(report.pages)
   const comparison = report.comparison ?? null
-  const pageEntries = buildPageEntries(report.pages)
+  const basePageEntries = buildPageEntries(report.pages)
+  const comparisonEntries = comparison ? buildComparisonEntries(comparison.comparisons, basePageEntries) : []
+  const pageEntries = comparison ? attachComparisonLinksToPageEntries(basePageEntries, comparisonEntries) : basePageEntries
   const pageCardOptions = { hideTtfb: Boolean(report.options?.hideTtfb) }
+  const fullConfig = report.options?.fullConfig ?? report.options ?? {}
+  const fullConfigJson = escapeHtml(stringifyReportJson(fullConfig))
   const generatedAtLabel = new Date(report.generatedAt).toLocaleString('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'medium',
@@ -950,8 +1091,12 @@ export const renderHtmlReport = (report) => {
       --warning: #fbbf24;
       --error: #f87171;
       --info: #60a5fa;
+      --anchor-scroll-offset: 56px;
     }
-    html { scroll-behavior: smooth; }
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: var(--anchor-scroll-offset);
+    }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -1140,7 +1285,7 @@ export const renderHtmlReport = (report) => {
       transform: rotate(0);
     }
     .report-page-card {
-      scroll-margin-top: 24px;
+      scroll-margin-top: var(--anchor-scroll-offset);
     }
     .page-card {
       padding: 22px;
@@ -1168,6 +1313,34 @@ export const renderHtmlReport = (report) => {
     }
     .page-url code {
       color: var(--tone-strong);
+    }
+    .card-link-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .card-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-muted);
+      color: var(--info);
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .card-link-icon {
+      line-height: 1;
+    }
+    .card-link:hover {
+      border-color: var(--info);
+      background: var(--bg-info);
     }
     .badge-row {
       display: flex;
@@ -1646,20 +1819,7 @@ export const renderHtmlReport = (report) => {
       </div>
       <details class="raw-details">
         <summary>Full config</summary>
-        <dl class="kv-grid" style="margin-top: 12px;">
-          <div class="kv-row"><dt>Timeout</dt><dd>${ escapeHtml(report.options.timeoutMs) } ms</dd></div>
-          <div class="kv-row"><dt>Max redirects</dt><dd>${ escapeHtml(report.options.maxRedirects) }</dd></div>
-          <div class="kv-row"><dt>Concurrency</dt><dd>${ escapeHtml(report.options.concurrency) }</dd></div>
-          <div class="kv-row"><dt>User-Agent</dt><dd><code>${ escapeHtml(report.options.userAgent || '-') }</code></dd></div>
-          <div class="kv-row"><dt>Output dir</dt><dd><code>${ escapeHtml(report.options.outputDir) }</code></dd></div>
-          ${ report.options.audit ? `
-          <div class="kv-row"><dt>Min title length</dt><dd>${ escapeHtml(report.options.audit.minTitleLength) }</dd></div>
-          <div class="kv-row"><dt>Max title length</dt><dd>${ escapeHtml(report.options.audit.maxTitleLength) }</dd></div>
-          <div class="kv-row"><dt>Min description length</dt><dd>${ escapeHtml(report.options.audit.minDescriptionLength) }</dd></div>
-          <div class="kv-row"><dt>Max description length</dt><dd>${ escapeHtml(report.options.audit.maxDescriptionLength) }</dd></div>
-          <div class="kv-row"><dt>Min body text length</dt><dd>${ escapeHtml(report.options.audit.minBodyTextLength) }</dd></div>
-          ` : '' }
-        </dl>
+        <pre>${ fullConfigJson }</pre>
       </details>
     </header>
 
@@ -1699,7 +1859,7 @@ export const renderHtmlReport = (report) => {
 
     ${ comparison ? `
       <div class="tab-panel${ defaultTab !== 'comparison' ? ' hidden' : '' }" id="tab-comparison">
-        ${ renderComparisonTab(comparison) }
+        ${ renderComparisonTab(comparison, comparisonEntries) }
       </div>
     ` : '' }
 
@@ -1760,6 +1920,7 @@ export const renderHtmlReport = (report) => {
       function activate(name, updateHash) {
         btns.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name) })
         panels.forEach(function (p) { p.classList.toggle('hidden', p.id !== 'tab-' + name) })
+        updateAnchorScrollOffset()
         if (updateHash) {
           if (window.history && window.history.replaceState) {
             window.history.replaceState(null, '', '#tab-' + name)
@@ -1767,6 +1928,31 @@ export const renderHtmlReport = (report) => {
             location.hash = 'tab-' + name
           }
         }
+      }
+
+      function updateAnchorScrollOffset() {
+        var stickyTitles = Array.from(document.querySelectorAll('.variant-group-title'))
+        var maxStickyTitleHeight = stickyTitles.reduce(function (height, title) {
+          var rect = title.getBoundingClientRect()
+
+          return Math.max(height, rect.height)
+        }, 0)
+        var offset = maxStickyTitleHeight > 0 ? Math.ceil(maxStickyTitleHeight + 16) : 24
+
+        document.documentElement.style.setProperty('--anchor-scroll-offset', offset + 'px')
+
+        return offset
+      }
+
+      function scrollToAnchorTarget(target) {
+        if (!target || target.classList.contains('hidden')) {
+          return
+        }
+
+        var offset = updateAnchorScrollOffset()
+        var top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - offset)
+
+        window.scrollTo({ top: top, behavior: 'smooth' })
       }
 
       function syncNavGroupFilter(group) {
@@ -1954,6 +2140,30 @@ export const renderHtmlReport = (report) => {
         clearInactiveNavLinks(activeGroup.tabName)
       }
 
+      function ensureAnchorVisible(anchorId) {
+        var target = document.getElementById(anchorId)
+
+        if (!target || !target.classList.contains('hidden')) {
+          return
+        }
+
+        var group = getNavGroupByTab(getTabForAnchorId(anchorId))
+
+        if (!group) {
+          return
+        }
+
+        if (group.filter) {
+          group.filter.value = 'all'
+        }
+
+        if (group.diffOnlyToggle) {
+          group.diffOnlyToggle.checked = false
+        }
+
+        syncNavGroupFilter(group)
+      }
+
       var scrollTicking = false
 
       function requestScrollSync() {
@@ -2027,19 +2237,41 @@ export const renderHtmlReport = (report) => {
         activate(state.tab, false)
 
         if (state.anchorId) {
+          ensureAnchorVisible(state.anchorId)
           setActiveGroupLink(navGroup, state.anchorId)
           clearInactiveNavLinks(state.tab)
           window.requestAnimationFrame(function () {
             var target = document.getElementById(state.anchorId)
 
-            if (target && !target.classList.contains('hidden')) {
-              target.scrollIntoView({ block: 'start' })
-            }
+            scrollToAnchorTarget(target)
           })
           return
         }
 
         syncActiveNavLinkFromScroll()
+      }
+
+      function handleInternalAnchorClick(event) {
+        var link = event.target.closest('a[href^="#"]')
+
+        if (!link) {
+          return
+        }
+
+        var anchorId = link.getAttribute('href').slice(1)
+
+        if (!anchorId || !document.getElementById(anchorId)) {
+          return
+        }
+
+        event.preventDefault()
+
+        if (location.hash === '#' + anchorId) {
+          syncFromHash()
+          return
+        }
+
+        location.hash = anchorId
       }
 
       btns.forEach(function (b) {
@@ -2093,9 +2325,14 @@ export const renderHtmlReport = (report) => {
       window.addEventListener('hashchange', syncFromHash)
       window.addEventListener('scroll', requestScrollSync, { passive: true })
       window.addEventListener('scroll', syncScrollTopButton, { passive: true })
-      window.addEventListener('resize', requestScrollSync)
+      window.addEventListener('resize', function () {
+        updateAnchorScrollOffset()
+        requestScrollSync()
+      })
+      document.addEventListener('click', handleInternalAnchorClick)
 
       navGroups.forEach(syncNavGroupFilter)
+      updateAnchorScrollOffset()
       syncFromHash()
       syncScrollTopButton()
     })()

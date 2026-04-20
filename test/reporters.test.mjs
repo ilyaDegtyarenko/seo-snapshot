@@ -17,11 +17,15 @@ const createPage = ({
   headingHierarchy = [ 1, 2, 4 ],
   contentSecurityPolicy = "default-src 'self'",
   xFrameOptions = 'SAMEORIGIN',
+  variant = null,
+  variantId = null,
   issues = [],
 } = {}) => ({
   input,
   targetPath,
   source,
+  variant,
+  variantId,
   requestedUrl,
   finalUrl,
   status: 200,
@@ -76,10 +80,31 @@ const createPage = ({
   issues,
 })
 
-const createReport = ({ pages, comparison = null }) => ({
+const createReport = ({ pages, comparison = null, fullConfig = null }) => ({
   generatedAt: '2026-04-09T12:00:00.000Z',
   options: {
     configPath: 'config/seo-snapshot.mjs',
+    fullConfig: fullConfig ?? {
+      baseUrl: 'https://www.example.com/',
+      targets: [ '/home' ],
+      request: {
+        timeoutMs: 15000,
+        maxRedirects: 5,
+        concurrency: 3,
+        userAgent: 'seo-snapshot-test',
+      },
+      output: {
+        dir: '/tmp/seo-snapshot',
+        formats: [ 'html' ],
+      },
+      audit: {
+        minTitleLength: 15,
+        maxTitleLength: 60,
+        minDescriptionLength: 70,
+        maxDescriptionLength: 160,
+        minBodyTextLength: 300,
+      },
+    },
     baseUrl: 'https://www.example.com/',
     compare: comparison,
     timeoutMs: 15000,
@@ -153,12 +178,53 @@ test('renderHtmlReport adds Pages sidebar anchors and comparison domain filter',
   assert.match(html, /function scrollNavLinkIntoView\(group, link\)/)
   assert.match(html, /group\.nav\.scrollTop -= \(navRect\.top - linkRect\.top\) \+ scrollPadding/)
   assert.match(html, /group\.nav\.scrollTop \+= \(linkRect\.bottom - navRect\.bottom\) \+ scrollPadding/)
+  assert.match(html, /--anchor-scroll-offset: 56px;/)
+  assert.match(html, /scroll-padding-top: var\(--anchor-scroll-offset\);/)
+  assert.match(html, /scroll-margin-top: var\(--anchor-scroll-offset\);/)
+  assert.match(html, /function updateAnchorScrollOffset\(\)/)
+  assert.match(html, /document\.querySelectorAll\('\.variant-group-title'\)/)
+  assert.match(html, /document\.documentElement\.style\.setProperty\('--anchor-scroll-offset', offset \+ 'px'\)/)
+  assert.match(html, /function scrollToAnchorTarget\(target\)/)
+  assert.match(html, /window\.scrollTo\(\{ top: top, behavior: 'smooth' \}\)/)
+  assert.match(html, /function handleInternalAnchorClick\(event\)/)
+  assert.match(html, /document\.addEventListener\('click', handleInternalAnchorClick\)/)
   assert.doesNotMatch(html, /scrollIntoView\(\{ block: 'nearest', inline: 'nearest' \}\)/)
   assert.match(html, /function getActiveNavLink\(group\)/)
   assert.match(html, /scrollNavLinkIntoView\(group, getActiveNavLink\(group\)\)/)
   assert.match(html, /window\.addEventListener\('scroll', requestScrollSync, \{ passive: true \}\)/)
   assert.match(html, /data-scroll-top/)
   assert.match(html, /link\.setAttribute\('aria-current', 'location'\)/)
+})
+
+test('renderHtmlReport prints the resolved full config as JSON', () => {
+  const html = renderHtmlReport(createReport({
+    fullConfig: {
+      baseUrl: 'https://resolved.example.com',
+      compareUrl: 'https://stage.example.com',
+      targets: [ '/', '/pricing' ],
+      request: {
+        timeoutMs: 9000,
+        concurrency: 4,
+        headers: {
+          'x-test': 'yes',
+        },
+      },
+      output: {
+        dir: '/tmp/resolved-reports',
+        formats: [ 'html', 'json' ],
+      },
+    },
+    pages: [
+      createPage(),
+    ],
+  }))
+
+  assert.match(html, /<summary>Full config<\/summary>/)
+  assert.match(html, /&quot;baseUrl&quot;: &quot;https:\/\/resolved\.example\.com&quot;/)
+  assert.match(html, /&quot;compareUrl&quot;: &quot;https:\/\/stage\.example\.com&quot;/)
+  assert.match(html, /&quot;targets&quot;: \[/)
+  assert.match(html, /&quot;x-test&quot;: &quot;yes&quot;/)
+  assert.match(html, /&quot;formats&quot;: \[/)
 })
 
 test('renderHtmlReport keeps page index without comparison filter', () => {
@@ -177,6 +243,7 @@ test('renderHtmlReport keeps page index without comparison filter', () => {
   assert.match(html, /<h3>Page Index<\/h3>/)
   assert.doesNotMatch(html, /<select class="field-select" data-page-domain-filter/)
   assert.match(html, /href="#page-1-pricing"/)
+  assert.doesNotMatch(html, /<a class="card-link" href="#comparison-/)
   assert.match(html, /Use the anchor list to move through long reports faster\./)
 })
 
@@ -297,6 +364,10 @@ test('renderHtmlReport adds Comparison sidebar anchors and routes hashes to the 
   assert.match(html, /data-comparison-visible-count>2<\/span> of 2 compared paths shown/)
   assert.match(html, /href="#comparison-1-home"/)
   assert.match(html, /id="comparison-1-home"/)
+  assert.match(html, /<a class="card-link" href="#page-1-home" title="https:\/\/www\.example\.com\/home"><span class="card-link-icon" aria-hidden="true">→<\/span><span>Go to prod page<\/span><\/a>/)
+  assert.match(html, /<a class="card-link" href="#page-2-home" title="https:\/\/stage\.example\.com\/home"><span class="card-link-icon" aria-hidden="true">→<\/span><span>Go to stage page<\/span><\/a>/)
+  assert.match(html, /<a class="card-link" href="#comparison-1-home" title="\/home"><span class="card-link-icon" aria-hidden="true">→<\/span><span>Go to comparison<\/span><\/a>/)
+  assert.match(html, /\.card-link \{[\s\S]*min-height: 24px;[\s\S]*padding: 3px 8px;[\s\S]*font-size: 11px;/)
   assert.match(html, /https:\/\/www\.example\.com\/home<\/code> → <code>https:\/\/stage\.example\.com\/home/)
   assert.match(html, /data-comparison-card/)
   assert.match(html, /data-comparison-diff-only/)
@@ -319,5 +390,39 @@ test('renderHtmlReport adds Comparison sidebar anchors and routes hashes to the 
   assert.match(html, /navSelector: '#tab-comparison \.page-index-nav'/)
   assert.match(html, /function getTabForAnchorId\(anchorId\)/)
   assert.match(html, /anchorTarget\.hasAttribute\('data-comparison-card'\)/)
+  assert.match(html, /function ensureAnchorVisible\(anchorId\)/)
+  assert.match(html, /group\.filter\.value = 'all'/)
+  assert.match(html, /group\.diffOnlyToggle\.checked = false/)
   assert.match(html, /filterMatchMode: 'multi'/)
+})
+
+test('renderHtmlReport offsets anchors below sticky User-Agent variant headers', () => {
+  const html = renderHtmlReport(createReport({
+    pages: [
+      createPage({
+        input: '/home',
+        targetPath: '/home',
+        title: 'Desktop Home',
+        variant: 'Desktop',
+        variantId: 'desktop',
+      }),
+      createPage({
+        input: '/home',
+        targetPath: '/home',
+        title: 'Mobile Home',
+        variant: 'Mobile',
+        variantId: 'mobile',
+      }),
+    ],
+  }))
+
+  assert.match(html, /<summary class="variant-group-title">Desktop<\/summary>/)
+  assert.match(html, /<summary class="variant-group-title">Mobile<\/summary>/)
+  assert.match(html, /var offset = maxStickyTitleHeight > 0 \? Math\.ceil\(maxStickyTitleHeight \+ 16\) : 24/)
+  assert.match(html, /return offset/)
+  assert.match(html, /var top = Math\.max\(0, window\.scrollY \+ target\.getBoundingClientRect\(\)\.top - offset\)/)
+  assert.match(html, /scrollToAnchorTarget\(target\)/)
+  assert.match(html, /if \(location\.hash === '#' \+ anchorId\) \{\s+syncFromHash\(\)\s+return\s+\}/)
+  assert.match(html, /updateAnchorScrollOffset\(\)\s+if \(updateHash\)/)
+  assert.match(html, /window\.addEventListener\('resize', function \(\) \{\s+updateAnchorScrollOffset\(\)\s+requestScrollSync\(\)\s+\}\)/)
 })

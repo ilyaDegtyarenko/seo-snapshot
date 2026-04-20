@@ -186,11 +186,21 @@ export const runAudit = async (cliOptions, runtime = {}) => {
   })
   const summary = buildSummary(pages)
   const comparison = buildComparisonReport(pages, runtimeOptions.compare, runtimeOptions.output.hideTtfb)
+  const fullConfig = {
+    ...config,
+    request: runtimeOptions.request,
+    output: runtimeOptions.output,
+    compare: runtimeOptions.compare,
+    variants: runtimeOptions.variants,
+    audit: runtimeOptions.audit,
+    targetCount: targets.length,
+  }
 
   const report = {
     generatedAt: new Date().toISOString(),
     options: {
       configPath: configLabel,
+      fullConfig,
       baseUrl: typeof config.baseUrl === 'string' ? config.baseUrl : null,
       compare: runtimeOptions.compare,
       timeoutMs: runtimeOptions.request.timeoutMs,

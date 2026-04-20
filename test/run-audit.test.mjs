@@ -68,6 +68,10 @@ test('runAudit records the expanded target count when variants are enabled', asy
   })
 
   assert.equal(result.report.options.targetCount, 4)
+  assert.equal(result.report.options.fullConfig.targetCount, 4)
+  assert.deepEqual(result.report.options.fullConfig.targets, [ '/', '/catalog' ])
+  assert.equal(result.report.options.fullConfig.request.timeoutMs, 5000)
+  assert.deepEqual(result.report.options.fullConfig.output.formats, [ 'json' ])
   assert.equal(result.summary.total, 4)
   assert.equal(requests.length, 4)
   assert.deepEqual(requests.map(request => request.userAgent), [
