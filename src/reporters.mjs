@@ -889,6 +889,13 @@ const renderPageIndexItem = (entry) => {
     statusLabel,
   ].filter(Boolean)
 
+  const issues = entry.page.issues ?? []
+  const issueCount = issues.length
+  const issueTone = issueCount > 0 ? getHighestSeverity(issues) : null
+  const issueIndicator = issueTone
+    ? `<span class="page-index-issues page-index-issues-${ issueTone }">${ issueCount } issue${ issueCount !== 1 ? 's' : '' }</span>`
+    : ''
+
   return `
     <a
       class="page-index-link"
@@ -905,6 +912,7 @@ const renderPageIndexItem = (entry) => {
       <strong>${ escapeHtml(entry.navLabel) }</strong>
       ${ entry.title !== entry.navLabel ? `<span class="page-index-title">${ escapeHtml(entry.title) }</span>` : '' }
       <span class="page-index-meta">${ escapeHtml(metaParts.join(' · ')) }</span>
+      ${ issueIndicator }
     </a>
   `
 }
@@ -1847,6 +1855,26 @@ export const renderHtmlReport = (report) => {
       font-size: 12px;
       line-height: 1.4;
       word-break: break-word;
+    }
+    .page-index-issues {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 20px;
+      width: fit-content;
+    }
+    .page-index-issues-error {
+      background: var(--bg-error);
+      color: var(--error);
+    }
+    .page-index-issues-warning {
+      background: var(--bg-warning);
+      color: var(--warning);
+    }
+    .page-index-issues-info {
+      background: var(--bg-info);
+      color: var(--info);
     }
     .pages-content {
       display: grid;
