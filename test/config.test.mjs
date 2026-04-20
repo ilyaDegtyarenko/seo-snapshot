@@ -217,6 +217,32 @@ test('readSeoConfig merges profile config on top of base config', async (context
   assert.deepEqual(result.config.targets, [ '/' ])
 })
 
+test('resolveTargets reads JSON targets files and deduplicates merged targets', async (context) => {
+  const tempDir = await createTempDir()
+
+  context.after(async () => {
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  await writeFile(path.join(tempDir, 'targets.json'), JSON.stringify([
+    '/',
+    '/news',
+    'https://example.com/news',
+  ]), 'utf8')
+
+  const targets = await resolveTargets({
+    baseUrl: 'https://example.com',
+    targetsFile: './targets.json',
+    targets: [ '/news', '/movies' ],
+  }, tempDir)
+
+  assert.deepEqual(targets, [
+    { input: '/', url: 'https://example.com/' },
+    { input: '/news', url: 'https://example.com/news' },
+    { input: '/movies', url: 'https://example.com/movies' },
+  ])
+})
+
 test('resolveTargets reads plain-text targets files and deduplicates merged targets', async (context) => {
   const tempDir = await createTempDir()
 
@@ -327,6 +353,47 @@ test('resolveTargets expands the same target path across compare domains', async
   } finally {
     await rm(tempDir, { recursive: true, force: true })
   }
+})
+
+test('resolveTargets auto-detects targets.json in configDir when targetsFile is not set', async (context) => {
+  const tempDir = await createTempDir()
+
+  context.after(async () => {
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  await writeFile(path.join(tempDir, 'targets.json'), JSON.stringify([
+    'https://example.com/',
+    'https://example.com/news',
+  ]), 'utf8')
+
+  const targets = await resolveTargets({}, tempDir)
+
+  assert.deepEqual(targets, [
+    { input: 'https://example.com/', url: 'https://example.com/' },
+    { input: 'https://example.com/news', url: 'https://example.com/news' },
+  ])
+})
+
+test('resolveTargets skips auto-detection when inline targets are configured', async (context) => {
+  const tempDir = await createTempDir()
+
+  context.after(async () => {
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  await writeFile(path.join(tempDir, 'targets.json'), JSON.stringify([
+    'https://example.com/from-file',
+  ]), 'utf8')
+
+  const targets = await resolveTargets({
+    baseUrl: 'https://example.com',
+    targets: [ '/from-inline' ],
+  }, tempDir)
+
+  assert.deepEqual(targets, [
+    { input: '/from-inline', url: 'https://example.com/from-inline' },
+  ])
 })
 
 test('resolveTargets uses baseUrl as the primary compare domain when one compare URL is configured', async () => {

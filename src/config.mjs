@@ -414,12 +414,32 @@ export const readSeoConfig = async (configPath, cwd, env = process.env) => {
   }
 }
 
+const readTargetsFromJson = (raw, filePath) => {
+  let parsed
+
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    exitWithError(`Failed to parse JSON targets file: ${ filePath }`)
+  }
+
+  if (!Array.isArray(parsed)) {
+    exitWithError(`JSON targets file must contain an array of URLs: ${ filePath }`)
+  }
+
+  return parsed.map(item => String(item || '').trim()).filter(Boolean)
+}
+
 const readTargetsFromFile = async (filePath) => {
   const raw = await readFile(filePath, 'utf8')
   const normalizedRaw = String(raw).trimStart()
 
   if (normalizedRaw.startsWith('<')) {
     return readTargetsFromSitemapXml(raw, filePath)
+  }
+
+  if (normalizedRaw.startsWith('[') || normalizedRaw.startsWith('{')) {
+    return readTargetsFromJson(raw, filePath)
   }
 
   return readTargetsFromText(raw)
@@ -470,13 +490,26 @@ const normalizeComparableTargetPath = (target) => {
   }
 }
 
+const AUTO_DETECT_TARGETS_FILES = [ 'targets.json', 'targets.txt', 'targets.xml' ]
+
+const autoDetectTargetsFile = async (configDir) => {
+  for (const name of AUTO_DETECT_TARGETS_FILES) {
+    const candidate = path.join(configDir, name)
+    if (await fileExists(candidate)) {
+      return candidate
+    }
+  }
+  return null
+}
+
 export const resolveTargets = async (config, configDir) => {
-  const targetsFile = normalizePathLikeValue(config.targetsFile, configDir)
-  const fileTargets = targetsFile
-    ? await readTargetsFromFile(targetsFile)
-    : []
   const inlineTargets = Array.isArray(config.targets)
     ? config.targets.map(item => String(item || '').trim()).filter(Boolean)
+    : []
+  const targetsFile = normalizePathLikeValue(config.targetsFile, configDir)
+    ?? (inlineTargets.length === 0 ? await autoDetectTargetsFile(configDir) : null)
+  const fileTargets = targetsFile
+    ? await readTargetsFromFile(targetsFile)
     : []
   const mergedTargets = [
     ...fileTargets,
@@ -484,7 +517,7 @@ export const resolveTargets = async (config, configDir) => {
   ]
 
   if (mergedTargets.length === 0) {
-    exitWithError('No targets configured. Add URLs to config/targets.txt or config/targets.xml, or set config.targets.')
+    exitWithError('No targets configured. Add URLs to config/targets.json, config/targets.txt, or config/targets.xml, or set config.targets.')
   }
 
   const normalizedTargets = []

@@ -84,7 +84,7 @@ Config file format:
         },
       },
     },
-    targetsFile: './targets.txt', // or './targets.xml'
+    targetsFile: './targets.json', // or './targets.txt' or './targets.xml'
     targets: [ '/', '/news' ],
     output: {
       dir: '../reports',
