@@ -1,9 +1,11 @@
 export default {
   baseUrl: { url: 'http://127.0.0.1:3000', label: 'Local' },
-  // compareUrl: { url: 'https://www.example.com', label: 'Prod' }, // if set, will compare the base URL against the given URL
+  compareUrl: { url: 'https://www.example.com', label: 'Prod' }, // if set, will compare the base URL against the given URL
   profiles: {
     staging: {
       baseUrl: { url: 'https://staging.example.com', label: 'Staging' },
+      compareUrl: null,
+      targets: [ '/' ],
     },
     stagingVsProd: {
       baseUrl: { url: 'https://staging.example.com', label: 'Staging' },

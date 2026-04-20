@@ -203,6 +203,11 @@ export default {
   profiles: {
     staging: {
       baseUrl: { url: 'https://staging.example.com', label: 'Staging' },
+      compareUrl: null, // disables comparison for this profile
+      targets: [ '/' ],
+    },
+    stagingVsProd: {
+      baseUrl: { url: 'https://staging.example.com', label: 'Staging' },
       compareUrl: { url: 'https://www.example.com', label: 'Prod' },
     },
   },
@@ -309,6 +314,7 @@ Comparison mode notes:
 
 - `compareUrl` requires `baseUrl`.
 - Both `baseUrl` and `compareUrl` can be a string URL or an object with `url` and optional `label`.
+- Set `compareUrl: null` in a profile to disable comparison when the top-level config has it enabled.
 - `baseUrl` is used as the primary domain.
 - The same target path is fetched on both domains and the report adds a dedicated diff section.
 - Absolute targets are normalized to `pathname + search + hash` before they are replayed on both domains.

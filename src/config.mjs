@@ -448,7 +448,7 @@ const readTargetsFromFile = async (filePath) => {
 export const resolveComparisonSources = (config) => {
   const rawSource = config?.compareUrl
 
-  if (rawSource === undefined) {
+  if (rawSource == null) {
     return null
   }
 
