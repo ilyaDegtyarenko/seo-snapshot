@@ -262,6 +262,11 @@ const DIFFERENCE_SPECS = [
     getValue: page => page.ttfbMs ?? null,
   },
   {
+    key: 'finalResponseTtfbMs',
+    label: 'Final response TTFB (ms)',
+    getValue: page => page.finalResponseTtfbMs ?? null,
+  },
+  {
     key: 'finalUrl',
     label: 'Final URL',
     getValue: page => normalizeComparableUrl(page.finalUrl, page),
@@ -639,7 +644,7 @@ const buildIssueDelta = (leftPage, rightPage) => {
 
 const buildDifferences = (leftPage, rightPage, hideTtfb = false) => {
   const specs = hideTtfb
-    ? DIFFERENCE_SPECS.filter(spec => spec.key !== 'ttfbMs')
+    ? DIFFERENCE_SPECS.filter(spec => ![ 'ttfbMs', 'finalResponseTtfbMs' ].includes(spec.key))
     : DIFFERENCE_SPECS
 
   return specs.flatMap((spec) => {

@@ -111,6 +111,8 @@ test('runAudit records ttfbMs for each page', async (context) => {
 
   assert.equal(typeof result.report.pages[0].ttfbMs, 'number')
   assert.equal(result.report.pages[0].ttfbMs >= 0, true)
+  assert.equal(typeof result.report.pages[0].finalResponseTtfbMs, 'number')
+  assert.equal(result.report.pages[0].finalResponseTtfbMs >= 0, true)
 })
 
 test('runAudit writes default reports to cwd when config omits output.dir', async (context) => {

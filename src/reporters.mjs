@@ -9,6 +9,10 @@ const getTtfbMs = (page) => {
   return page.ttfbMs ?? null
 }
 
+const getFinalResponseTtfbMs = (page) => {
+  return page.finalResponseTtfbMs ?? null
+}
+
 const renderKeyValueRow = (label, value) => {
   const normalizedValue = (value === null || value === undefined || value === '')
     ? '<span class="muted">-</span>'
@@ -542,6 +546,7 @@ const renderPageCard = (entry, options = {}) => {
         ${ renderKeyValueRow('Content-Type', page.headers.contentType) }
         ${ renderKeyValueRow('Content-Length', page.headers.contentLength) }
         ${ options.hideTtfb ? '' : renderKeyValueRow('TTFB', getTtfbMs(page) !== null ? `${ getTtfbMs(page) } ms` : null) }
+        ${ options.hideTtfb ? '' : renderKeyValueRow('Final response TTFB', getFinalResponseTtfbMs(page) !== null ? `${ getFinalResponseTtfbMs(page) } ms` : null) }
         ${ renderKeyValueRow('Charset', page.seo?.meta.charset) }
         ${ renderKeyValueRow('Title', page.seo?.document.title) }
         ${ renderKeyValueRow('Description', page.seo?.meta.description) }

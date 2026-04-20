@@ -122,6 +122,45 @@ test('extractSeoInfoFromHtml extracts heading hierarchy', () => {
   assert.deepEqual(result.document.headingHierarchy, [ 1, 2, 4, 2 ])
 })
 
+test('extractSeoInfoFromHtml counts body text from parsed visible nodes', () => {
+  const html = `<!doctype html>
+  <html lang="en">
+    <head><title>Hidden text test</title></head>
+    <body>
+      <main>Visible&nbsp;text <span>kept</span></main>
+      <div hidden>Hidden text</div>
+      <section aria-hidden="true">ARIA hidden text</section>
+      <p style="display: none">Display none text</p>
+      <p style="visibility: hidden">Visibility hidden text</p>
+      <p style="content-visibility: hidden">Content visibility hidden text</p>
+      <template>Template text</template>
+      <noscript>No script text</noscript>
+      <script>document.write('Script text')</script>
+      <style>.x { display: block; }</style>
+    </body>
+  </html>`
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/text')
+
+  assert.equal(result.document.bodyTextLength, 17)
+})
+
+test('extractSeoInfoFromHtml counts text inside an unclosed body tag', () => {
+  const html = '<html><head><title>Test</title></head><body><main>Visible text</main>'
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/text')
+
+  assert.equal(result.document.bodyTextLength, 12)
+})
+
+test('extractSeoInfoFromHtml preserves inline text and separates block text', () => {
+  const html = '<html><body><p>One<span>Two</span></p><p>Three<br>Four</p></body></html>'
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/text')
+
+  assert.equal(result.document.bodyTextLength, 17)
+})
+
 test('extractSeoInfoFromHtml detects missing required schema properties', () => {
   const html = `<!doctype html>
   <html lang="en">

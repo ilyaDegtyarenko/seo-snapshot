@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto'
+import * as parse5 from 'parse5'
 import { resolveMaybeUrl, normalizeWhitespace } from './utils.mjs'
 
 const ENTITY_MAP = {
@@ -28,6 +29,57 @@ const UNIQUE_HEAD_SIGNAL_SPECS = [
   { key: 'manifest', label: 'link[rel~="manifest"]' },
   { key: 'appleItunesApp', label: 'meta[name="apple-itunes-app"]' },
 ]
+
+const SKIPPED_VISIBLE_TEXT_ELEMENT_NAMES = new Set([
+  'head',
+  'script',
+  'style',
+  'title',
+  'noscript',
+  'template',
+])
+
+const VISIBLE_TEXT_SEPARATOR_ELEMENT_NAMES = new Set([
+  'address',
+  'article',
+  'aside',
+  'blockquote',
+  'br',
+  'dd',
+  'details',
+  'dialog',
+  'div',
+  'dl',
+  'dt',
+  'fieldset',
+  'figcaption',
+  'figure',
+  'footer',
+  'form',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'header',
+  'hr',
+  'li',
+  'main',
+  'nav',
+  'ol',
+  'p',
+  'pre',
+  'section',
+  'table',
+  'tbody',
+  'td',
+  'tfoot',
+  'th',
+  'thead',
+  'tr',
+  'ul',
+])
 
 const decodeHtmlEntities = (value) => {
   return String(value || '').replaceAll(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
@@ -73,6 +125,30 @@ const findTagAttributes = (html, tagName) => {
 
 const findTagContents = (html, tagName) => {
   return [ ...html.matchAll(new RegExp(`<${ tagName }\\b[^>]*>([\\s\\S]*?)</${ tagName }>`, 'gi')) ]
+}
+
+const parseHtmlTree = (html) => {
+  return parse5.parse(String(html || ''))
+}
+
+const findFirstElement = (node, tagName) => {
+  if (!node) {
+    return null
+  }
+
+  if (node.tagName === tagName) {
+    return node
+  }
+
+  for (const child of node.childNodes ?? []) {
+    const match = findFirstElement(child, tagName)
+
+    if (match) {
+      return match
+    }
+  }
+
+  return null
 }
 
 const getHeadHtml = (html) => {
@@ -418,17 +494,68 @@ const validateJsonLdRequiredProperties = (value, collector) => {
   }
 }
 
+const isHiddenByInlineStyle = (style) => {
+  const normalizedStyle = String(style || '').toLowerCase()
+
+  return /(?:^|;)\s*display\s*:\s*none\s*(?:;|$)/.test(normalizedStyle)
+    || /(?:^|;)\s*visibility\s*:\s*(?:hidden|collapse)\s*(?:;|$)/.test(normalizedStyle)
+    || /(?:^|;)\s*content-visibility\s*:\s*hidden\s*(?:;|$)/.test(normalizedStyle)
+}
+
+const getNodeAttribute = (node, name) => {
+  const normalizedName = name.toLowerCase()
+  const attribute = node.attrs?.find(item => item.name?.toLowerCase() === normalizedName)
+
+  return attribute?.value ?? null
+}
+
+const hasNodeAttribute = (node, name) => {
+  const normalizedName = name.toLowerCase()
+
+  return Boolean(node.attrs?.some(item => item.name?.toLowerCase() === normalizedName))
+}
+
+const isHiddenElement = (node) => {
+  return hasNodeAttribute(node, 'hidden')
+    || String(getNodeAttribute(node, 'aria-hidden') || '').trim().toLowerCase() === 'true'
+    || isHiddenByInlineStyle(getNodeAttribute(node, 'style'))
+}
+
+const collectVisibleText = (node, collector) => {
+  if (!node) {
+    return
+  }
+
+  if (node.nodeName === '#text') {
+    collector.push(node.value)
+    return
+  }
+
+  if (!node.tagName) {
+    return
+  }
+
+  if (SKIPPED_VISIBLE_TEXT_ELEMENT_NAMES.has(node.tagName) || isHiddenElement(node)) {
+    return
+  }
+
+  for (const child of node.childNodes ?? []) {
+    collectVisibleText(child, collector)
+  }
+
+  if (VISIBLE_TEXT_SEPARATOR_ELEMENT_NAMES.has(node.tagName)) {
+    collector.push(' ')
+  }
+}
+
 const getBodyTextLength = (html) => {
-  const bodyMatch = String(html || '').match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)
-  const bodyHtml = bodyMatch?.[1] ?? ''
+  const tree = parseHtmlTree(html)
+  const bodyNode = findFirstElement(tree, 'body') ?? tree
+  const textParts = []
 
-  const stripped = bodyHtml
-    .replaceAll(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
-    .replaceAll(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
-    .replaceAll(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, ' ')
-    .replaceAll(/<!--[\s\S]*?-->/g, ' ')
+  collectVisibleText(bodyNode, textParts)
 
-  return stripTags(stripped).length
+  return normalizeWhitespace(decodeHtmlEntities(textParts.join(''))).length
 }
 
 const countImages = (html) => {

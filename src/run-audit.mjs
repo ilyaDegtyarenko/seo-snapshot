@@ -75,6 +75,7 @@ const buildPageReport = async (target, requestOptions) => {
       ok: fetched.response.ok,
       redirectChain: fetched.redirectChain,
       ttfbMs: fetched.ttfbMs,
+      finalResponseTtfbMs: fetched.finalResponseTtfbMs,
       headers,
       seo: null,
       parseSkippedReason: null,
@@ -103,6 +104,7 @@ const buildPageReport = async (target, requestOptions) => {
       ok: false,
       redirectChain: [],
       ttfbMs: null,
+      finalResponseTtfbMs: null,
       headers: {
         contentType: null,
         contentLength: null,

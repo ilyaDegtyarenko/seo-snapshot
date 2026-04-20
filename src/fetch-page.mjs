@@ -14,14 +14,15 @@ export const isHtmlResponse = (contentType, body) => {
     || normalizedBody.includes('<head')
 }
 
-const toDurationMs = (startTime) => {
-  return Math.max(0, Math.round(performance.now() - startTime))
+const toDurationMs = (startTime, endTime) => {
+  return Math.max(0, Math.round(endTime - startTime))
 }
 
 export const fetchWithRedirects = async (url, options) => {
   let currentUrl = url
   const redirectChain = []
   const startTime = performance.now()
+  let requestStartTime = startTime
 
   for (let step = 0; step <= options.maxRedirects; step += 1) {
     const response = await fetch(currentUrl, {
@@ -45,7 +46,9 @@ export const fetchWithRedirects = async (url, options) => {
     })
 
     if (!locationHeader || ![ 301, 302, 303, 307, 308 ].includes(response.status)) {
-      const ttfbMs = toDurationMs(startTime)
+      const responseHeadersTime = performance.now()
+      const ttfbMs = toDurationMs(startTime, responseHeadersTime)
+      const finalResponseTtfbMs = toDurationMs(requestStartTime, responseHeadersTime)
 
       return {
         finalUrl: currentUrl,
@@ -53,6 +56,7 @@ export const fetchWithRedirects = async (url, options) => {
         response,
         body: await response.text(),
         ttfbMs,
+        finalResponseTtfbMs,
       }
     }
 
@@ -61,6 +65,7 @@ export const fetchWithRedirects = async (url, options) => {
     }
 
     currentUrl = resolvedLocation
+    requestStartTime = performance.now()
   }
 
   throw new Error(`Failed to resolve ${ url }.`)

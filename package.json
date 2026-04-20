@@ -20,5 +20,8 @@
     "crawler",
     "cli"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "parse5": "^8.0.1"
+  }
 }

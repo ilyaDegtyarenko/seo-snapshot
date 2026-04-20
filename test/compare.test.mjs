@@ -10,6 +10,7 @@ const comparisonSources = [
 const createComparablePage = ({
   alternates = [],
   ttfbMs = 100,
+  finalResponseTtfbMs = ttfbMs,
   bodyTextLength = 400,
   imageCount = 0,
   imagesWithoutAlt = 0,
@@ -57,6 +58,7 @@ const createComparablePage = ({
   finalUrl,
   status,
   ttfbMs,
+  finalResponseTtfbMs,
   error: null,
   parseSkippedReason: null,
   headers: {
@@ -215,6 +217,7 @@ test('buildComparisonReport highlights SEO field differences across two domains'
   assert.equal(differenceKeys.includes('canonical'), true)
   assert.equal(differenceKeys.includes('contentSecurityPolicy'), true)
   assert.equal(differenceKeys.includes('description'), true)
+  assert.equal(differenceKeys.includes('finalResponseTtfbMs'), true)
   assert.equal(differenceKeys.includes('finalUrl'), true)
   assert.equal(differenceKeys.includes('h1'), true)
   assert.equal(differenceKeys.includes('hreflang'), true)
@@ -317,6 +320,30 @@ test('buildComparisonReport treats identical absolute linkHeaderLlms URLs as equ
   const differenceKeys = comparison.comparisons[0].differences.map(entry => entry.key)
 
   assert.equal(differenceKeys.includes('linkHeaderLlms'), false)
+})
+
+test('buildComparisonReport hides all TTFB differences when hideTtfb is enabled', () => {
+  const comparison = buildComparisonReport([
+    createComparablePage({
+      source: comparisonSources[0],
+      finalUrl: 'https://www.example.com/catalog',
+      ttfbMs: 100,
+      finalResponseTtfbMs: 90,
+    }),
+    createComparablePage({
+      source: comparisonSources[1],
+      finalUrl: 'https://stage.example.com/catalog',
+      ttfbMs: 300,
+      finalResponseTtfbMs: 120,
+    }),
+  ], {
+    sources: comparisonSources,
+  }, true)
+
+  const differenceKeys = comparison.comparisons[0].differences.map(entry => entry.key)
+
+  assert.equal(differenceKeys.includes('ttfbMs'), false)
+  assert.equal(differenceKeys.includes('finalResponseTtfbMs'), false)
 })
 
 test('buildComparisonReport keeps duplicate variant labels as separate comparisons when variant ids differ', () => {

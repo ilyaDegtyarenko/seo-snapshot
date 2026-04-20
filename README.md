@@ -308,7 +308,7 @@ export default {
 
 Copy it to `config/seo-snapshot.mjs` and trim it down to the settings you actually need. `config/seo-snapshot.mjs` is the runtime config file loaded by default; there is no automatic `.local` overlay anymore. This keeps the committed template stable while real machine-specific settings stay ignored.
 
-`output.hideTtfb` — set to `true` to omit the TTFB field from page cards and comparison diffs. Useful when TTFB is not meaningful (e.g. local dev, CI environments). Defaults to `false`.
+`output.hideTtfb` — set to `true` to omit TTFB fields from page cards and comparison diffs. Useful when TTFB is not meaningful (e.g. local dev, CI environments). Defaults to `false`.
 
 Comparison mode notes:
 
@@ -322,7 +322,7 @@ Comparison mode notes:
 The following fields are compared between domains:
 
 - fetch error, parse-skipped reason
-- HTTP status, TTFB, final URL (path-normalized for source-local URLs)
+- HTTP status, redirect-inclusive TTFB, final response TTFB, final URL (path-normalized for source-local URLs)
 - charset, title, meta description, canonical (path-normalized), canonical cross-domain flag
 - meta robots, `X-Robots-Tag`, `Content-Security-Policy`, `X-Frame-Options`
 - response `Link` header canonical, canonical cross-domain flag, `llms`, and parsed header entries
@@ -360,7 +360,7 @@ Each page record contains:
 - source domain label in compare mode
 - variant label and variant ID when User-Agent variants are enabled
 - page status and fetch errors
-- TTFB in milliseconds
+- redirect-inclusive TTFB and final response TTFB in milliseconds
 - redirect chain
 - extracted SEO, security, and crawl metrics (see below)
 - parse-skipped reason for non-HTML responses
@@ -400,7 +400,7 @@ Some of the following fields are display-only, while others are also used by aud
 
 The following fields are collected and shown in the report:
 
-- TTFB, `charset`, `Content-Language`, viewport value, application name, theme color
+- redirect-inclusive TTFB, final response TTFB, `charset`, `Content-Language`, viewport value, application name, theme color
 - `Content-Security-Policy`, `X-Frame-Options`
 - raw response `Link` header plus parsed relation entries
 - manifest URL, favicon, all icon links
@@ -413,6 +413,10 @@ The following fields are collected and shown in the report:
 - resource hints: preload links (`href`, `as`, `type`), preconnect links, DNS-prefetch links
 - JSON-LD schema types, `WebSite`/`Organization` flags, block signatures, previews, and missing required properties
 - visible body text length, image count, images without `alt`, internal link count, heading hierarchy
+
+`TTFB` is measured from the first request start until final response headers are received, so it includes redirect hops. `Final response TTFB` is measured only for the final request after redirects.
+
+`Visible body text length` is extracted from parsed HTML body content. It skips `head`, `script`, `style`, `noscript`, `template`, and explicitly hidden subtrees (`hidden`, `aria-hidden="true"`, inline `display:none`, `visibility:hidden`, or `content-visibility:hidden`). It does not execute JavaScript or evaluate external CSS.
 
 ## Tests
 

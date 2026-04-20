@@ -26,6 +26,7 @@ const createPage = ({
   finalUrl,
   status: 200,
   ttfbMs,
+  finalResponseTtfbMs: ttfbMs,
   error: null,
   parseSkippedReason: null,
   headers: {
@@ -187,6 +188,7 @@ test('renderHtmlReport displays new crawl, security, and content detail fields',
   }))
 
   assert.match(html, /TTFB<\/dt><dd>123 ms<\/dd>/)
+  assert.match(html, /Final response TTFB<\/dt><dd>123 ms<\/dd>/)
   assert.match(html, /Content-Security-Policy<\/dt><dd>default-src &#39;self&#39;<\/dd>/)
   assert.match(html, /X-Frame-Options<\/dt><dd>SAMEORIGIN<\/dd>/)
   assert.match(html, /Body text length<\/dt><dd>640<\/dd>/)
