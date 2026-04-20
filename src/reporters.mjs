@@ -358,20 +358,29 @@ const renderIssueDelta = (issueDelta, comparison) => {
   )
 
   return `
-    <div class="diff-inline-row">
+    <div class="diff-inline-row" data-comparison-field-changed="true">
       <span class="diff-inline-label">Issues delta</span>
       <div class="diff-issue-badges">${ [ ...leftBadges, ...rightBadges ].join('') }</div>
     </div>
   `
 }
 
-const renderComparisonDifferences = (comparison) => {
-  return comparison.differences.map(difference => `
-    <div class="diff-inline-row">
-      <span class="diff-inline-label">${ escapeHtml(difference.label) }</span>
-      <span class="diff-inline-old">${ renderDiffValue(difference.left) }</span>
+const renderComparisonFields = (comparison) => {
+  const fields = comparison.fields ?? comparison.differences.map(difference => ({ ...difference, changed: true }))
+
+  if (fields.length === 0) {
+    return '<p class="muted" data-comparison-no-fields>No compared fields found.</p>'
+  }
+
+  return fields.map(field => `
+    <div
+      class="${ field.changed ? 'diff-inline-row' : 'diff-inline-row diff-inline-row-unchanged' }"
+      data-comparison-field-changed="${ field.changed ? 'true' : 'false' }"
+    >
+      <span class="diff-inline-label">${ escapeHtml(field.label) }</span>
+      <span class="diff-inline-old">${ renderDiffValue(field.left) }</span>
       <span class="diff-arrow">→</span>
-      <span class="diff-inline-new">${ renderDiffValue(difference.right) }</span>
+      <span class="diff-inline-new">${ renderDiffValue(field.right) }</span>
     </div>
   `).join('')
 }
@@ -402,6 +411,7 @@ const renderComparisonIndexItem = (entry) => {
       data-nav-tab="comparison"
       data-nav-anchor="${ escapeHtml(entry.anchorId) }"
       data-difference-keys="${ escapeHtml(entry.differenceKeys.join('|')) }"
+      data-has-differences="${ entry.diffCount > 0 ? 'true' : 'false' }"
       title="${ escapeHtml(`${ leftUrl } → ${ rightUrl }`) }"
     >
       <strong>${ escapeHtml(entry.navLabel) }</strong>
@@ -424,6 +434,7 @@ const renderComparisonCard = (entry) => {
       data-nav-card
       data-nav-tab="comparison"
       data-difference-keys="${ escapeHtml(entry.differenceKeys.join('|')) }"
+      data-has-differences="${ diffCount > 0 ? 'true' : 'false' }"
     >
       <header class="page-card-header">
         <div class="page-card-title">
@@ -438,7 +449,7 @@ const renderComparisonCard = (entry) => {
       </header>
 
       <div class="diff-inline-list">
-        ${ renderComparisonDifferences(comparison) }
+        ${ renderComparisonFields(comparison) }
         ${ renderIssueDelta(comparison.issueDelta, comparison) }
       </div>
     </section>
@@ -759,16 +770,12 @@ const renderComparisonVariantGroupedCards = (comparisonEntries, variantLabels) =
 }
 
 const renderComparisonTab = (comparison) => {
-  const withDiffs = comparison.comparisons.filter(c =>
-    c.differences.length > 0 ||
-    (c.issueDelta && (c.issueDelta.onlyOnLeft.length || c.issueDelta.onlyOnRight.length))
-  )
-  const comparisonEntries = buildComparisonEntries(withDiffs)
+  const comparisonEntries = buildComparisonEntries(comparison.comparisons)
   const hasVariants = Boolean(comparison.variants?.length)
   const comparisonProblemFilter = renderIndexFilter({
     filters: comparison.differenceBreakdown,
     totalCount: comparisonEntries.length,
-    allLabel: 'All problems',
+    allLabel: 'All compared paths',
     fieldLabel: 'Problem',
     filterDataAttr: 'data-comparison-difference-filter',
     filterAriaLabel: 'Filter changed paths by problem',
@@ -795,18 +802,24 @@ const renderComparisonTab = (comparison) => {
       ${ comparisonProblemFilter ? `
         <div class="subsection">
           ${ comparisonProblemFilter }
-          <p class="muted">Show only paths affected by the selected problem.</p>
         </div>
       ` : '' }
+      <div class="subsection">
+        <label class="toggle-switch">
+          <input type="checkbox" data-comparison-diff-only>
+          <span class="toggle-switch-control" aria-hidden="true"></span>
+          <span class="toggle-switch-label">Only differences</span>
+        </label>
+      </div>
     </section>
 
     ${ renderIndexedSection({
       cardsHtml,
-      description: 'Jump to any changed path. Each card shows the concrete left and right URL for that page.',
+      description: 'Jump to any compared path. Each card shows the concrete left and right URL for that page.',
       emptyDataAttr: 'data-comparison-empty',
       emptyHidden: comparisonEntries.length > 0,
       emptyMessage: comparisonEntries.length > 0
-        ? 'No changed paths match the selected problem.'
+        ? 'No compared paths match the selected filters.'
         : 'No differences found between the two sources.',
       itemsHtml: hasVariants
         ? renderVariantGroupedNavItems(comparisonEntries, e => e.comparison.variant, renderComparisonIndexItem)
@@ -817,7 +830,7 @@ const renderComparisonTab = (comparison) => {
       visibleCountDataAttr: 'data-comparison-visible-count',
       visibleLabel: {
         all: 'All paths',
-        items: 'changed paths',
+        items: 'compared paths',
       },
     }) }
   `
@@ -919,11 +932,15 @@ export const renderHtmlReport = (report) => {
   <title>SEO Snapshot ${ escapeHtml(generatedAtLabel) }</title>
   <style>
     :root {
-      --bg: #0a0a0a;
-      --bg-elevated: #111111;
+      --bg: #000;
+      --bg-elevated: #0b0b0b;
       --bg-muted: #151515;
       --bg-code: #0f0f0f;
-      --border: #2a2a2a;
+      --bg-success: #10231c;
+      --bg-warning: #2a220f;
+      --bg-error: #2a1515;
+      --bg-info: #142033;
+      --border: #1c1c1c;
       --border-strong: #3a3a3a;
       --text: #f1f1f1;
       --muted: #a1a1a1;
@@ -933,7 +950,6 @@ export const renderHtmlReport = (report) => {
       --warning: #fbbf24;
       --error: #f87171;
       --info: #60a5fa;
-      --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
     }
     html { scroll-behavior: smooth; }
     * { box-sizing: border-box; }
@@ -962,8 +978,7 @@ export const renderHtmlReport = (report) => {
       padding: 24px;
       border: 1px solid var(--border);
       border-radius: 24px;
-      background: rgba(17, 17, 17, 0.92);
-      box-shadow: var(--shadow);
+      background: var(--bg-elevated);
       display: grid;
       gap: 12px;
     }
@@ -1058,7 +1073,7 @@ export const renderHtmlReport = (report) => {
     .summary-card, .page-card {
       border: 1px solid var(--border);
       border-radius: 20px;
-      background: rgba(17, 17, 17, 0.94);
+      background: var(--bg-elevated);
     }
     .summary-card {
       padding: 18px;
@@ -1112,15 +1127,17 @@ export const renderHtmlReport = (report) => {
       display: none;
     }
     .variant-group-title::after {
-      content: '▾';
-      font-size: 0.85em;
-      color: var(--muted);
-      transition: transform 200ms ease;
+      content: "";
+      width: 12px;
+      height: 8px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a1a1a1' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+      transition: transform 80ms ease;
       flex-shrink: 0;
       margin-left: 8px;
+      transform: rotate(180deg);
     }
     details.variant-group:not([open]) > .variant-group-title::after {
-      transform: rotate(-90deg);
+      transform: rotate(0);
     }
     .report-page-card {
       scroll-margin-top: 24px;
@@ -1172,23 +1189,23 @@ export const renderHtmlReport = (report) => {
       color: var(--tone-strong);
     }
     .badge-success {
-      background: rgba(52, 211, 153, 0.12);
-      border-color: rgba(52, 211, 153, 0.28);
+      background: var(--bg-success);
+      border-color: #1f4a3c;
       color: var(--success);
     }
     .badge-warning {
-      background: rgba(251, 191, 36, 0.12);
-      border-color: rgba(251, 191, 36, 0.28);
+      background: var(--bg-warning);
+      border-color: #5a4618;
       color: var(--warning);
     }
     .badge-error {
-      background: rgba(248, 113, 113, 0.12);
-      border-color: rgba(248, 113, 113, 0.28);
+      background: var(--bg-error);
+      border-color: #5a2a2a;
       color: var(--error);
     }
     .badge-info {
-      background: rgba(96, 165, 250, 0.12);
-      border-color: rgba(96, 165, 250, 0.28);
+      background: var(--bg-info);
+      border-color: #284766;
       color: var(--info);
     }
     .badge-neutral {
@@ -1225,14 +1242,66 @@ export const renderHtmlReport = (report) => {
     }
     .field-select {
       width: 100%;
-      padding: 12px 14px;
+      padding: 12px 38px 12px 14px;
       border-radius: 14px;
       border: 1px solid var(--border);
-      background: var(--bg-muted) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a1a1a1' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+      background: var(--bg-muted) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='6' viewBox='0 0 18 6'%3E%3Ccircle cx='3' cy='3' r='1.4' fill='%23a1a1a1'/%3E%3Ccircle cx='9' cy='3' r='1.4' fill='%23a1a1a1'/%3E%3Ccircle cx='15' cy='3' r='1.4' fill='%23a1a1a1'/%3E%3C/svg%3E") no-repeat right 12px center;
       color: var(--text);
       font: inherit;
       appearance: none;
       -webkit-appearance: none;
+    }
+    .toggle-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-switch input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .toggle-switch-control {
+      width: 42px;
+      height: 24px;
+      border-radius: 999px;
+      border: 1px solid var(--border-strong);
+      background: #262626;
+      display: inline-flex;
+      align-items: center;
+      padding: 2px;
+      transition: background 120ms ease, border-color 120ms ease;
+      flex-shrink: 0;
+    }
+    .toggle-switch-control::before {
+      content: "";
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: var(--tone-strong);
+      transition: transform 160ms ease, background 160ms ease;
+    }
+    .toggle-switch input:checked + .toggle-switch-control {
+      border-color: var(--info);
+      background: var(--bg-info);
+    }
+    .toggle-switch input:checked + .toggle-switch-control::before {
+      transform: translateX(18px);
+      background: var(--info);
+    }
+    .toggle-switch input:focus-visible + .toggle-switch-control {
+      outline: 2px solid var(--info);
+      outline-offset: 2px;
+    }
+    .toggle-switch-label {
+      line-height: 1.2;
     }
     .pages-counter {
       font-size: 13px;
@@ -1261,6 +1330,9 @@ export const renderHtmlReport = (report) => {
       padding-top: 10px;
       border-top: 1px solid var(--border);
     }
+    .page-index-nav .nav-variant-group {
+      border: none;
+    }
     .nav-variant-label {
       font-size: 0.7rem;
       font-weight: 600;
@@ -1277,20 +1349,23 @@ export const renderHtmlReport = (report) => {
       position: sticky;
       top: 0;
       z-index: 1;
-      background: rgb(17, 17, 17);
+      background: var(--bg-elevated);
     }
     .nav-variant-label::-webkit-details-marker {
       display: none;
     }
     .nav-variant-label::after {
-      content: '▾';
-      font-size: 0.85em;
-      transition: transform 200ms ease;
+      content: "";
+      width: 12px;
+      height: 8px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a1a1a1' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+      transition: transform 80ms ease;
       flex-shrink: 0;
       margin-left: 6px;
+      transform: rotate(180deg);
     }
     details.nav-variant-group:not([open]) > .nav-variant-label::after {
-      transform: rotate(-90deg);
+      transform: rotate(0);
     }
     .page-index-link {
       display: grid;
@@ -1301,15 +1376,14 @@ export const renderHtmlReport = (report) => {
       background: var(--bg-muted);
       color: inherit;
       text-decoration: none;
-      transition: border-color 120ms ease, transform 120ms ease, background 120ms ease;
+      transition: border-color 120ms ease, background 120ms ease;
     }
     .page-index-link:hover {
       border-color: var(--border-strong);
-      transform: translateY(-1px);
     }
     .page-index-link.active {
-      border-color: rgba(96, 165, 250, 0.38);
-      background: rgba(96, 165, 250, 0.08);
+      border-color: var(--info);
+      background: var(--bg-info);
     }
     .page-index-link strong {
       font-size: 14px;
@@ -1452,15 +1526,24 @@ export const renderHtmlReport = (report) => {
     }
     .diff-arrow {
       color: var(--muted);
-      padding-top: 2px;
+      padding-top: 4px;
       font-size: 12px;
     }
-    .diff-inline-new {
-      background: rgba(52, 211, 153, 0.1);
-      color: var(--success);
+    .diff-inline-new,
+    .diff-inline-old {
       padding: 2px 8px;
+    }
+    .diff-inline-new {
+      background: var(--bg-success);
+      color: var(--success);
       border-radius: 4px;
       word-break: break-word;
+    }
+    .diff-inline-row-unchanged .diff-inline-old,
+    .diff-inline-row-unchanged .diff-inline-new {
+      color: var(--tone-soft);
+      background: transparent;
+      text-decoration: none;
     }
     .diff-issue-badges {
       display: flex;
@@ -1475,13 +1558,13 @@ export const renderHtmlReport = (report) => {
       border: 1px solid var(--border);
     }
     .diff-issue-left {
-      background: rgba(96, 165, 250, 0.1);
-      border-color: rgba(96, 165, 250, 0.2);
+      background: var(--bg-info);
+      border-color: #284766;
       color: var(--info);
     }
     .diff-issue-right {
-      background: rgba(248, 113, 113, 0.1);
-      border-color: rgba(248, 113, 113, 0.2);
+      background: var(--bg-error);
+      border-color: #5a2a2a;
       color: var(--error);
     }
     .scroll-top-btn {
@@ -1496,17 +1579,15 @@ export const renderHtmlReport = (report) => {
       min-height: 48px;
       padding: 0 16px;
       border-radius: 999px;
-      border: 1px solid rgba(96, 165, 250, 0.32);
-      background: rgba(17, 17, 17, 0.92);
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elevated);
       color: var(--text);
-      box-shadow: var(--shadow);
       cursor: pointer;
       font: inherit;
-      transition: transform 120ms ease, opacity 120ms ease, border-color 120ms ease;
+      transition: opacity 120ms ease, border-color 120ms ease;
     }
     .scroll-top-btn:hover {
-      transform: translateY(-1px);
-      border-color: rgba(96, 165, 250, 0.48);
+      border-color: var(--info);
     }
     .scroll-top-btn.hidden {
       opacity: 0;
@@ -1639,6 +1720,7 @@ export const renderHtmlReport = (report) => {
       function createNavGroup(config) {
         return {
           cards: Array.from(document.querySelectorAll(config.cardSelector)),
+          diffOnlyToggle: config.diffOnlyToggleSelector ? document.querySelector(config.diffOnlyToggleSelector) : null,
           emptyState: document.querySelector(config.emptySelector),
           filter: config.filterSelector ? document.querySelector(config.filterSelector) : null,
           filterAttr: config.filterAttr || '',
@@ -1663,6 +1745,7 @@ export const renderHtmlReport = (report) => {
         }),
         createNavGroup({
           cardSelector: '[data-comparison-card]',
+          diffOnlyToggleSelector: '[data-comparison-diff-only]',
           emptySelector: '[data-comparison-empty]',
           filterSelector: '[data-comparison-difference-filter]',
           filterAttr: 'differenceKeys',
@@ -1714,9 +1797,15 @@ export const renderHtmlReport = (report) => {
         if (group.emptyState) {
           group.emptyState.classList.toggle('hidden', count > 0)
         }
+
+        syncComparisonFieldRows(group)
       }
 
       function matchesNavGroupFilter(element, group, selectedFilter) {
+        if (group.diffOnlyToggle && group.diffOnlyToggle.checked && element.dataset.hasDifferences !== 'true') {
+          return false
+        }
+
         if (selectedFilter === 'all' || !group.filterAttr) {
           return true
         }
@@ -1732,6 +1821,22 @@ export const renderHtmlReport = (report) => {
         }
 
         return rawValue === selectedFilter
+      }
+
+      function syncComparisonFieldRows(group) {
+        if (!group || !group.diffOnlyToggle) {
+          return
+        }
+
+        var diffOnly = group.diffOnlyToggle.checked
+
+        group.cards.forEach(function (card) {
+          Array.from(card.querySelectorAll('[data-comparison-field-changed]')).forEach(function (row) {
+            var changed = row.dataset.comparisonFieldChanged === 'true'
+
+            row.classList.toggle('hidden', diffOnly && !changed)
+          })
+        })
       }
 
       function scrollNavLinkIntoView(group, link) {
@@ -1950,21 +2055,33 @@ export const renderHtmlReport = (report) => {
       })
 
       navGroups.forEach(function (group) {
-        if (!group.filter) {
-          return
+        if (group.filter) {
+          group.filter.addEventListener('change', function () {
+            syncNavGroupFilter(group)
+            var currentAnchor = location.hash.replace(/^#/, '')
+            var currentTarget = document.getElementById(currentAnchor)
+
+            if (currentTarget && currentTarget.classList.contains('hidden')) {
+              setActiveGroupLink(group, '')
+            } else {
+              requestScrollSync()
+            }
+          })
         }
 
-        group.filter.addEventListener('change', function () {
-          syncNavGroupFilter(group)
-          var currentAnchor = location.hash.replace(/^#/, '')
-          var currentTarget = document.getElementById(currentAnchor)
+        if (group.diffOnlyToggle) {
+          group.diffOnlyToggle.addEventListener('change', function () {
+            syncNavGroupFilter(group)
+            var currentAnchor = location.hash.replace(/^#/, '')
+            var currentTarget = document.getElementById(currentAnchor)
 
-          if (currentTarget && currentTarget.classList.contains('hidden')) {
-            setActiveGroupLink(group, '')
-          } else {
-            requestScrollSync()
-          }
-        })
+            if (currentTarget && currentTarget.classList.contains('hidden')) {
+              setActiveGroupLink(group, '')
+            } else {
+              requestScrollSync()
+            }
+          })
+        }
       })
 
       if (scrollTopBtn) {

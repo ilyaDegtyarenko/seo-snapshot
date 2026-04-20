@@ -204,7 +204,7 @@ test('renderHtmlReport adds Comparison sidebar anchors and routes hashes to the 
       { label: 'prod', url: 'https://www.example.com/' },
       { label: 'stage', url: 'https://stage.example.com/' },
     ],
-    targetCount: 1,
+    targetCount: 2,
     targetsWithDifferences: 1,
     totalDifferences: 1,
     differenceBreakdown: [
@@ -229,6 +229,35 @@ test('renderHtmlReport adds Comparison sidebar anchors and routes hashes to the 
         },
         differences: [
           { key: 'title', label: 'Title', left: 'Prod Home', right: 'Stage Home' },
+        ],
+        fields: [
+          { key: 'status', label: 'HTTP status', left: 200, right: 200, changed: false },
+          { key: 'title', label: 'Title', left: 'Prod Home', right: 'Stage Home', changed: true },
+        ],
+        issueDelta: {
+          onlyOnLeft: [],
+          onlyOnRight: [],
+        },
+      },
+      {
+        targetPath: '/about',
+        left: {
+          label: 'prod',
+          baseUrl: 'https://www.example.com/',
+          requestedUrl: 'https://www.example.com/about',
+          finalUrl: 'https://www.example.com/about',
+          status: 200,
+        },
+        right: {
+          label: 'stage',
+          baseUrl: 'https://stage.example.com/',
+          requestedUrl: 'https://stage.example.com/about',
+          finalUrl: 'https://stage.example.com/about',
+          status: 200,
+        },
+        differences: [],
+        fields: [
+          { key: 'status', label: 'HTTP status', left: 200, right: 200, changed: false },
         ],
         issueDelta: {
           onlyOnLeft: [],
@@ -263,18 +292,27 @@ test('renderHtmlReport adds Comparison sidebar anchors and routes hashes to the 
   assert.match(html, /<h3>Comparison Index<\/h3>/)
   assert.match(html, /aria-label="Comparison navigation"/)
   assert.match(html, /<select class="field-select" data-comparison-difference-filter/)
-  assert.match(html, /All problems \(1\)/)
+  assert.match(html, /All compared paths \(2\)/)
   assert.match(html, /Title \(1\)/)
-  assert.match(html, /data-comparison-visible-count>1<\/span> of 1 changed paths shown/)
+  assert.match(html, /data-comparison-visible-count>2<\/span> of 2 compared paths shown/)
   assert.match(html, /href="#comparison-1-home"/)
   assert.match(html, /id="comparison-1-home"/)
   assert.match(html, /https:\/\/www\.example\.com\/home<\/code> → <code>https:\/\/stage\.example\.com\/home/)
   assert.match(html, /data-comparison-card/)
+  assert.match(html, /data-comparison-diff-only/)
+  assert.match(html, /class="toggle-switch"/)
+  assert.match(html, /class="toggle-switch-control"/)
+  assert.match(html, /data-comparison-field-changed="false"/)
+  assert.match(html, /data-comparison-field-changed="true"/)
   assert.match(html, /data-difference-keys="title"/)
+  assert.match(html, /data-has-differences="true"/)
+  assert.match(html, /data-has-differences="false"/)
   assert.match(html, /data-nav-tab="comparison"/)
   assert.doesNotMatch(html, /data-nav-active-btn/)
   assert.match(html, /function syncNavGroupFilter\(group\)/)
   assert.match(html, /function matchesNavGroupFilter\(element, group, selectedFilter\)/)
+  assert.match(html, /function syncComparisonFieldRows\(group\)/)
+  assert.match(html, /diffOnlyToggleSelector: '\[data-comparison-diff-only\]'/)
   assert.match(html, /function scrollNavLinkIntoView\(group, link\)/)
   assert.match(html, /group\.nav\.scrollTop -= \(navRect\.top - linkRect\.top\) \+ scrollPadding/)
   assert.match(html, /group\.nav\.scrollTop \+= \(linkRect\.bottom - navRect\.bottom\) \+ scrollPadding/)

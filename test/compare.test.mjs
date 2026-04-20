@@ -211,6 +211,8 @@ test('buildComparisonReport highlights SEO field differences across two domains'
     onlyOnLeft: [ 'missing_og_image' ],
     onlyOnRight: [ 'noindex' ],
   })
+  assert.equal(comparison.comparisons[0].fields.some(entry => entry.key === 'status' && entry.changed === false), true)
+  assert.equal(comparison.comparisons[0].fields.some(entry => entry.key === 'title' && entry.changed === true), true)
   const differenceKeys = comparison.differenceBreakdown.map(entry => entry.key)
 
   assert.equal(differenceKeys.includes('bodyTextLength'), true)
@@ -268,7 +270,12 @@ test('buildComparisonReport compares source-local URLs by path but still catches
     sources: comparisonSources,
   })
 
+  assert.equal(noLeakComparison.targetCount, 1)
+  assert.equal(noLeakComparison.targetsWithDifferences, 0)
+  assert.equal(noLeakComparison.totalDifferences, 0)
+  assert.equal(noLeakComparison.comparisons.length, 1)
   assert.deepEqual(noLeakComparison.comparisons[0].differences, [])
+  assert.equal(noLeakComparison.comparisons[0].fields.some(entry => entry.key === 'canonical' && entry.changed === false), true)
 
   const leakComparison = buildComparisonReport([
     createComparablePage({

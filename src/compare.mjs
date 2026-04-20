@@ -240,6 +240,22 @@ const getIssueCodes = (page) => {
 
 const areEqual = (left, right) => JSON.stringify(left) === JSON.stringify(right)
 
+const isEmptyComparableValue = (value) => {
+  if (value === null || value === undefined) {
+    return true
+  }
+
+  if (Array.isArray(value)) {
+    return value.length === 0
+  }
+
+  if (typeof value === 'string') {
+    return value.trim() === ''
+  }
+
+  return false
+}
+
 const DIFFERENCE_SPECS = [
   {
     key: 'error',
@@ -642,7 +658,12 @@ const buildIssueDelta = (leftPage, rightPage) => {
   }
 }
 
-const buildDifferences = (leftPage, rightPage, hideTtfb = false) => {
+const hasComparisonDifferences = (comparison) => {
+  return comparison.differences.length > 0 ||
+    (comparison.issueDelta && (comparison.issueDelta.onlyOnLeft.length || comparison.issueDelta.onlyOnRight.length))
+}
+
+const buildComparisonFields = (leftPage, rightPage, hideTtfb = false) => {
   const specs = hideTtfb
     ? DIFFERENCE_SPECS.filter(spec => ![ 'ttfbMs', 'finalResponseTtfbMs' ].includes(spec.key))
     : DIFFERENCE_SPECS
@@ -650,8 +671,9 @@ const buildDifferences = (leftPage, rightPage, hideTtfb = false) => {
   return specs.flatMap((spec) => {
     const leftValue = spec.getValue(leftPage)
     const rightValue = spec.getValue(rightPage)
+    const changed = !areEqual(leftValue, rightValue)
 
-    if (areEqual(leftValue, rightValue)) {
+    if (!changed && isEmptyComparableValue(leftValue) && isEmptyComparableValue(rightValue)) {
       return []
     }
 
@@ -660,6 +682,7 @@ const buildDifferences = (leftPage, rightPage, hideTtfb = false) => {
       label: spec.label,
       left: leftValue,
       right: rightValue,
+      changed,
     }]
   })
 }
@@ -701,7 +724,10 @@ export const buildComparisonReport = (pages, compareOptions, hideTtfb = false) =
       continue
     }
 
-    const differences = buildDifferences(leftPage, rightPage, hideTtfb)
+    const fields = buildComparisonFields(leftPage, rightPage, hideTtfb)
+    const differences = fields
+      .filter(field => field.changed)
+      .map(({ key, label, left, right }) => ({ key, label, left, right }))
     const issueDelta = buildIssueDelta(leftPage, rightPage)
 
     for (const difference of differences) {
@@ -727,6 +753,7 @@ export const buildComparisonReport = (pages, compareOptions, hideTtfb = false) =
         status: rightPage.status,
       },
       differences,
+      fields,
       issueDelta,
     })
   }
@@ -748,13 +775,14 @@ export const buildComparisonReport = (pages, compareOptions, hideTtfb = false) =
   })
 
   const variantLabels = [ ...new Set(comparisons.map(c => c.variant).filter(Boolean)) ]
+  const changedComparisons = comparisons.filter(hasComparisonDifferences)
 
   return {
     sources: compareOptions.sources,
     variants: variantLabels.length > 0 ? variantLabels : null,
     targetCount: comparisons.length,
-    targetsWithDifferences: comparisons.filter(comparison => comparison.differences.length > 0).length,
-    totalDifferences: comparisons.reduce((total, comparison) => total + comparison.differences.length, 0),
+    targetsWithDifferences: changedComparisons.length,
+    totalDifferences: changedComparisons.reduce((total, comparison) => total + comparison.differences.length, 0),
     differenceBreakdown: sortByCountDesc([ ...differenceCounts.entries() ].map(([ key, count ]) => {
       const label = DIFFERENCE_SPECS.find(spec => spec.key === key)?.label ?? key
 
