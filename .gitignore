@@ -3,5 +3,6 @@
 /reports/
 /.env
 /config/seo-snapshot.mjs
+/config/targets.json
 /config/targets.txt
 /config/targets.xml
