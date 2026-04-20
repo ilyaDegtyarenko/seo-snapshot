@@ -49,7 +49,7 @@ Environment:
   ${ ENV_CONFIG_PATH_VAR }     Config file path alternative to --config.
   ${ ENV_CONFIG_JSON_VAR }          JSON object with the full config.
   SEO_SNAPSHOT_BASE_URL       Override config.baseUrl.
-  SEO_SNAPSHOT_COMPARE_BASE_URL
+  SEO_SNAPSHOT_COMPARE_URL
   SEO_SNAPSHOT_TARGETS_FILE   Override config.targetsFile.
   SEO_SNAPSHOT_TARGETS        Override config.targets. Accepts JSON array or comma/newline list.
   SEO_SNAPSHOT_OUTPUT_DIR     Override config.output.dir.
@@ -73,15 +73,11 @@ Environment:
 Config file format:
   export default {
     baseUrl: 'http://127.0.0.1:3000',
-    compare: {
-      baseUrl: 'https://staging.example.com',
-    },
+    compareUrl: 'https://staging.example.com',
     profiles: {
       staging: {
         baseUrl: 'https://staging.example.com',
-        compare: {
-          baseUrl: 'https://prod.example.com',
-        },
+        compareUrl: 'https://prod.example.com',
       },
     },
     targetsFile: './targets.json', // or './targets.txt' or './targets.xml'
@@ -118,7 +114,7 @@ Targets file format:
   - XML sitemap dump: <url><loc>https://example.com/page</loc></url>
 
 Comparison mode:
-  - set compare.baseUrl with one absolute URL
+  - set compareUrl with one absolute URL
   - config.baseUrl is used as the primary domain
   - the same target path will be fetched on both domains and included in the diff block
 `.trim()

@@ -114,14 +114,12 @@ test('readSeoConfig supports single compare domain from env override', async () 
   try {
     const result = await readSeoConfig(undefined, tempDir, {
       SEO_SNAPSHOT_BASE_URL: 'https://www.example.com',
-      SEO_SNAPSHOT_COMPARE_BASE_URL: 'https://stage.example.com',
+      SEO_SNAPSHOT_COMPARE_URL: 'https://stage.example.com',
       SEO_SNAPSHOT_TARGETS: '/news',
     })
 
     assert.equal(result.absoluteConfigPath, null)
-    assert.deepEqual(result.config.compare, {
-      baseUrl: 'https://stage.example.com',
-    })
+    assert.equal(result.config.compareUrl, 'https://stage.example.com')
     assert.equal(result.config.baseUrl, 'https://www.example.com')
     assert.deepEqual(result.config.targets, [ '/news' ])
   } finally {
@@ -200,9 +198,7 @@ test('readSeoConfig merges profile config on top of base config', async (context
   profiles: {
     staging: {
       baseUrl: 'https://staging.example.com',
-      compare: {
-        baseUrl: 'https://prod.example.com',
-      },
+      compareUrl: 'https://prod.example.com',
     },
   },
 }
@@ -213,7 +209,7 @@ test('readSeoConfig merges profile config on top of base config', async (context
   })
 
   assert.equal(result.config.baseUrl, 'https://staging.example.com')
-  assert.deepEqual(result.config.compare, { baseUrl: 'https://prod.example.com' })
+  assert.equal(result.config.compareUrl, 'https://prod.example.com')
   assert.deepEqual(result.config.targets, [ '/' ])
 })
 
@@ -303,11 +299,9 @@ test('resolveTargets expands the same target path across compare domains', async
   try {
     const targets = await resolveTargets({
       baseUrl: 'https://www.example.com',
-      compare: {
-        baseUrl: {
-          label: 'stage',
-          url: 'https://stage.example.com',
-        },
+      compareUrl: {
+        label: 'stage',
+        url: 'https://stage.example.com',
       },
       targets: [ '/news', 'https://legacy.example.com/catalog?page=2' ],
     }, tempDir)
@@ -402,9 +396,7 @@ test('resolveTargets uses baseUrl as the primary compare domain when one compare
   try {
     const targets = await resolveTargets({
       baseUrl: 'https://www.example.com',
-      compare: {
-        baseUrl: 'https://stage.example.com',
-      },
+      compareUrl: 'https://stage.example.com',
       targets: [ '/news' ],
     }, tempDir)
 

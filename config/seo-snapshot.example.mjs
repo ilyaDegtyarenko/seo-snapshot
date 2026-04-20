@@ -1,20 +1,20 @@
 export default {
   baseUrl: { url: 'http://127.0.0.1:3000', label: 'Local' },
-  compare: {
-    baseUrl: { url: 'https://www.example.com', label: 'Prod' },
-  },
+  // compareUrl: { url: 'https://www.example.com', label: 'Prod' }, // if set, will compare the base URL against the given URL
   profiles: {
     staging: {
       baseUrl: { url: 'https://staging.example.com', label: 'Staging' },
-      compare: {
-        baseUrl: { url: 'https://www.example.com', label: 'Prod' },
-      },
+    },
+    stagingVsProd: {
+      baseUrl: { url: 'https://staging.example.com', label: 'Staging' },
+      compareUrl: { url: 'https://www.example.com', label: 'Prod' },
     },
   },
   // targetsFile: null, // auto-detects targets.json/txt/xml in config dir; set only for a non-default path
   targets: [
     '/',
-    '/news',
+    '/about',
+    '/contact',
   ],
   output: {
     dir: '../reports',

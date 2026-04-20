@@ -144,7 +144,7 @@ const parseEnvUserAgent = (value, envName) => {
   }
 }
 
-const parseEnvCompareBaseUrl = (value, envName) => {
+const parseEnvUrlValue = (value, envName) => {
   const normalizedValue = String(value ?? '').trim()
 
   if (!normalizedValue) {
@@ -194,7 +194,7 @@ const normalizeCompareSource = (value, index) => {
     }
   }
 
-  const compareKey = index === 1 ? 'compare.baseUrl' : 'baseUrl'
+  const compareKey = index === 1 ? 'compareUrl' : 'baseUrl'
 
   exitWithError(`Expected ${ compareKey } to be a string URL or { url, label? } object.`)
 }
@@ -248,8 +248,8 @@ const readEnvJsonConfig = (env) => {
 }
 
 const ENV_OVERRIDE_MAPPINGS = [
-  [ 'SEO_SNAPSHOT_BASE_URL', [ 'baseUrl' ], parseEnvCompareBaseUrl ],
-  [ 'SEO_SNAPSHOT_COMPARE_BASE_URL', [ 'compare', 'baseUrl' ], parseEnvCompareBaseUrl ],
+  [ 'SEO_SNAPSHOT_BASE_URL', [ 'baseUrl' ], parseEnvUrlValue ],
+  [ 'SEO_SNAPSHOT_COMPARE_URL', [ 'compareUrl' ], parseEnvUrlValue ],
   [ 'SEO_SNAPSHOT_TARGETS_FILE', [ 'targetsFile' ], parseEnvString ],
   [ 'SEO_SNAPSHOT_TARGETS', [ 'targets' ], parseEnvList ],
   [ 'SEO_SNAPSHOT_OUTPUT_DIR', [ 'output', 'dir' ], parseEnvString ],
@@ -446,7 +446,7 @@ const readTargetsFromFile = async (filePath) => {
 }
 
 export const resolveComparisonSources = (config) => {
-  const rawSource = config?.compare?.baseUrl
+  const rawSource = config?.compareUrl
 
   if (rawSource === undefined) {
     return null
@@ -456,7 +456,7 @@ export const resolveComparisonSources = (config) => {
   const hasBaseUrl = isNonEmptyString(rawBaseUrl) || (isPlainObject(rawBaseUrl) && isNonEmptyString(rawBaseUrl.url))
 
   if (!hasBaseUrl) {
-    exitWithError('compare.baseUrl requires baseUrl (or SEO_SNAPSHOT_BASE_URL) for the primary domain.')
+    exitWithError('compareUrl requires baseUrl (or SEO_SNAPSHOT_BASE_URL) for the primary domain.')
   }
 
   const sources = [
@@ -466,7 +466,7 @@ export const resolveComparisonSources = (config) => {
   const uniqueUrls = new Set(sources.map(source => source.url))
 
   if (uniqueUrls.size !== sources.length) {
-    exitWithError('compare.baseUrl must differ from baseUrl.')
+    exitWithError('compareUrl must differ from baseUrl.')
   }
 
   return sources

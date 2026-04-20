@@ -94,7 +94,7 @@ Additional CLI behaviors:
 Recommended split:
 
 - `config/seo-snapshot.example.mjs`: committed template for the runtime config
-- `config/seo-snapshot.mjs`: ignored runtime config with local structured settings such as `baseUrl`, `compare.baseUrl`, `targetsFile`, profiles, or User-Agent variants
+- `config/seo-snapshot.mjs`: ignored runtime config with local structured settings such as `baseUrl`, `compareUrl`, `targetsFile`, profiles, or User-Agent variants
 - `config/targets.example.json` / `config/targets.example.txt` / `config/targets.example.xml`: committed target templates
 - `config/targets.json` / `config/targets.txt` / `config/targets.xml`: ignored runtime target inputs
 - `.env`: ignored secrets and small scalar toggles such as cookies, headers, `SEO_SNAPSHOT_OPEN`, and one-off overrides
@@ -119,7 +119,7 @@ Compare mode via env:
 
 ```bash
 SEO_SNAPSHOT_BASE_URL='{"url":"https://www.example.com","label":"prod"}'
-SEO_SNAPSHOT_COMPARE_BASE_URL='{"url":"https://stage.example.com","label":"stage"}'
+SEO_SNAPSHOT_COMPARE_URL='{"url":"https://stage.example.com","label":"stage"}'
 SEO_SNAPSHOT_TARGETS=/,/news
 ```
 
@@ -158,7 +158,7 @@ File config plus env overrides:
 ```bash
 SEO_SNAPSHOT_CONFIG_PATH=./config/seo-snapshot.mjs \
 SEO_SNAPSHOT_BASE_URL=http://127.0.0.1:3000 \
-SEO_SNAPSHOT_COMPARE_BASE_URL=https://stage.example.com \
+SEO_SNAPSHOT_COMPARE_URL=https://stage.example.com \
 SEO_SNAPSHOT_TARGETS="/,/news,/movies" \
 SEO_SNAPSHOT_OUTPUT_FORMATS=html,json \
 SEO_SNAPSHOT_REQUEST_CONCURRENCY=8 \
@@ -170,7 +170,7 @@ Supported overrides:
 - `SEO_SNAPSHOT_CONFIG_PATH`
 - `SEO_SNAPSHOT_CONFIG`
 - `SEO_SNAPSHOT_BASE_URL` as a URL string or `{ "url": "...", "label": "..." }` JSON object
-- `SEO_SNAPSHOT_COMPARE_BASE_URL` as a URL string or `{ "url": "...", "label": "..." }` JSON object
+- `SEO_SNAPSHOT_COMPARE_URL` as a URL string or `{ "url": "...", "label": "..." }` JSON object
 - `SEO_SNAPSHOT_TARGETS_FILE`
 - `SEO_SNAPSHOT_TARGETS` as a JSON array or comma/newline-separated list
 - `SEO_SNAPSHOT_OUTPUT_DIR`
@@ -199,15 +199,11 @@ Committed template in `config/seo-snapshot.example.mjs`:
 ```js
 export default {
   baseUrl: { url: 'http://127.0.0.1:3000', label: 'Local' }, // or a plain string
-  compare: {
-    baseUrl: { url: 'https://www.example.com', label: 'Prod' },
-  },
+  compareUrl: { url: 'https://www.example.com', label: 'Prod' },
   profiles: {
     staging: {
       baseUrl: { url: 'https://staging.example.com', label: 'Staging' },
-      compare: {
-        baseUrl: { url: 'https://www.example.com', label: 'Prod' },
-      },
+      compareUrl: { url: 'https://www.example.com', label: 'Prod' },
     },
   },
   // targetsFile: './targets.json',
@@ -311,8 +307,8 @@ Copy it to `config/seo-snapshot.mjs` and trim it down to the settings you actual
 
 Comparison mode notes:
 
-- `compare.baseUrl` requires `baseUrl`.
-- Both `baseUrl` and `compare.baseUrl` can be a string URL or an object with `url` and optional `label`.
+- `compareUrl` requires `baseUrl`.
+- Both `baseUrl` and `compareUrl` can be a string URL or an object with `url` and optional `label`.
 - `baseUrl` is used as the primary domain.
 - The same target path is fetched on both domains and the report adds a dedicated diff section.
 - Absolute targets are normalized to `pathname + search + hash` before they are replayed on both domains.
