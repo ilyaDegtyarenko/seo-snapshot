@@ -190,6 +190,7 @@ Supported overrides:
 - `SEO_SNAPSHOT_AUDIT_MAX_DESCRIPTION_LENGTH`
 - `SEO_SNAPSHOT_AUDIT_MIN_BODY_TEXT_LENGTH`
 - `SEO_SNAPSHOT_AUDIT_IGNORE` as a JSON array or comma/newline-separated list
+- `SEO_SNAPSHOT_AUDIT_FLAG_EMPTY_ALT` as `true` or `false`
 
 ## Config
 
@@ -237,6 +238,7 @@ export default {
     minDescriptionLength: 70,
     maxDescriptionLength: 160,
     minBodyTextLength: 250,
+    flagEmptyAlt: false, // set to true to warn on images with alt=""
     ignore: [ 'missing_twitter_card', 'missing_og_image' ],
   },
 }
@@ -283,6 +285,7 @@ export default {
 | `llms_link_cross_domain` | warning | `Link: llms` header points to a different host |
 | `thin_content` | warning | Visible body text too short |
 | `images_missing_alt` | warning | Images missing `alt` attribute |
+| `images_empty_alt` | warning | Images with empty `alt=""` (opt-in via `audit.flagEmptyAlt`) |
 | `heading_hierarchy_skip` | warning | Heading hierarchy skips a level |
 | `duplicate_title` | warning | Multiple `<title>` tags |
 | `duplicate_description` | warning | Multiple meta description tags |
