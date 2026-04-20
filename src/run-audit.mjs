@@ -148,6 +148,39 @@ const writeReports = async (report, outputOptions) => {
   return outputPaths
 }
 
+const buildFullConfig = ({ config, runtimeOptions, baseTargets, targets }) => {
+  const {
+    audit: _audit,
+    output: _output,
+    profiles: _profiles,
+    request: _request,
+    targets: _targets,
+    targetsFile: _targetsFile,
+    ...currentConfig
+  } = config
+  const targetInputs = [
+    ...new Set(baseTargets.map(target => target.input ?? target.path ?? target.url)),
+  ]
+  const resolvedTargets = baseTargets.map(target => ({
+    input: target.input ?? null,
+    ...(target.path ? { path: target.path } : {}),
+    url: target.url,
+    ...(target.source ? { source: target.source } : {}),
+  }))
+
+  return {
+    ...currentConfig,
+    targets: targetInputs,
+    resolvedTargets,
+    request: runtimeOptions.request,
+    output: runtimeOptions.output,
+    compare: runtimeOptions.compare,
+    variants: runtimeOptions.variants,
+    audit: runtimeOptions.audit,
+    targetCount: targets.length,
+  }
+}
+
 export const runAudit = async (cliOptions, runtime = {}) => {
   const cwd = runtime.cwd ?? process.cwd()
   const {
@@ -186,15 +219,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
   })
   const summary = buildSummary(pages)
   const comparison = buildComparisonReport(pages, runtimeOptions.compare, runtimeOptions.output.hideTtfb)
-  const fullConfig = {
-    ...config,
-    request: runtimeOptions.request,
-    output: runtimeOptions.output,
-    compare: runtimeOptions.compare,
-    variants: runtimeOptions.variants,
-    audit: runtimeOptions.audit,
-    targetCount: targets.length,
-  }
+  const fullConfig = buildFullConfig({ config, runtimeOptions, baseTargets, targets })
 
   const report = {
     generatedAt: new Date().toISOString(),

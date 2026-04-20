@@ -225,6 +225,8 @@ test('renderHtmlReport prints the resolved full config as JSON', () => {
   assert.match(html, /&quot;targets&quot;: \[/)
   assert.match(html, /&quot;x-test&quot;: &quot;yes&quot;/)
   assert.match(html, /&quot;formats&quot;: \[/)
+  assert.match(html, /\.raw-details \{[^}]*min-width: 0;/s)
+  assert.match(html, /\.raw-details pre \{[^}]*max-width: 100%;[^}]*white-space: pre-wrap;[^}]*overflow-wrap: anywhere;/s)
 })
 
 test('renderHtmlReport keeps page index without comparison filter', () => {

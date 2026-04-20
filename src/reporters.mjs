@@ -1126,6 +1126,7 @@ export const renderHtmlReport = (report) => {
       background: var(--bg-elevated);
       display: grid;
       gap: 12px;
+      min-width: 0;
     }
     .page-header-top {
       display: flex;
@@ -1177,6 +1178,7 @@ export const renderHtmlReport = (report) => {
       display: flex;
       flex-direction: column;
       gap: 4px;
+      min-width: 0;
     }
     .header-meta-item strong {
       color: var(--muted);
@@ -1219,6 +1221,7 @@ export const renderHtmlReport = (report) => {
       border: 1px solid var(--border);
       border-radius: 20px;
       background: var(--bg-elevated);
+      min-width: 0;
     }
     .summary-card {
       padding: 18px;
@@ -1241,10 +1244,12 @@ export const renderHtmlReport = (report) => {
     .page-list {
       display: grid;
       gap: 14px;
+      min-width: 0;
     }
     .variant-group {
       display: grid;
       gap: 14px;
+      min-width: 0;
     }
     .variant-group + .variant-group {
       margin-top: 8px;
@@ -1289,6 +1294,7 @@ export const renderHtmlReport = (report) => {
     }
     .page-card {
       padding: 22px;
+      min-width: 0;
     }
     .page-card-header {
       display: flex;
@@ -1300,6 +1306,7 @@ export const renderHtmlReport = (report) => {
     .page-card-title {
       display: grid;
       gap: 6px;
+      min-width: 0;
     }
     .page-card-header h2 {
       font-size: 22px;
@@ -1573,6 +1580,7 @@ export const renderHtmlReport = (report) => {
     .pages-content {
       display: grid;
       gap: 14px;
+      min-width: 0;
     }
     .page-index-empty {
       padding: 12px 2px 0;
@@ -1656,6 +1664,8 @@ export const renderHtmlReport = (report) => {
     }
     .raw-details {
       margin-top: 16px;
+      max-width: 100%;
+      min-width: 0;
     }
     .raw-details summary {
       cursor: pointer;
@@ -1666,11 +1676,14 @@ export const renderHtmlReport = (report) => {
       margin: 12px 0 0;
       padding: 16px;
       overflow: auto;
+      max-width: 100%;
       border: 1px solid var(--border);
       border-radius: 16px;
       background: var(--bg-code);
       color: var(--tone-strong);
       font-size: 12px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
     }
     .diff-inline-list {
       display: grid;

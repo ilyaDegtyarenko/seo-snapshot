@@ -86,6 +86,64 @@ test('runAudit records the expanded target count when variants are enabled', asy
   ])
 })
 
+test('runAudit records the current resolved config in fullConfig', async (context) => {
+  const tempDir = await createTempDir()
+  const configDir = path.join(tempDir, 'config')
+  const originalFetch = globalThis.fetch
+
+  context.after(async () => {
+    globalThis.fetch = originalFetch
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  await mkdir(configDir, { recursive: true })
+  await writeFile(path.join(configDir, 'seo-snapshot.mjs'), `export default {
+  baseUrl: 'https://example.com',
+  profiles: {
+    local: {
+      baseUrl: 'https://local.example.com',
+    },
+  },
+  output: {
+    dir: '../reports',
+    formats: [ 'json' ],
+  },
+}
+`, 'utf8')
+  await writeFile(path.join(configDir, 'targets.json'), JSON.stringify([
+    '/',
+    '/catalog',
+  ]), 'utf8')
+
+  globalThis.fetch = async () => {
+    return new Response('<!doctype html><html><head><title>Test</title></head><body><h1>Hi</h1><p>content word </p></body></html>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    })
+  }
+
+  const result = await runAudit({
+    outputDir: './cli-reports',
+    timeoutMs: 8000,
+  }, {
+    cwd: tempDir,
+    env: {
+      SEO_SNAPSHOT_PROFILE: 'local',
+    },
+  })
+
+  assert.equal(result.report.options.fullConfig.baseUrl, 'https://local.example.com')
+  assert.equal(result.report.options.fullConfig.request.timeoutMs, 8000)
+  assert.equal(result.report.options.fullConfig.output.dir, path.join(tempDir, 'cli-reports'))
+  assert.deepEqual(result.report.options.fullConfig.targets, [ '/', '/catalog' ])
+  assert.deepEqual(result.report.options.fullConfig.resolvedTargets, [
+    { input: '/', url: 'https://local.example.com/' },
+    { input: '/catalog', url: 'https://local.example.com/catalog' },
+  ])
+  assert.equal('profiles' in result.report.options.fullConfig, false)
+  assert.equal('targetsFile' in result.report.options.fullConfig, false)
+})
+
 test('runAudit records ttfbMs for each page', async (context) => {
   const tempDir = await createTempDir()
   const originalFetch = globalThis.fetch
