@@ -438,9 +438,7 @@ const countImages = (html) => {
   let imagesWithoutAlt = 0
 
   for (const attributes of imgTags) {
-    const alt = normalizeAttributeValue(attributes.alt)
-
-    if (alt === null) {
+    if (!('alt' in attributes)) {
       imagesWithoutAlt += 1
     }
   }

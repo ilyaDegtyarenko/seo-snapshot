@@ -100,7 +100,7 @@ test('extractSeoInfoFromHtml counts images without alt and internal links', () =
   const result = extractSeoInfoFromHtml(html, 'https://example.com/test')
 
   assert.equal(result.document.imageCount, 3)
-  assert.equal(result.document.imagesWithoutAlt, 2)
+  assert.equal(result.document.imagesWithoutAlt, 1)
   assert.equal(result.document.internalLinkCount, 3)
 })
 
