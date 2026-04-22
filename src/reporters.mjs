@@ -589,7 +589,7 @@ const renderJsonLdComparisonField = (field) => {
       class="${ field.changed ? 'diff-inline-row diff-inline-row-jsonld' : 'diff-inline-row diff-inline-row-jsonld diff-inline-row-unchanged' }"
       data-comparison-field-changed="${ field.changed ? 'true' : 'false' }"
     >
-      <span class="diff-inline-label">${ escapeHtml(field.label) }</span>
+      <span class="diff-inline-label"${ field.hint ? ` title="${ escapeHtml(field.hint) }"` : '' }>${ escapeHtml(field.label) }</span>
       <div class="jsonld-compare">${ renderedRows }</div>
     </div>
   `
@@ -756,7 +756,7 @@ const renderComparisonFields = (comparison) => {
       class="${ field.changed ? 'diff-inline-row' : 'diff-inline-row diff-inline-row-unchanged' }"
       data-comparison-field-changed="${ field.changed ? 'true' : 'false' }"
     >
-      <span class="diff-inline-label">${ escapeHtml(field.label) }</span>
+      <span class="diff-inline-label"${ field.hint ? ` title="${ escapeHtml(field.hint) }"` : '' }>${ escapeHtml(field.label) }</span>
       <span class="diff-inline-old">${ renderComparedDiffValue(field.left, diffSegments?.left, 'old') }</span>
       <span class="diff-arrow">→</span>
       <span class="diff-inline-new">${ renderComparedDiffValue(field.right, diffSegments?.right, 'new') }</span>
@@ -2037,6 +2037,11 @@ export const renderHtmlReport = (report) => {
       letter-spacing: 0.06em;
       color: var(--muted);
       padding-top: 3px;
+    }
+    .diff-inline-label[title] {
+      cursor: help;
+      text-decoration: underline dotted;
+      text-underline-offset: 3px;
     }
     .diff-inline-old {
       text-decoration: line-through;
