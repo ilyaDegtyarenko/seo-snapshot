@@ -13,12 +13,13 @@ const getFinalResponseTtfbMs = (page) => {
   return page.finalResponseTtfbMs ?? null
 }
 
-const renderKeyValueRow = (label, value) => {
+const renderKeyValueRow = (label, value, hint) => {
   const normalizedValue = (value === null || value === undefined || value === '')
     ? '<span class="muted">-</span>'
     : escapeHtml(value)
 
-  return `<div class="kv-row"><dt>${ escapeHtml(label) }</dt><dd>${ normalizedValue }</dd></div>`
+  const dtAttrs = hint ? ` title="${ escapeHtml(hint) }"` : ''
+  return `<div class="kv-row"><dt${ dtAttrs }>${ escapeHtml(label) }</dt><dd>${ normalizedValue }</dd></div>`
 }
 
 const renderList = (items) => {
@@ -968,56 +969,56 @@ const renderPageCard = (entry, options = {}) => {
 
       <dl class="kv-grid">
         ${ renderKeyValueRow('Target Path', page.targetPath) }
-        ${ renderKeyValueRow('Source', getPageSourceDetails(source)) }
-        ${ renderKeyValueRow('Requested URL', page.requestedUrl) }
-        ${ renderKeyValueRow('Final URL', page.finalUrl) }
-        ${ renderKeyValueRow('Content-Type', page.headers.contentType) }
-        ${ renderKeyValueRow('Content-Length', page.headers.contentLength) }
-        ${ options.hideTtfb ? '' : renderKeyValueRow('TTFB', getTtfbMs(page) !== null ? `${ getTtfbMs(page) } ms` : null) }
-        ${ options.hideTtfb ? '' : renderKeyValueRow('Final response TTFB', getFinalResponseTtfbMs(page) !== null ? `${ getFinalResponseTtfbMs(page) } ms` : null) }
-        ${ renderKeyValueRow('Charset', page.seo?.meta.charset) }
-        ${ renderKeyValueRow('Title', page.seo?.document.title) }
-        ${ renderKeyValueRow('Description', page.seo?.meta.description) }
-        ${ renderKeyValueRow('Meta robots', page.seo?.meta.robots) }
-        ${ renderKeyValueRow('X-Robots-Tag', page.headers.xRobotsTag) }
-        ${ renderKeyValueRow('Content-Security-Policy', page.headers?.contentSecurityPolicy) }
-        ${ renderKeyValueRow('X-Frame-Options', page.headers?.xFrameOptions) }
-        ${ renderKeyValueRow('Link header', page.headers.link) }
-        ${ renderKeyValueRow('Canonical', page.seo?.links.canonical) }
-        ${ renderKeyValueRow('Header canonical', page.headers?.links?.canonical) }
-        ${ renderKeyValueRow('Header llms', page.headers?.links?.llms) }
-        ${ renderKeyValueRow('Lang', page.seo?.document.lang) }
-        ${ renderKeyValueRow('Content-Language', page.seo?.document.contentLanguage) }
-        ${ renderKeyValueRow('Body text length', page.seo?.document.bodyTextLength) }
-        ${ renderKeyValueRow('Images', page.seo?.document.imageCount ?? '-') }
-        ${ renderKeyValueRow('Images without alt', page.seo?.document.imagesWithoutAlt ?? '-') }
-        ${ renderKeyValueRow('Images with empty alt', page.seo?.document.imagesWithEmptyAlt ?? '-') }
-        ${ renderKeyValueRow('Internal links', page.seo?.document.internalLinkCount ?? '-') }
-        ${ renderKeyValueRow('Heading hierarchy', page.seo?.document.headingHierarchy?.length > 0 ? page.seo.document.headingHierarchy.map(level => `H${ level }`).join(' → ') : null) }
-        ${ renderKeyValueRow('Viewport', page.seo?.meta.viewport) }
-        ${ renderKeyValueRow('Application name', page.seo?.meta.applicationName) }
-        ${ renderKeyValueRow('Theme color', page.seo?.meta.themeColor) }
-        ${ renderKeyValueRow('Manifest', page.seo?.links.manifest) }
-        ${ renderKeyValueRow('Favicon', page.seo?.links.favicon) }
-        ${ renderKeyValueRow('Prev', page.seo?.links.prev) }
-        ${ renderKeyValueRow('Next', page.seo?.links.next) }
-        ${ renderKeyValueRow('OpenGraph type', page.seo?.meta.openGraph.type) }
-        ${ renderKeyValueRow('OpenGraph site name', page.seo?.meta.openGraph.siteName) }
-        ${ renderKeyValueRow('OpenGraph locale', page.seo?.meta.openGraph.locale) }
-        ${ renderKeyValueRow('OpenGraph URL', page.seo?.meta.openGraph.url) }
-        ${ renderKeyValueRow('OpenGraph Image', page.seo?.meta.openGraph.image) }
-        ${ renderKeyValueRow('OpenGraph Image Alt', page.seo?.meta.openGraph.imageAlt) }
-        ${ renderKeyValueRow('OpenGraph Video', page.seo?.meta.openGraph.video) }
-        ${ renderKeyValueRow('Twitter URL', page.seo?.meta.twitter.url) }
-        ${ renderKeyValueRow('Twitter Image', page.seo?.meta.twitter.image) }
-        ${ renderKeyValueRow('Twitter Image Alt', page.seo?.meta.twitter.imageAlt) }
-        ${ renderKeyValueRow('Apple iTunes app', page.seo?.meta.appleItunesApp) }
-        ${ renderKeyValueRow('Facebook domain verification', page.seo?.meta.facebookDomainVerification) }
-        ${ renderKeyValueRow('iOS deep link', page.seo?.meta.appLinks?.iosUrl) }
-        ${ renderKeyValueRow('iOS App Store ID', page.seo?.meta.appLinks?.iosAppStoreId) }
-        ${ renderKeyValueRow('Android deep link', page.seo?.meta.appLinks?.androidUrl) }
-        ${ renderKeyValueRow('Android package', page.seo?.meta.appLinks?.androidPackage) }
-        ${ renderKeyValueRow('Android app store URL', page.seo?.meta.appLinks?.androidAppStoreUrl) }
+        ${ renderKeyValueRow('Source', getPageSourceDetails(source), 'How the page was discovered (sitemap, direct list, etc.)') }
+        ${ renderKeyValueRow('Requested URL', page.requestedUrl, 'The URL that was originally requested') }
+        ${ renderKeyValueRow('Final URL', page.finalUrl, 'The URL after all redirects have been followed') }
+        ${ renderKeyValueRow('Content-Type', page.headers.contentType, 'HTTP response MIME type, e.g. text/html') }
+        ${ renderKeyValueRow('Content-Length', page.headers.contentLength, 'Response body size in bytes') }
+        ${ options.hideTtfb ? '' : renderKeyValueRow('TTFB', getTtfbMs(page) !== null ? `${ getTtfbMs(page) } ms` : null, 'Time to First Byte — time from sending the request to receiving the first byte of the response') }
+        ${ options.hideTtfb ? '' : renderKeyValueRow('Final response TTFB', getFinalResponseTtfbMs(page) !== null ? `${ getFinalResponseTtfbMs(page) } ms` : null, 'TTFB measured for the final URL after all redirects') }
+        ${ renderKeyValueRow('Charset', page.seo?.meta.charset, 'Character encoding declared in the meta tag or HTTP header') }
+        ${ renderKeyValueRow('Title', page.seo?.document.title, '<title> tag content — shown in browser tabs and search result headlines') }
+        ${ renderKeyValueRow('Description', page.seo?.meta.description, '<meta name="description"> — page summary shown in search result snippets') }
+        ${ renderKeyValueRow('Meta robots', page.seo?.meta.robots, '<meta name="robots"> — crawler directives: index/noindex, follow/nofollow') }
+        ${ renderKeyValueRow('X-Robots-Tag', page.headers.xRobotsTag, 'HTTP header version of robots directives — equivalent to meta robots but set server-side') }
+        ${ renderKeyValueRow('Content-Security-Policy', page.headers?.contentSecurityPolicy, 'HTTP header restricting allowed resource origins to mitigate XSS attacks') }
+        ${ renderKeyValueRow('X-Frame-Options', page.headers?.xFrameOptions, 'HTTP header preventing the page from being embedded in a frame — protects against clickjacking') }
+        ${ renderKeyValueRow('Link header', page.headers.link, 'HTTP Link response header — may carry canonical, pagination, preload and other relations') }
+        ${ renderKeyValueRow('Canonical', page.seo?.links.canonical, '<link rel="canonical"> — declares the preferred URL for this content to avoid duplicates') }
+        ${ renderKeyValueRow('Header canonical', page.headers?.links?.canonical, 'Canonical URL specified via HTTP Link header instead of an in-page tag') }
+        ${ renderKeyValueRow('Header llms', page.headers?.links?.llms, 'Link to llms.txt via HTTP Link header — hints for LLM crawlers') }
+        ${ renderKeyValueRow('Lang', page.seo?.document.lang, 'lang attribute on the <html> element — declares the language of the page content') }
+        ${ renderKeyValueRow('Content-Language', page.seo?.document.contentLanguage, 'Page language from the HTTP Content-Language header or meta tag') }
+        ${ renderKeyValueRow('Body text length', page.seo?.document.bodyTextLength, 'Number of visible characters in the page body (excluding HTML tags)') }
+        ${ renderKeyValueRow('Images', page.seo?.document.imageCount ?? '-', 'Total number of <img> elements on the page') }
+        ${ renderKeyValueRow('Images without alt', page.seo?.document.imagesWithoutAlt ?? '-', 'Images missing the alt attribute entirely — accessibility and SEO issue') }
+        ${ renderKeyValueRow('Images with empty alt', page.seo?.document.imagesWithEmptyAlt ?? '-', 'Images with alt="" — treated as decorative, not indexed by text') }
+        ${ renderKeyValueRow('Internal links', page.seo?.document.internalLinkCount ?? '-', 'Number of links pointing to the same domain') }
+        ${ renderKeyValueRow('Heading hierarchy', page.seo?.document.headingHierarchy?.length > 0 ? page.seo.document.headingHierarchy.map(level => `H${ level }`).join(' → ') : null, 'Order of heading levels on the page — should be sequential with no skipped levels') }
+        ${ renderKeyValueRow('Viewport', page.seo?.meta.viewport, '<meta name="viewport"> — controls scaling and layout on mobile devices') }
+        ${ renderKeyValueRow('Application name', page.seo?.meta.applicationName, '<meta name="application-name"> — name of the web application') }
+        ${ renderKeyValueRow('Theme color', page.seo?.meta.themeColor, '<meta name="theme-color"> — browser UI color on mobile devices') }
+        ${ renderKeyValueRow('Manifest', page.seo?.links.manifest, '<link rel="manifest"> — link to the PWA manifest JSON file') }
+        ${ renderKeyValueRow('Favicon', page.seo?.links.favicon, 'URL of the site favicon') }
+        ${ renderKeyValueRow('Prev', page.seo?.links.prev, '<link rel="prev"> — link to the previous pagination page') }
+        ${ renderKeyValueRow('Next', page.seo?.links.next, '<link rel="next"> — link to the next pagination page') }
+        ${ renderKeyValueRow('OpenGraph type', page.seo?.meta.openGraph.type, 'og:type — object type for Open Graph: website, article, product, etc.') }
+        ${ renderKeyValueRow('OpenGraph site name', page.seo?.meta.openGraph.siteName, 'og:site_name — site name shown in social media link previews') }
+        ${ renderKeyValueRow('OpenGraph locale', page.seo?.meta.openGraph.locale, 'og:locale — language and region of the content, e.g. en_US') }
+        ${ renderKeyValueRow('OpenGraph URL', page.seo?.meta.openGraph.url, 'og:url — canonical URL of the page for Open Graph') }
+        ${ renderKeyValueRow('OpenGraph Image', page.seo?.meta.openGraph.image, 'og:image — image used when the page is shared on social media') }
+        ${ renderKeyValueRow('OpenGraph Image Alt', page.seo?.meta.openGraph.imageAlt, 'og:image:alt — alternative text for the og:image') }
+        ${ renderKeyValueRow('OpenGraph Video', page.seo?.meta.openGraph.video, 'og:video — video URL for Open Graph previews') }
+        ${ renderKeyValueRow('Twitter URL', page.seo?.meta.twitter.url, 'twitter:url — canonical URL of the page for Twitter Card') }
+        ${ renderKeyValueRow('Twitter Image', page.seo?.meta.twitter.image, 'twitter:image — image shown in Twitter/X link previews') }
+        ${ renderKeyValueRow('Twitter Image Alt', page.seo?.meta.twitter.imageAlt, 'twitter:image:alt — alternative text for the twitter:image') }
+        ${ renderKeyValueRow('Apple iTunes app', page.seo?.meta.appleItunesApp, '<meta name="apple-itunes-app"> — Smart App Banner configuration for iOS') }
+        ${ renderKeyValueRow('Facebook domain verification', page.seo?.meta.facebookDomainVerification, '<meta name="facebook-domain-verification"> — domain verification for Facebook Business Manager') }
+        ${ renderKeyValueRow('iOS deep link', page.seo?.meta.appLinks?.iosUrl, 'al:ios:url — deep link to open this page in the iOS app') }
+        ${ renderKeyValueRow('iOS App Store ID', page.seo?.meta.appLinks?.iosAppStoreId, 'al:ios:app_store_id — App Store identifier of the iOS app') }
+        ${ renderKeyValueRow('Android deep link', page.seo?.meta.appLinks?.androidUrl, 'al:android:url — deep link to open this page in the Android app') }
+        ${ renderKeyValueRow('Android package', page.seo?.meta.appLinks?.androidPackage, 'al:android:package — package name of the Android app') }
+        ${ renderKeyValueRow('Android app store URL', page.seo?.meta.appLinks?.androidAppStoreUrl, 'al:android:app_name or link to the app on Google Play') }
       </dl>
 
       <div class="subsection">
@@ -1902,6 +1903,11 @@ export const renderHtmlReport = (report) => {
       margin-bottom: 5px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
+    }
+    .kv-row dt[title] {
+      cursor: help;
+      text-decoration: underline dotted;
+      text-underline-offset: 3px;
     }
     .kv-row dd {
       margin: 0;
