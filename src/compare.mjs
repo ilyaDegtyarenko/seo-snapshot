@@ -727,9 +727,13 @@ const hasComparisonDifferences = (comparison) => {
     (comparison.issueDelta && (comparison.issueDelta.onlyOnLeft.length || comparison.issueDelta.onlyOnRight.length))
 }
 
-const buildComparisonFields = (leftPage, rightPage, hideTtfb = false) => {
-  const specs = hideTtfb
-    ? DIFFERENCE_SPECS.filter(spec => ![ 'ttfbMs', 'finalResponseTtfbMs' ].includes(spec.key))
+const buildComparisonFields = (leftPage, rightPage, hideTtfb = false, hideKeys = []) => {
+  const keysToHide = [
+    ...(hideTtfb ? [ 'ttfbMs', 'finalResponseTtfbMs' ] : []),
+    ...hideKeys,
+  ]
+  const specs = keysToHide.length > 0
+    ? DIFFERENCE_SPECS.filter(spec => !keysToHide.includes(spec.key))
     : DIFFERENCE_SPECS
 
   return specs.flatMap((spec) => {
@@ -752,7 +756,7 @@ const buildComparisonFields = (leftPage, rightPage, hideTtfb = false) => {
   })
 }
 
-export const buildComparisonReport = (pages, compareOptions, hideTtfb = false) => {
+export const buildComparisonReport = (pages, compareOptions, hideTtfb = false, hideKeys = []) => {
   if (!compareOptions?.sources || compareOptions.sources.length !== 2) {
     return null
   }
@@ -789,7 +793,7 @@ export const buildComparisonReport = (pages, compareOptions, hideTtfb = false) =
       continue
     }
 
-    const fields = buildComparisonFields(leftPage, rightPage, hideTtfb)
+    const fields = buildComparisonFields(leftPage, rightPage, hideTtfb, hideKeys)
     const differences = fields
       .filter(field => field.changed)
       .map(({ key, label, left, right }) => ({ key, label, left, right }))

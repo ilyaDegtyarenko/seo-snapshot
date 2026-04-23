@@ -22,6 +22,9 @@ export default {
     dir: '../reports',
     formats: [ 'html', 'json' ],
     hideTtfb: false, // set to true to hide TTFB from the report
+    hidePreloadLinks: false, // set to true to hide Preload links from the report
+    hidePreconnectLinks: false, // set to true to hide Preconnect links from the report
+    hideDnsPrefetchLinks: false, // set to true to hide DNS-prefetch links from the report
   },
   request: {
     timeoutMs: 15_000,

@@ -1046,20 +1046,20 @@ const renderPageCard = (entry, options = {}) => {
         ${ renderIconLinks(page.seo?.links.icons) }
       </div>
 
-      <div class="subsection">
+      ${ options.hidePreloadLinks ? '' : `<div class="subsection">
         <h3>Preload Links</h3>
         ${ renderPreloadLinks(page.seo?.links.preloads) }
-      </div>
+      </div>` }
 
-      <div class="subsection">
+      ${ options.hidePreconnectLinks ? '' : `<div class="subsection">
         <h3>Preconnect Links</h3>
         ${ renderList(page.seo?.links.preconnects) }
-      </div>
+      </div>` }
 
-      <div class="subsection">
+      ${ options.hideDnsPrefetchLinks ? '' : `<div class="subsection">
         <h3>DNS-prefetch Links</h3>
         ${ renderList(page.seo?.links.dnsPrefetches) }
-      </div>
+      </div>` }
 
       <div class="subsection">
         <h3>OpenGraph Locale Alternates</h3>
@@ -1336,7 +1336,12 @@ export const renderHtmlReport = (report) => {
   const basePageEntries = buildPageEntries(report.pages)
   const comparisonEntries = comparison ? buildComparisonEntries(comparison.comparisons, basePageEntries) : []
   const pageEntries = comparison ? attachComparisonLinksToPageEntries(basePageEntries, comparisonEntries) : basePageEntries
-  const pageCardOptions = { hideTtfb: Boolean(report.options?.hideTtfb) }
+  const pageCardOptions = {
+    hideTtfb: Boolean(report.options?.hideTtfb),
+    hidePreloadLinks: Boolean(report.options?.hidePreloadLinks),
+    hidePreconnectLinks: Boolean(report.options?.hidePreconnectLinks),
+    hideDnsPrefetchLinks: Boolean(report.options?.hideDnsPrefetchLinks),
+  }
   const fullConfig = report.options?.fullConfig ?? report.options ?? {}
   const fullConfigJson = escapeHtml(stringifyReportJson(fullConfig))
   const generatedAtLabel = new Date(report.generatedAt).toLocaleString('en-GB', {

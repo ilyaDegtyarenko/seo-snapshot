@@ -221,7 +221,13 @@ export const runAudit = async (cliOptions, runtime = {}) => {
     }
   })
   const summary = buildSummary(pages)
-  const comparison = buildComparisonReport(pages, runtimeOptions.compare, runtimeOptions.output.hideTtfb)
+  const { hideTtfb, hidePreloadLinks, hidePreconnectLinks, hideDnsPrefetchLinks } = runtimeOptions.output
+  const hideComparisonKeys = [
+    ...(hidePreloadLinks ? [ 'preloads' ] : []),
+    ...(hidePreconnectLinks ? [ 'preconnects' ] : []),
+    ...(hideDnsPrefetchLinks ? [ 'dnsPrefetches' ] : []),
+  ]
+  const comparison = buildComparisonReport(pages, runtimeOptions.compare, hideTtfb, hideComparisonKeys)
   const fullConfig = buildFullConfig({ config, runtimeOptions, baseTargets, targets })
 
   const report = {
@@ -240,6 +246,9 @@ export const runAudit = async (cliOptions, runtime = {}) => {
       formats: runtimeOptions.output.formats,
       outputDir: runtimeOptions.output.dir,
       hideTtfb: runtimeOptions.output.hideTtfb,
+      hidePreloadLinks: runtimeOptions.output.hidePreloadLinks,
+      hidePreconnectLinks: runtimeOptions.output.hidePreconnectLinks,
+      hideDnsPrefetchLinks: runtimeOptions.output.hideDnsPrefetchLinks,
       audit: runtimeOptions.audit,
     },
     summary,

@@ -86,6 +86,9 @@ Config file format:
       dir: '../reports',
       formats: [ 'html', 'json' ],
       hideTtfb: false,
+      hidePreloadLinks: false,
+      hidePreconnectLinks: false,
+      hideDnsPrefetchLinks: false,
     },
     request: {
       timeoutMs: ${ DEFAULT_TIMEOUT_MS },

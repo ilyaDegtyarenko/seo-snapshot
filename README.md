@@ -222,6 +222,9 @@ export default {
     dir: '../reports',
     formats: [ 'html', 'json' ],
     hideTtfb: false,
+    hidePreloadLinks: false,
+    hidePreconnectLinks: false,
+    hideDnsPrefetchLinks: false,
   },
   request: {
     timeoutMs: 15_000,
@@ -309,6 +312,12 @@ export default {
 Copy it to `config/seo-snapshot.mjs` and trim it down to the settings you actually need. `config/seo-snapshot.mjs` is the runtime config file loaded by default; there is no automatic `.local` overlay anymore. This keeps the committed template stable while real machine-specific settings stay ignored.
 
 `output.hideTtfb` — set to `true` to omit TTFB fields from page cards and comparison diffs. Useful when TTFB is not meaningful (e.g. local dev, CI environments). Defaults to `false`.
+
+`output.hidePreloadLinks` — set to `true` to omit `<link rel="preload">` entries from page cards and comparison diffs. Defaults to `false`.
+
+`output.hidePreconnectLinks` — set to `true` to omit `<link rel="preconnect">` entries from page cards and comparison diffs. Defaults to `false`.
+
+`output.hideDnsPrefetchLinks` — set to `true` to omit `<link rel="dns-prefetch">` entries from page cards and comparison diffs. Defaults to `false`.
 
 Comparison mode notes:
 
