@@ -1,5 +1,9 @@
 import path from 'node:path'
 import { mkdir, writeFile } from 'node:fs/promises'
+import { gzip } from 'node:zlib'
+import { promisify } from 'node:util'
+
+const gzipAsync = promisify(gzip)
 import { buildPageIssues, buildSummary } from './audit.mjs'
 import { buildComparisonReport } from './compare.mjs'
 import { buildRuntimeOptions, readSeoConfig, resolveTargets } from './config.mjs'
@@ -136,12 +140,20 @@ const writeReports = async (report, outputOptions) => {
   await mkdir(outputOptions.dir, { recursive: true })
 
   for (const format of outputOptions.formats) {
-    const filePath = `${ reportBasePath }.${ format }`
+    const compress = format === 'html' && outputOptions.compress
+    const filePath = compress
+      ? `${ reportBasePath }.${ format }.gz`
+      : `${ reportBasePath }.${ format }`
     const fileContent = format === 'html'
       ? renderHtmlReport(report)
       : renderJsonReport(report)
 
-    await writeFile(filePath, fileContent, 'utf8')
+    if (compress) {
+      await writeFile(filePath, await gzipAsync(fileContent))
+    } else {
+      await writeFile(filePath, fileContent, 'utf8')
+    }
+
     outputPaths.push(filePath)
   }
 

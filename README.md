@@ -75,6 +75,7 @@ pnpm run snapshot -- \
   --max-redirects 10 \
   --concurrency 4 \
   --profile staging \
+  --compress \
   --open \
   --user-agent "Desktop=Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)" \
   --user-agent "Mobile=Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"
@@ -84,6 +85,7 @@ Repeated `--user-agent` flags enable variants. Each target is fetched once per v
 
 Additional CLI behaviors:
 
+- `--compress` saves the HTML report as `.html.gz` (gzip-compressed; ~80–90% smaller)
 - `--open` opens the generated HTML report in the default browser if HTML output is enabled
 - `--profile <name>` applies `config.profiles[name]` before env overrides
 
@@ -176,6 +178,7 @@ Supported overrides:
 - `SEO_SNAPSHOT_OUTPUT_DIR`
 - `SEO_SNAPSHOT_OUTPUT_FORMATS`
 - `SEO_SNAPSHOT_OUTPUT_HIDE_TTFB` as `true` or `false`
+- `SEO_SNAPSHOT_OUTPUT_COMPRESS` as `true` or `false`
 - `SEO_SNAPSHOT_REQUEST_TIMEOUT_MS`
 - `SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS`
 - `SEO_SNAPSHOT_REQUEST_CONCURRENCY`
@@ -225,6 +228,7 @@ export default {
     hidePreloadLinks: false,
     hidePreconnectLinks: false,
     hideDnsPrefetchLinks: false,
+    compress: false,
   },
   request: {
     timeoutMs: 15_000,
@@ -318,6 +322,8 @@ Copy it to `config/seo-snapshot.mjs` and trim it down to the settings you actual
 `output.hidePreconnectLinks` — set to `true` to omit `<link rel="preconnect">` entries from page cards and comparison diffs. Defaults to `false`.
 
 `output.hideDnsPrefetchLinks` — set to `true` to omit `<link rel="dns-prefetch">` entries from page cards and comparison diffs. Defaults to `false`.
+
+`output.compress` — set to `true` to save the HTML report as `.html.gz` instead of `.html`. Reduces file size by ~80–90%. The file opens normally in modern browsers. Also available as `--compress` CLI flag and `SEO_SNAPSHOT_OUTPUT_COMPRESS` env variable. Defaults to `false`.
 
 Comparison mode notes:
 

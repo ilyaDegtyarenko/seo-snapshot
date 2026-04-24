@@ -34,6 +34,7 @@ Options:
   --max-redirects <n>     Maximum redirect hops to follow. Default: ${ DEFAULT_MAX_REDIRECTS }.
   --concurrency <n>       Maximum parallel requests. Default: ${ DEFAULT_CONCURRENCY }.
   --user-agent <value>    Override the request User-Agent. Repeat the flag to enable variants; repeated values may use "Label=UA".
+  --compress              Gzip-compress the HTML report (saves as .html.gz).
   --open                  Open the HTML report in the default browser after generation.
   --profile <name>        Activate a named profile from config.profiles.
   --help                  Show this help.
@@ -55,6 +56,7 @@ Environment:
   SEO_SNAPSHOT_OUTPUT_DIR     Override config.output.dir.
   SEO_SNAPSHOT_OUTPUT_FORMATS Override config.output.formats.
   SEO_SNAPSHOT_OUTPUT_HIDE_TTFB  Hide TTFB fields from report output (true/false).
+  SEO_SNAPSHOT_OUTPUT_COMPRESS   Gzip-compress the HTML report (true/false).
   SEO_SNAPSHOT_REQUEST_TIMEOUT_MS
   SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS
   SEO_SNAPSHOT_REQUEST_CONCURRENCY
@@ -89,6 +91,7 @@ Config file format:
       hidePreloadLinks: false,
       hidePreconnectLinks: false,
       hideDnsPrefetchLinks: false,
+      compress: false,
     },
     request: {
       timeoutMs: ${ DEFAULT_TIMEOUT_MS },

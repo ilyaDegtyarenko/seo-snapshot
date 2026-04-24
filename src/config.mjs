@@ -258,6 +258,7 @@ const ENV_OVERRIDE_MAPPINGS = [
   [ 'SEO_SNAPSHOT_OUTPUT_HIDE_PRELOAD_LINKS', [ 'output', 'hidePreloadLinks' ], parseEnvBoolean ],
   [ 'SEO_SNAPSHOT_OUTPUT_HIDE_PRECONNECT_LINKS', [ 'output', 'hidePreconnectLinks' ], parseEnvBoolean ],
   [ 'SEO_SNAPSHOT_OUTPUT_HIDE_DNS_PREFETCH_LINKS', [ 'output', 'hideDnsPrefetchLinks' ], parseEnvBoolean ],
+  [ 'SEO_SNAPSHOT_OUTPUT_COMPRESS', [ 'output', 'compress' ], parseEnvBoolean ],
   [ 'SEO_SNAPSHOT_REQUEST_TIMEOUT_MS', [ 'request', 'timeoutMs' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS', [ 'request', 'maxRedirects' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_CONCURRENCY', [ 'request', 'concurrency' ], parseEnvPositiveInt ],
@@ -687,6 +688,7 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions, cwd = proce
       hidePreloadLinks: Boolean(output.hidePreloadLinks),
       hidePreconnectLinks: Boolean(output.hidePreconnectLinks),
       hideDnsPrefetchLinks: Boolean(output.hideDnsPrefetchLinks),
+      compress: Boolean(cliOptions.compress ?? output.compress),
     },
     variants,
     compare: compareSources

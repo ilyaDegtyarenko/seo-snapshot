@@ -64,6 +64,7 @@ export const parseArgs = (argv) => {
     formats: undefined,
     open: false,
     profile: undefined,
+    compress: undefined,
   }
   const userAgentValues = []
 
@@ -106,6 +107,9 @@ export const parseArgs = (argv) => {
         break
       case '--open':
         options.open = true
+        break
+      case '--compress':
+        options.compress = true
         break
       case '--profile':
         options.profile = readOptionValue(argv, index, arg)
