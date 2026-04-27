@@ -1,9 +1,7 @@
 import path from 'node:path'
 import { mkdir, writeFile } from 'node:fs/promises'
-import { gzip } from 'node:zlib'
-import { promisify } from 'node:util'
-
-const gzipAsync = promisify(gzip)
+import { zipSync } from 'fflate'
+import { minify as minifyHtml } from 'html-minifier-terser'
 import { buildPageIssues, buildSummary } from './audit.mjs'
 import { buildComparisonReport } from './compare.mjs'
 import { buildRuntimeOptions, readSeoConfig, resolveTargets } from './config.mjs'
@@ -135,25 +133,48 @@ const writeReports = async (report, outputOptions) => {
   const generatedAt = new Date(report.generatedAt)
   const reportTimestamp = formatTimestamp(generatedAt)
   const reportBasePath = path.join(outputOptions.dir, `seo-report-${ reportTimestamp }`)
-  const outputPaths = []
 
   await mkdir(outputOptions.dir, { recursive: true })
 
-  for (const format of outputOptions.formats) {
-    const compress = format === 'html' && outputOptions.compress
-    const filePath = compress
-      ? `${ reportBasePath }.${ format }.gz`
-      : `${ reportBasePath }.${ format }`
-    const fileContent = format === 'html'
-      ? renderHtmlReport(report)
-      : renderJsonReport(report)
+  const contents = {}
 
-    if (compress) {
-      await writeFile(filePath, await gzipAsync(fileContent))
-    } else {
-      await writeFile(filePath, fileContent, 'utf8')
+  for (const format of outputOptions.formats) {
+    let content = format === 'html' ? renderHtmlReport(report) : renderJsonReport(report)
+
+    if (format === 'html' && outputOptions.minify) {
+      content = await minifyHtml(content, {
+        collapseWhitespace: true,
+        removeComments: true,
+        minifyCSS: true,
+        minifyJS: true,
+        removeRedundantAttributes: true,
+        removeEmptyAttributes: true,
+      })
     }
 
+    contents[format] = content
+  }
+
+  if (outputOptions.compress) {
+    const zipEntries = {}
+
+    for (const [ format, content ] of Object.entries(contents)) {
+      zipEntries[`seo-report-${ reportTimestamp }.${ format }`] = [ Buffer.from(content, 'utf8'), { level: 9 } ]
+    }
+
+    const zipPath = `${ reportBasePath }.zip`
+
+    await writeFile(zipPath, zipSync(zipEntries))
+
+    return [ zipPath ]
+  }
+
+  const outputPaths = []
+
+  for (const [ format, content ] of Object.entries(contents)) {
+    const filePath = `${ reportBasePath }.${ format }`
+
+    await writeFile(filePath, content, 'utf8')
     outputPaths.push(filePath)
   }
 

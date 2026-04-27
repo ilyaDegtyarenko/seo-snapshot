@@ -86,6 +86,7 @@ Repeated `--user-agent` flags enable variants. Each target is fetched once per v
 Additional CLI behaviors:
 
 - `--compress` saves the HTML report as `.html.gz` (gzip-compressed; ~80–90% smaller)
+- `--no-minify` disables HTML minification (enabled by default; reduces file size ~50–60%)
 - `--open` opens the generated HTML report in the default browser if HTML output is enabled
 - `--profile <name>` applies `config.profiles[name]` before env overrides
 
@@ -179,6 +180,7 @@ Supported overrides:
 - `SEO_SNAPSHOT_OUTPUT_FORMATS`
 - `SEO_SNAPSHOT_OUTPUT_HIDE_TTFB` as `true` or `false`
 - `SEO_SNAPSHOT_OUTPUT_COMPRESS` as `true` or `false`
+- `SEO_SNAPSHOT_OUTPUT_MINIFY` as `true` or `false` (default `true`)
 - `SEO_SNAPSHOT_REQUEST_TIMEOUT_MS`
 - `SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS`
 - `SEO_SNAPSHOT_REQUEST_CONCURRENCY`
@@ -229,6 +231,7 @@ export default {
     hidePreconnectLinks: false,
     hideDnsPrefetchLinks: false,
     compress: false,
+    minify: true, // set to false to disable HTML minification
   },
   request: {
     timeoutMs: 15_000,

@@ -26,6 +26,7 @@ export default {
     hidePreconnectLinks: false, // set to true to hide Preconnect links from the report
     hideDnsPrefetchLinks: false, // set to true to hide DNS-prefetch links from the report
     compress: false, // set to true to save the HTML report as .html.gz
+    minify: true, // set to false to disable HTML minification
   },
   request: {
     timeoutMs: 15_000,
