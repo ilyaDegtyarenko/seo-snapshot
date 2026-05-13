@@ -1,6 +1,37 @@
 import { getLength, isSourceLocalUrl, sortByCountDesc } from './utils.mjs'
 
 const HOMEPAGE_PATH_PATTERN = /^\/(?:[a-z]{2}(?:-[a-z]{2})?)?\/?$/i
+const ISO_639_1_LANGUAGE_CODES = new Set(`
+  aa ab ae af ak am an ar as av ay az ba be bg bh bi bm bn bo br bs ca ce ch co cr cs cu cv cy da de dv dz
+  ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho hr ht hu hy hz ia id ie ig ii ik
+  io is it iu ja jv ka kg ki kj kk kl km kn ko kr ks ku kv kw ky la lb lg li ln lo lt lu lv mg mh mi mk ml
+  mn mr ms mt my na nb nd ne ng nl nn no nr nv ny oc oj om or os pa pi pl ps pt qu rm rn ro ru rw sa sc sd
+  se sg si sk sl sm sn so sq sr ss st su sv sw ta te tg th ti tk tl tn to tr ts tt tw ty ug uk ur uz ve vi
+  vo wa wo xh yi yo za zh zu
+`.trim().split(/\s+/))
+const ISO_3166_1_ALPHA_2_REGION_CODES = new Set(`
+  ad ae af ag ai al am ao aq ar as at au aw ax az ba bb bd be bf bg bh bi bj bl bm bn bo bq br bs bt bv bw
+  by bz ca cc cd cf cg ch ci ck cl cm cn co cr cu cv cw cx cy cz de dj dk dm do dz ec ee eg eh er es et fi
+  fj fk fm fo fr ga gb gd ge gf gg gh gi gl gm gn gp gq gr gs gt gu gw gy hk hm hn hr ht hu id ie il im in
+  io iq ir is it je jm jo jp ke kg kh ki km kn kp kr kw ky kz la lb lc li lk lr ls lt lu lv ly ma mc md me
+  mf mg mh mk ml mm mn mo mp mq mr ms mt mu mv mw mx my mz na nc ne nf ng ni nl no np nr nu nz om pa pe pf
+  pg ph pk pl pm pn pr ps pt pw py qa re ro rs ru rw sa sb sc sd se sg sh si sj sk sl sm sn so sr ss st sv
+  sx sy sz tc td tf tg th tj tk tl tm tn to tr tt tv tw tz ua ug um us uy uz va vc ve vg vi vn vu wf ws ye
+  yt za zm zw
+`.trim().split(/\s+/))
+const ISO_15924_SCRIPT_CODES = new Set(`
+  adlm afak aghb ahom arab aran armi armn avst bali bamu bass batk beng berf bhks blis bopo brah brai bugi
+  buhd cakm cans cari cham cher chis chrs cirt copt cpmn cprt cyrl cyrs deva diak dogr dsrt dupl egyd egyh
+  egyp elba elym ethi gara geok geor glag gong gonm goth gran grek gujr gukh guru hanb hang hani hano hans
+  hant hatr hebr hira hluw hmng hmnp hntl hrkt hung inds ital jamo java jpan jurc kali kana kawi khar khmr
+  khoj kitl kits knda kore kpel krai kthi lana laoo latf latg latn leke lepc limb lina linb lisu loma lyci
+  lydi mahj maka mand mani marc maya medf mend merc mero mlym modi mong moon mroo mtei mult mymr nagm nand
+  narb nbat newa nkdb nkgb nkoo nshu ogam olck onao orkh orya osge osma ougr palm pauc pcun pelm perm phag
+  phli phlp phlv phnx plrd piqd prti psin qaaa qabx ranj rjng rohg roro runr samr sara sarb saur seal sgnw
+  shaw shrd shui sidd sidt sind sinh sogd sogo sora soyo sund sunu sylo syrc syre syrj syrn tagb takr tale
+  talu taml tang tavt tayo telu teng tfng tglg thaa thai tibt tirh tnsa todr tols toto tutg ugar vaii visp
+  vith wara wcho wole xpeo xsux yezi yiii zanb zinh zmth zsye zsym zxxx zyyy zzzz
+`.trim().split(/\s+/))
 
 const pushIssue = (issues, severity, code, message) => {
   issues.push({
@@ -120,26 +151,70 @@ const isHomepageLikePage = (page) => {
   return HOMEPAGE_PATH_PATTERN.test(pathname)
 }
 
+const isFullyQualifiedHttpUrl = (value) => {
+  if (!value) {
+    return false
+  }
+
+  try {
+    const parsed = new URL(String(value))
+
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+const isSupportedHreflangValue = (value) => {
+  const normalizedValue = String(value || '').trim().toLowerCase()
+
+  if (normalizedValue === 'x-default') {
+    return true
+  }
+
+  if (!normalizedValue || normalizedValue.includes('_')) {
+    return false
+  }
+
+  const parts = normalizedValue.split('-')
+  const [ language ] = parts
+  let cursor = 1
+
+  if (!ISO_639_1_LANGUAGE_CODES.has(language)) {
+    return false
+  }
+
+  if (parts[cursor] && /^[a-z]{4}$/.test(parts[cursor])) {
+    if (!ISO_15924_SCRIPT_CODES.has(parts[cursor])) {
+      return false
+    }
+
+    cursor += 1
+  }
+
+  if (parts[cursor] && /^[a-z]{2}$/.test(parts[cursor])) {
+    if (!ISO_3166_1_ALPHA_2_REGION_CODES.has(parts[cursor])) {
+      return false
+    }
+
+    cursor += 1
+  }
+
+  return cursor === parts.length
+}
+
+const isValidHreflangLink = (link) => {
+  return isSupportedHreflangValue(link?.hreflang)
+    && isFullyQualifiedHttpUrl(link?.rawHref ?? link?.href)
+    && isFullyQualifiedHttpUrl(link?.href)
+}
+
 const countInvalidHreflangLinks = (alternates) => {
   if (!Array.isArray(alternates)) {
     return 0
   }
 
-  return alternates.filter(link => !link?.hreflang || !link?.href).length
-}
-
-const hasUnexpectedHreflangHost = (alternates, page) => {
-  if (!Array.isArray(alternates) || alternates.length === 0) {
-    return false
-  }
-
-  return alternates.some((link) => {
-    if (!link?.href) {
-      return false
-    }
-
-    return isSourceLocalUrl(link.href, page) === false
-  })
+  return alternates.filter(link => !isValidHreflangLink(link)).length
 }
 
 const hasSelfHreflang = (lang, alternates) => {
@@ -152,7 +227,7 @@ const hasSelfHreflang = (lang, alternates) => {
   return alternates.some((link) => {
     const hreflang = normalizeLocaleCode(link?.hreflang)
 
-    if (!hreflang || hreflang === 'x-default') {
+    if (!isValidHreflangLink(link) || !hreflang || hreflang === 'x-default') {
       return false
     }
 
@@ -306,19 +381,15 @@ export const buildPageIssues = (page, rules) => {
   }
 
   if (invalidHreflangCount > 0) {
-    pushIssue(issues, 'warning', 'invalid_hreflang', `${ invalidHreflangCount } hreflang link(s) are missing a valid href or hreflang value.`)
+    pushIssue(issues, 'warning', 'invalid_hreflang', `${ invalidHreflangCount } hreflang link(s) have a missing or invalid fully-qualified href or hreflang value.`)
   }
 
-  if (hreflangLinks.length > 0 && !hreflangLinks.some(link => normalizeLocaleCode(link?.hreflang) === 'x-default')) {
+  if (hreflangLinks.length > 0 && !hreflangLinks.some(link => normalizeLocaleCode(link?.hreflang) === 'x-default' && isValidHreflangLink(link))) {
     pushIssue(issues, 'warning', 'hreflang_missing_x_default', 'hreflang links do not include x-default.')
   }
 
   if (hreflangLinks.length > 0 && lang && !hasSelfHreflang(lang, hreflangLinks)) {
     pushIssue(issues, 'warning', 'hreflang_missing_self', `hreflang links do not include a self entry for ${ lang }.`)
-  }
-
-  if (hasUnexpectedHreflangHost(hreflangLinks, page)) {
-    pushIssue(issues, 'warning', 'hreflang_cross_domain', 'hreflang links point to a different host.')
   }
 
   if (!openGraph.title) {

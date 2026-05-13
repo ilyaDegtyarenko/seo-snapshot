@@ -15,6 +15,8 @@ const createPage = ({
   imagesWithoutAlt = 1,
   internalLinkCount = 12,
   headingHierarchy = [ 1, 2, 4 ],
+  contentLanguage = null,
+  documentContentLanguage = null,
   contentSecurityPolicy = "default-src 'self'",
   xFrameOptions = 'SAMEORIGIN',
   variant = null,
@@ -36,6 +38,7 @@ const createPage = ({
   headers: {
     contentType: 'text/html; charset=utf-8',
     contentLength: '1024',
+    contentLanguage,
     contentSecurityPolicy,
     xFrameOptions,
     xRobotsTag: null,
@@ -45,6 +48,7 @@ const createPage = ({
       title,
       h1: [ title ],
       lang: 'en',
+      contentLanguage: documentContentLanguage,
       bodyTextLength: 640,
       imageCount,
       imagesWithoutAlt,
@@ -265,6 +269,20 @@ test('renderHtmlReport displays new crawl, security, and content detail fields',
   assert.match(html, /Images without alt<\/dt><dd>1<\/dd>/)
   assert.match(html, /Internal links<\/dt><dd>12<\/dd>/)
   assert.match(html, /Heading hierarchy<\/dt><dd>H1 → H2 → H4<\/dd>/)
+})
+
+test('renderHtmlReport prefers HTTP Content-Language over meta http-equiv', () => {
+  const html = renderHtmlReport(createReport({
+    pages: [
+      createPage({
+        contentLanguage: 'uk',
+        documentContentLanguage: 'en',
+      }),
+    ],
+  }))
+
+  assert.match(html, /Content-Language<\/dt><dd>uk<\/dd>/)
+  assert.doesNotMatch(html, /Content-Language<\/dt><dd>en<\/dd>/)
 })
 
 test('renderHtmlReport shows expandable full JSON-LD schemas on page cards', () => {

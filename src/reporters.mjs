@@ -988,7 +988,7 @@ const renderPageCard = (entry, options = {}) => {
         ${ renderKeyValueRow('Header canonical', page.headers?.links?.canonical, 'Canonical URL specified via HTTP Link header instead of an in-page tag') }
         ${ renderKeyValueRow('Header llms', page.headers?.links?.llms, 'Link to llms.txt via HTTP Link header — hints for LLM crawlers') }
         ${ renderKeyValueRow('Lang', page.seo?.document.lang, 'lang attribute on the <html> element — declares the language of the page content') }
-        ${ renderKeyValueRow('Content-Language', page.seo?.document.contentLanguage, 'Page language from the HTTP Content-Language header or meta tag') }
+        ${ renderKeyValueRow('Content-Language', page.headers?.contentLanguage ?? page.seo?.document.contentLanguage, 'Page language from the HTTP Content-Language header or meta tag') }
         ${ renderKeyValueRow('Body text length', page.seo?.document.bodyTextLength, 'Number of visible characters in the page body (excluding HTML tags)') }
         ${ renderKeyValueRow('Images', page.seo?.document.imageCount ?? '-', 'Total number of <img> elements on the page') }
         ${ renderKeyValueRow('Images without alt', page.seo?.document.imagesWithoutAlt ?? '-', 'Images missing the alt attribute entirely — accessibility and SEO issue') }

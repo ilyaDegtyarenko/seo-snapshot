@@ -318,6 +318,119 @@ test('buildPageIssues detects Content-Language vs html lang mismatch', () => {
   assert.equal(codes.includes('lang_content_language_mismatch'), true)
 })
 
+test('buildPageIssues allows cross-domain hreflang targets when entries are otherwise valid', () => {
+  const page = {
+    targetPath: '/',
+    finalUrl: 'https://example.com/',
+    requestedUrl: 'https://example.com/',
+    status: 200,
+    error: null,
+    parseSkippedReason: null,
+    headers: {
+      xRobotsTag: null,
+      links: { canonical: null, llms: null },
+    },
+    seo: {
+      document: {
+        title: 'A page title long enough',
+        h1: [ 'Home' ],
+        lang: 'en',
+        bodyTextLength: 500,
+        imageCount: 0,
+        imagesWithoutAlt: 0,
+        internalLinkCount: 0,
+        headingHierarchy: [ 1 ],
+      },
+      meta: {
+        description: 'A description that is long enough for audit to pass the minimum length check.',
+        robots: 'index,follow',
+        openGraph: { title: 'OG', description: 'OG desc', image: 'https://example.com/img.jpg' },
+        twitter: { card: 'summary' },
+      },
+      links: {
+        canonical: 'https://example.com/',
+        alternates: [
+          { hreflang: 'en', rawHref: 'https://example.com/', href: 'https://example.com/' },
+          { hreflang: 'zh-Hans-US', rawHref: 'https://example.com/zh-hans-us', href: 'https://example.com/zh-hans-us' },
+          { hreflang: 'fr', rawHref: 'https://example.fr/', href: 'https://example.fr/' },
+          { hreflang: 'x-default', rawHref: 'https://example.com/', href: 'https://example.com/' },
+        ],
+      },
+      jsonLd: {
+        scriptCount: 1,
+        parseErrors: 0,
+        hasWebSite: true,
+        hasOrganization: true,
+        missingRequiredProperties: [],
+      },
+      head: { duplicates: [] },
+    },
+  }
+
+  const codes = buildPageIssues(page, DEFAULT_AUDIT_RULES).map(issue => issue.code)
+
+  assert.equal(codes.includes('hreflang_cross_domain'), false)
+  assert.equal(codes.includes('invalid_hreflang'), false)
+})
+
+test('buildPageIssues validates hreflang code format and fully qualified raw hrefs', () => {
+  const page = {
+    targetPath: '/',
+    finalUrl: 'https://example.com/',
+    requestedUrl: 'https://example.com/',
+    status: 200,
+    error: null,
+    parseSkippedReason: null,
+    headers: {
+      xRobotsTag: null,
+      links: { canonical: null, llms: null },
+    },
+    seo: {
+      document: {
+        title: 'A page title long enough',
+        h1: [ 'Home' ],
+        lang: 'en',
+        bodyTextLength: 500,
+        imageCount: 0,
+        imagesWithoutAlt: 0,
+        internalLinkCount: 0,
+        headingHierarchy: [ 1 ],
+      },
+      meta: {
+        description: 'A description that is long enough for audit to pass the minimum length check.',
+        robots: 'index,follow',
+        openGraph: { title: 'OG', description: 'OG desc', image: 'https://example.com/img.jpg' },
+        twitter: { card: 'summary' },
+      },
+      links: {
+        canonical: 'https://example.com/',
+        alternates: [
+          { hreflang: 'en_US', rawHref: 'https://example.com/en-us', href: 'https://example.com/en-us' },
+          { hreflang: 'en-UK', rawHref: 'https://example.com/en-uk', href: 'https://example.com/en-uk' },
+          { hreflang: 'zz-ZZ', rawHref: 'https://example.com/zz-zz', href: 'https://example.com/zz-zz' },
+          { hreflang: 'en-Abcd', rawHref: 'https://example.com/en-abcd', href: 'https://example.com/en-abcd' },
+          { hreflang: 'fr', rawHref: '/fr', href: 'https://example.com/fr' },
+          { hreflang: 'x-default', rawHref: 'https://example.com/', href: 'https://example.com/' },
+        ],
+      },
+      jsonLd: {
+        scriptCount: 1,
+        parseErrors: 0,
+        hasWebSite: true,
+        hasOrganization: true,
+        missingRequiredProperties: [],
+      },
+      head: { duplicates: [] },
+    },
+  }
+
+  const issues = buildPageIssues(page, DEFAULT_AUDIT_RULES)
+  const invalidHreflangIssue = issues.find(issue => issue.code === 'invalid_hreflang')
+
+  assert.equal(Boolean(invalidHreflangIssue), true)
+  assert.match(invalidHreflangIssue.message, /^5 hreflang link/)
+})
+
 test('buildPageIssues detects missing required schema properties', () => {
   const page = {
     targetPath: '/test',

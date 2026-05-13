@@ -281,10 +281,9 @@ export default {
 | `noindex` | warning | Page is marked noindex |
 | `missing_meta_robots` | info | Missing meta robots tag |
 | `missing_hreflang` | info | Missing hreflang on homepage-like route |
-| `invalid_hreflang` | warning | hreflang links missing href or hreflang value |
+| `invalid_hreflang` | warning | hreflang links missing a fully-qualified HTTP(S) href or valid language/region code |
 | `hreflang_missing_x_default` | warning | hreflang links missing `x-default` |
 | `hreflang_missing_self` | warning | hreflang links missing self entry for page lang |
-| `hreflang_cross_domain` | warning | hreflang links point to a different host |
 | `missing_og_title` | info | Missing `og:title` |
 | `missing_og_description` | info | Missing `og:description` |
 | `missing_og_image` | info | Missing `og:image` |
@@ -399,7 +398,7 @@ The following fields are actively checked and generate issues if missing or out 
 - **meta robots tag** - missing (`info` severity)
 - **`Content-Language` vs `html lang`** - warning on locale mismatch
 - **hreflang on homepage-like routes** - missing (`info` severity)
-- **hreflang integrity** - invalid entries, missing `x-default`, missing self-locale entry, or cross-domain targets (`warning`)
+- **hreflang integrity** - invalid entries, missing `x-default`, or missing self-locale entry (`warning`); cross-domain hreflang targets are allowed when the entries are otherwise valid
 - **og:title, og:description, og:image** - missing (`info` severity)
 - **twitter:card** - missing (`info` severity)
 - **images without `alt`** - warning when one or more `<img>` elements are missing a usable `alt`

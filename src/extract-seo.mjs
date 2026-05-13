@@ -2,15 +2,6 @@ import { createHash } from 'node:crypto'
 import * as parse5 from 'parse5'
 import { resolveMaybeUrl, normalizeWhitespace } from './utils.mjs'
 
-const ENTITY_MAP = {
-  amp: '&',
-  apos: '\'',
-  gt: '>',
-  lt: '<',
-  nbsp: ' ',
-  quot: '"',
-}
-
 const UNIQUE_HEAD_SIGNAL_SPECS = [
   { key: 'title', label: '<title>' },
   { key: 'description', label: 'meta[name="description"]' },
@@ -81,50 +72,84 @@ const VISIBLE_TEXT_SEPARATOR_ELEMENT_NAMES = new Set([
   'ul',
 ])
 
-const decodeHtmlEntities = (value) => {
-  return String(value || '').replaceAll(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
-    if (entity.startsWith('#x') || entity.startsWith('#X')) {
-      return String.fromCodePoint(Number.parseInt(entity.slice(2), 16))
-    }
-
-    if (entity.startsWith('#')) {
-      return String.fromCodePoint(Number.parseInt(entity.slice(1), 10))
-    }
-
-    return ENTITY_MAP[entity.toLowerCase()] ?? match
-  })
-}
-
-const stripTags = (value) => {
-  return normalizeWhitespace(
-    decodeHtmlEntities(String(value || '').replaceAll(/<[^>]+>/g, ' ')),
-  )
-}
-
-const parseAttributes = (tag) => {
+const getElementAttributes = (node) => {
   const attributes = {}
 
-  for (const match of tag.matchAll(/([^\s"'=<>`/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g)) {
-    const [, key, doubleQuoted, singleQuoted, unquoted ] = match
-
-    if (!key) {
+  for (const attribute of node?.attrs ?? []) {
+    if (!attribute.name) {
       continue
     }
 
-    attributes[key.toLowerCase()] = decodeHtmlEntities(doubleQuoted ?? singleQuoted ?? unquoted ?? '')
+    attributes[attribute.name.toLowerCase()] = attribute.value ?? ''
   }
 
   return attributes
 }
 
-const findTagAttributes = (html, tagName) => {
-  const matches = html.match(new RegExp(`<${ tagName }\\b[^>]*>`, 'gi')) ?? []
+const collectTextContent = (node, collector) => {
+  if (!node) {
+    return
+  }
 
-  return matches.map(parseAttributes)
+  if (node.nodeName === '#text') {
+    collector.push(node.value)
+    return
+  }
+
+  for (const child of node.childNodes ?? []) {
+    collectTextContent(child, collector)
+  }
 }
 
-const findTagContents = (html, tagName) => {
-  return [ ...html.matchAll(new RegExp(`<${ tagName }\\b[^>]*>([\\s\\S]*?)</${ tagName }>`, 'gi')) ]
+const getElementTextContent = (node) => {
+  const textParts = []
+
+  collectTextContent(node, textParts)
+
+  return normalizeAttributeValue(textParts.join(''))
+}
+
+const collectRawTextContent = (node, collector) => {
+  if (!node) {
+    return
+  }
+
+  if (node.nodeName === '#text') {
+    collector.push(node.value)
+    return
+  }
+
+  for (const child of node.childNodes ?? []) {
+    collectRawTextContent(child, collector)
+  }
+}
+
+const getRawTextContent = (node) => {
+  const textParts = []
+
+  collectRawTextContent(node, textParts)
+
+  return textParts.join('')
+}
+
+const findElements = (node, tagName, collector = []) => {
+  if (!node) {
+    return collector
+  }
+
+  if (node.tagName === tagName) {
+    collector.push(node)
+  }
+
+  for (const child of node.childNodes ?? []) {
+    findElements(child, tagName, collector)
+  }
+
+  return collector
+}
+
+const findElementAttributes = (node, tagName) => {
+  return findElements(node, tagName).map(getElementAttributes)
 }
 
 const parseHtmlTree = (html) => {
@@ -149,12 +174,6 @@ const findFirstElement = (node, tagName) => {
   }
 
   return null
-}
-
-const getHeadHtml = (html) => {
-  const headMatch = String(html || '').match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)
-
-  return headMatch?.[1] ?? String(html || '')
 }
 
 const normalizeAttributeValue = (value) => {
@@ -216,6 +235,7 @@ const buildAlternateLinks = (linkTags, pageUrl) => {
     .filter(attributes => normalizeAttributeValue(attributes.hreflang))
     .map(attributes => ({
       hreflang: normalizeAttributeValue(attributes.hreflang),
+      rawHref: normalizeAttributeValue(attributes.href),
       href: buildResolvedLinkValue(attributes.href, pageUrl),
     }))
 }
@@ -280,8 +300,14 @@ const appendJsonLdTypes = (value, collector) => {
     collector.add(String(schemaType))
   }
 
-  if (value['@graph']) {
-    appendJsonLdTypes(value['@graph'], collector)
+  for (const [ key, nestedValue ] of Object.entries(value)) {
+    if (key === '@context') {
+      continue
+    }
+
+    if (nestedValue && typeof nestedValue === 'object') {
+      appendJsonLdTypes(nestedValue, collector)
+    }
   }
 }
 
@@ -324,7 +350,11 @@ const collectJsonLdStrings = (value, key, collector, { recursive = true } = {}) 
     return
   }
 
-  for (const nestedValue of Object.values(value)) {
+  for (const [ nestedKey, nestedValue ] of Object.entries(value)) {
+    if (nestedKey === '@context') {
+      continue
+    }
+
     collectJsonLdStrings(nestedValue, key, collector, { recursive })
   }
 }
@@ -424,8 +454,7 @@ const SCHEMA_REQUIRED_PROPERTIES = {
   blogposting: [ 'headline', 'author', 'datePublished' ],
   product: [ 'name' ],
   offer: [ 'price', 'priceCurrency' ],
-  organization: [ 'name' ],
-  website: [ 'name', 'url' ],
+  website: [ 'name' ],
   person: [ 'name' ],
   event: [ 'name', 'startDate' ],
   localbusiness: [ 'name', 'address' ],
@@ -534,6 +563,10 @@ const collectVisibleText = (node, collector) => {
   }
 
   if (!node.tagName) {
+    for (const child of node.childNodes ?? []) {
+      collectVisibleText(child, collector)
+    }
+
     return
   }
 
@@ -550,20 +583,16 @@ const collectVisibleText = (node, collector) => {
   }
 }
 
-const getBodyTextLength = (html) => {
-  const tree = parseHtmlTree(html)
-  const bodyNode = findFirstElement(tree, 'body') ?? tree
+const getBodyTextLength = (bodyNode) => {
   const textParts = []
 
   collectVisibleText(bodyNode, textParts)
 
-  return normalizeWhitespace(decodeHtmlEntities(textParts.join(''))).length
+  return normalizeWhitespace(textParts.join('')).length
 }
 
-const countImages = (html) => {
-  const bodyMatch = String(html || '').match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)
-  const bodyHtml = bodyMatch?.[1] ?? ''
-  const imgTags = findTagAttributes(bodyHtml, 'img')
+const countImages = (bodyNode) => {
+  const imgTags = findElementAttributes(bodyNode, 'img')
   let imagesWithoutAlt = 0
   let imagesWithEmptyAlt = 0
 
@@ -582,10 +611,8 @@ const countImages = (html) => {
   }
 }
 
-const countInternalLinks = (html, pageUrl) => {
-  const bodyMatch = String(html || '').match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)
-  const bodyHtml = bodyMatch?.[1] ?? ''
-  const aTags = findTagAttributes(bodyHtml, 'a')
+const countInternalLinks = (bodyNode, pageUrl) => {
+  const aTags = findElementAttributes(bodyNode, 'a')
   let pageHost = null
   let internalLinkCount = 0
 
@@ -616,14 +643,26 @@ const countInternalLinks = (html, pageUrl) => {
   return internalLinkCount
 }
 
-const getHeadingHierarchy = (html) => {
-  const bodyMatch = String(html || '').match(/<body\b[^>]*>([\s\S]*?)<\/body>/i)
-  const bodyHtml = bodyMatch?.[1] ?? String(html || '')
+const collectHeadingHierarchy = (node, hierarchy) => {
+  if (!node) {
+    return
+  }
+
+  const headingMatch = /^h([1-6])$/.exec(node.tagName ?? '')
+
+  if (headingMatch) {
+    hierarchy.push(Number(headingMatch[1]))
+  }
+
+  for (const child of node.childNodes ?? []) {
+    collectHeadingHierarchy(child, hierarchy)
+  }
+}
+
+const getHeadingHierarchy = (bodyNode) => {
   const hierarchy = []
 
-  for (const match of bodyHtml.matchAll(/<h([1-6])\b[^>]*>/gi)) {
-    hierarchy.push(Number(match[1]))
-  }
+  collectHeadingHierarchy(bodyNode, hierarchy)
 
   return hierarchy
 }
@@ -679,14 +718,17 @@ const buildHeadDuplicates = (counts) => {
 
 export const extractSeoInfoFromHtml = (html, pageUrl) => {
   const normalizedHtml = String(html || '')
-  const headHtml = getHeadHtml(normalizedHtml)
-  const htmlTagAttributes = findTagAttributes(normalizedHtml, 'html')[0] ?? {}
-  const metaTags = findTagAttributes(headHtml, 'meta')
-  const linkTags = findTagAttributes(headHtml, 'link')
-  const titleMatches = findTagContents(headHtml, 'title')
-  const title = titleMatches[0] ? stripTags(titleMatches[0][1]) : null
-  const h1 = findTagContents(normalizedHtml, 'h1')
-    .map(match => stripTags(match[1]))
+  const tree = parseHtmlTree(normalizedHtml)
+  const htmlNode = findFirstElement(tree, 'html')
+  const headNode = findFirstElement(tree, 'head') ?? tree
+  const bodyNode = findFirstElement(tree, 'body') ?? tree
+  const htmlTagAttributes = htmlNode ? getElementAttributes(htmlNode) : {}
+  const metaTags = findElementAttributes(headNode, 'meta')
+  const linkTags = findElementAttributes(headNode, 'link')
+  const titleElements = findElements(headNode, 'title')
+  const title = titleElements[0] ? getElementTextContent(titleElements[0]) : null
+  const h1 = findElements(bodyNode, 'h1')
+    .map(getElementTextContent)
     .filter(Boolean)
   const canonicalTag = getLinkTagsByRel(linkTags, 'canonical')[0] ?? null
   const alternateLinks = buildAlternateLinks(linkTags, pageUrl)
@@ -703,12 +745,14 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
   let jsonLdParseErrors = 0
   let jsonLdScriptCount = 0
 
-  for (const match of findTagContents(normalizedHtml, 'script')) {
-    const scriptTag = match[0]
-    const content = String(match[1] || '').trim()
-    const attributes = parseAttributes(scriptTag.slice(0, scriptTag.indexOf('>') + 1))
+  for (const scriptNode of findElements(tree, 'script')) {
+    const content = getRawTextContent(scriptNode).trim()
+    const type = String(getNodeAttribute(scriptNode, 'type') || '')
+      .split(';')[0]
+      .trim()
+      .toLowerCase()
 
-    if (String(attributes.type || '').toLowerCase() !== 'application/ld+json' || !content) {
+    if (type !== 'application/ld+json' || !content) {
       continue
     }
 
@@ -732,14 +776,14 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
     jsonLdScriptCount,
     linkTags,
     metaTags,
-    titleCount: titleMatches.length,
+    titleCount: titleElements.length,
   })
   const normalizedJsonLdTypes = [ ...jsonLdTypes ]
     .map(type => normalizeJsonLdType(type))
     .filter(Boolean)
   const jsonLdTypeSet = new Set(normalizedJsonLdTypes)
-  const imageStats = countImages(normalizedHtml)
-  const internalLinkCount = countInternalLinks(normalizedHtml, pageUrl)
+  const imageStats = countImages(bodyNode)
+  const internalLinkCount = countInternalLinks(bodyNode, pageUrl)
 
   return {
     document: {
@@ -747,12 +791,12 @@ export const extractSeoInfoFromHtml = (html, pageUrl) => {
       contentLanguage: getFirstValue(getMetaContentsByHttpEquiv(metaTags, 'content-language')),
       title,
       h1,
-      bodyTextLength: getBodyTextLength(normalizedHtml),
+      bodyTextLength: getBodyTextLength(bodyNode),
       imageCount: imageStats.imageCount,
       imagesWithoutAlt: imageStats.imagesWithoutAlt,
       imagesWithEmptyAlt: imageStats.imagesWithEmptyAlt,
       internalLinkCount,
-      headingHierarchy: getHeadingHierarchy(normalizedHtml),
+      headingHierarchy: getHeadingHierarchy(bodyNode),
     },
     meta: {
       charset: normalizeAttributeValue(metaTags.find(attributes => attributes.charset)?.charset),

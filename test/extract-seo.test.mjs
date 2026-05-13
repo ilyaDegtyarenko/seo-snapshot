@@ -192,3 +192,149 @@ test('extractSeoInfoFromHtml detects missing required schema properties', () => 
   assert.equal(issuePairs.includes('Offer.price'), true)
   assert.equal(issuePairs.includes('Offer.priceCurrency'), true)
 })
+
+test('extractSeoInfoFromHtml ignores commented head tags and parses quoted greater-than attributes', () => {
+  const html = `<!doctype html>
+  <html lang="en">
+    <head>
+      <title>Quoted attributes</title>
+      <!--
+        <meta name="description" content="Commented description">
+        <link rel="canonical" href="/commented">
+      -->
+      <meta name="description" content="A > B comparison with enough words for extraction.">
+      <link rel="canonical" href="/real?value=a>b">
+    </head>
+    <body><h1>Quoted attributes</h1></body>
+  </html>`
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/current')
+
+  assert.equal(result.meta.description, 'A > B comparison with enough words for extraction.')
+  assert.equal(result.links.canonical, 'https://example.com/real?value=a%3Eb')
+  assert.equal(result.head.counts.description, 1)
+  assert.equal(result.head.counts.canonical, 1)
+  assert.deepEqual(result.head.duplicates, [])
+})
+
+test('extractSeoInfoFromHtml does not decode parse5 text and attribute values twice', () => {
+  const html = `<!doctype html>
+  <html lang="en">
+    <head>
+      <title>Fish &amp;lt; Chips</title>
+      <meta name="description" content="Fish &amp;lt; Chips description">
+      <link rel="canonical" href="/search?q=fish&amp;amp;page=1">
+    </head>
+    <body><h1>Fish &amp;lt; Chips</h1></body>
+  </html>`
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/current')
+
+  assert.equal(result.document.title, 'Fish &lt; Chips')
+  assert.equal(result.meta.description, 'Fish &lt; Chips description')
+  assert.equal(result.document.h1[0], 'Fish &lt; Chips')
+  assert.equal(result.links.canonical, 'https://example.com/search?q=fish&amp;page=1')
+})
+
+test('extractSeoInfoFromHtml collects nested JSON-LD types and accepts type parameters', () => {
+  const html = `<!doctype html>
+  <html lang="en">
+    <head>
+      <title>Nested schema</title>
+      <script type="application/ld+json; charset=utf-8">
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "name": "Widget",
+          "brand": {
+            "@type": "Organization",
+            "name": "Acme"
+          },
+          "offers": {
+            "@type": "Offer",
+            "price": "10.00",
+            "priceCurrency": "USD"
+          }
+        }
+      </script>
+    </head>
+    <body><h1>Widget</h1></body>
+  </html>`
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/widget')
+
+  assert.deepEqual(result.jsonLd.types, [ 'Offer', 'Organization', 'Product' ])
+  assert.equal(result.jsonLd.hasOrganization, true)
+  assert.equal(result.jsonLd.parseErrors, 0)
+  assert.deepEqual(result.jsonLd.missingRequiredProperties, [])
+  assert.match(result.jsonLd.blocks[0].summary, /Offer, Organization, Product/)
+})
+
+test('extractSeoInfoFromHtml ignores JSON-LD @context term definition types', () => {
+  const html = `<!doctype html>
+  <html lang="en">
+    <head>
+      <title>Context schema</title>
+      <script type="application/ld+json">
+        {
+          "@context": {
+            "@vocab": "https://schema.org/",
+            "homepage": {
+              "@id": "url",
+              "@type": "@id"
+            }
+          },
+          "@type": "Organization",
+          "url": "https://example.com/"
+        }
+      </script>
+    </head>
+    <body><h1>Context schema</h1></body>
+  </html>`
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/')
+
+  assert.deepEqual(result.jsonLd.types, [ 'Organization' ])
+  assert.equal(result.jsonLd.blocks[0].types.includes('@id'), false)
+  assert.doesNotMatch(result.jsonLd.blocks[0].summary, /@id/)
+})
+
+test('extractSeoInfoFromHtml does not require Organization name or WebSite url', () => {
+  const html = `<!doctype html>
+  <html lang="en">
+    <head>
+      <title>Schema requirements</title>
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@graph": [
+            { "@type": "Organization", "url": "https://example.com/" },
+            { "@type": "WebSite", "name": "Example" }
+          ]
+        }
+      </script>
+    </head>
+    <body><h1>Example</h1></body>
+  </html>`
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/')
+
+  assert.equal(result.jsonLd.hasOrganization, true)
+  assert.equal(result.jsonLd.hasWebSite, true)
+  assert.deepEqual(result.jsonLd.missingRequiredProperties, [])
+})
+
+test('extractSeoInfoFromHtml counts images and links inside an unclosed body tag', () => {
+  const html = `<!doctype html>
+  <html lang="en">
+    <head><title>Unclosed body</title></head>
+    <body>
+      <img src="/missing-alt.jpg">
+      <a href="/internal">Internal</a>`
+
+  const result = extractSeoInfoFromHtml(html, 'https://example.com/page')
+
+  assert.equal(result.document.imageCount, 1)
+  assert.equal(result.document.imagesWithoutAlt, 1)
+  assert.equal(result.document.internalLinkCount, 1)
+})
