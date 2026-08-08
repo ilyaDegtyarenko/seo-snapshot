@@ -51,6 +51,7 @@ test('fetchWithRedirects measures ttfb before reading the response body', async 
 
 test('fetchWithRedirects measures ttfb across redirect hops until final response headers', async (context) => {
   const originalFetch = globalThis.fetch
+  let beforeRequestCount = 0
   let requestCount = 0
 
   context.after(() => {
@@ -58,8 +59,8 @@ test('fetchWithRedirects measures ttfb across redirect hops until final response
   })
 
   context.mock.method(performance, 'now', (() => {
-    const values = [ 2000, 2100, 2175 ]
-    return () => values.shift() ?? 2175
+    const values = [ 2000, 2100, 2150, 2225 ]
+    return () => values.shift() ?? 2225
   })())
 
   globalThis.fetch = async (url) => {
@@ -79,12 +80,19 @@ test('fetchWithRedirects measures ttfb across redirect hops until final response
     })
   }
 
-  const result = await fetchWithRedirects('https://example.com/start', {
-    maxRedirects: 2,
-    timeoutMs: 5_000,
-    userAgent: 'seo-snapshot-test',
-  })
+  const result = await fetchWithRedirects(
+    'https://example.com/start',
+    {
+      maxRedirects: 2,
+      timeoutMs: 5_000,
+      userAgent: 'seo-snapshot-test',
+    },
+    async () => {
+      beforeRequestCount += 1
+    },
+  )
 
+  assert.equal(beforeRequestCount, 2)
   assert.equal(requestCount, 2)
   assert.equal(result.finalUrl, 'https://example.com/final')
   assert.equal(result.ttfbMs, 175)

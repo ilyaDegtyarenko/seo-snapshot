@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { getSourceHosts, isSourceLocalUrl, parseLinkHeader, sortByCountDesc } from '../src/utils.mjs'
+import { getSourceHosts, isSourceLocalUrl, parseLinkHeader, parseNonNegativeInt, sortByCountDesc } from '../src/utils.mjs'
 
 test('parseLinkHeader extracts canonical, llms, and hreflang entries from response headers', () => {
   const entries = parseLinkHeader(
@@ -34,6 +34,20 @@ test('parseLinkHeader extracts canonical, llms, and hreflang entries from respon
       type: null,
     },
   ])
+})
+
+test('parseNonNegativeInt rejects blank, non-decimal, and out-of-range values', (context) => {
+  context.mock.method(console, 'error', () => {})
+  context.mock.method(process, 'exit', code => {
+    throw new Error(`process.exit:${ code }`)
+  })
+
+  for (const value of [ '', ' ', '250ms', '2147483648' ]) {
+    assert.throws(
+      () => parseNonNegativeInt(value, 'delay', 2_147_483_647),
+      /process\.exit:1/,
+    )
+  }
 })
 
 test('getSourceHosts collects unique lowercase hosts from page URL candidates', () => {

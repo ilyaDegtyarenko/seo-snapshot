@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { mkdir, writeFile } from 'node:fs/promises'
+import { performance } from 'node:perf_hooks'
 import { zipSync } from 'fflate'
 import { minify as minifyHtml } from 'html-minifier-terser'
 import { buildPageIssues, buildSummary } from './audit.mjs'
@@ -9,6 +10,116 @@ import { extractSeoInfoFromHtml } from './extract-seo.mjs'
 import { fetchWithRedirects, isHtmlResponse } from './fetch-page.mjs'
 import { renderHtmlReport, renderJsonReport } from './reporters.mjs'
 import { parseLinkHeader, formatTimestamp } from './utils.mjs'
+
+const sleep = delayMs => new Promise(resolve => setTimeout(resolve, delayMs))
+
+const createRequestStartGate = (delayMs, onStateChange = null) => {
+  let lastStartedAt = null
+  let startQueue = Promise.resolve()
+
+  return (context) => {
+    if (delayMs === 0) {
+      onStateChange?.({ context, phase: 'fetching' })
+      return Promise.resolve()
+    }
+
+    const start = startQueue.then(async () => {
+      if (lastStartedAt !== null) {
+        const remainingDelayMs = delayMs - (performance.now() - lastStartedAt)
+
+        if (remainingDelayMs > 0) {
+          onStateChange?.({ context, phase: 'waiting', remainingDelayMs })
+          await sleep(remainingDelayMs)
+        }
+      }
+
+      onStateChange?.({ context, phase: 'fetching' })
+      lastStartedAt = performance.now()
+    })
+
+    startQueue = start.catch(() => {})
+
+    return start
+  }
+}
+
+const formatProgressDelay = (delayMs) => {
+  if (delayMs >= 950) {
+    return `${ (delayMs / 1000).toFixed(1) }s`
+  }
+
+  return `${ Math.ceil(delayMs) }ms`
+}
+
+const normalizeProgressPath = (value) => {
+  try {
+    const parsedUrl = new URL(value, 'https://progress.local')
+
+    return `${ parsedUrl.pathname }${ parsedUrl.search }`
+  } catch {
+    return String(value ?? '')
+  }
+}
+
+const formatProgressTarget = ({ target, url = null }) => {
+  const configuredTarget = target.path ?? target.input ?? target.url
+  const labels = [
+    target.source?.label,
+    target.variant?.label,
+    configuredTarget,
+  ].filter(Boolean)
+  let currentPath = null
+
+  if (url) {
+    try {
+      const parsedUrl = new URL(url)
+
+      currentPath = `${ parsedUrl.pathname }${ parsedUrl.search }`
+    } catch {
+      currentPath = url
+    }
+  }
+
+  const targetLabel = labels.join(' · ')
+  const configuredPath = normalizeProgressPath(configuredTarget)
+
+  if (currentPath && currentPath !== configuredPath) {
+    return `${ targetLabel } → ${ currentPath }`
+  }
+
+  return targetLabel
+}
+
+const formatRequestProgress = (completedCount, totalCount, state) => {
+  const requestLabel = state.context.isRedirect
+    ? `redirect ${ state.context.requestNumber - 1 } · `
+    : ''
+  const targetLabel = formatProgressTarget(state.context)
+
+  if (state.phase === 'waiting') {
+    return `[${ completedCount }/${ totalCount }] Waiting ${ formatProgressDelay(state.remainingDelayMs) } · ${ requestLabel }${ targetLabel }`
+  }
+
+  return `[${ completedCount }/${ totalCount }] Fetching · ${ requestLabel }${ targetLabel }`
+}
+
+const createProgressEmitter = (onProgress) => {
+  if (typeof onProgress !== 'function') {
+    return null
+  }
+
+  return (message) => {
+    try {
+      const progressResult = onProgress(message)
+
+      if (progressResult && typeof progressResult.catch === 'function') {
+        progressResult.catch(() => undefined)
+      }
+    } catch {
+      // Progress rendering is best-effort and must not affect crawl results.
+    }
+  }
+}
 
 const mapWithConcurrency = async (items, concurrency, worker) => {
   const results = new Array(items.length)
@@ -57,13 +168,17 @@ const buildHeaderDetails = (response, finalUrl) => {
   }
 }
 
-const buildPageReport = async (target, requestOptions) => {
+const buildPageReport = async (target, requestOptions, beforeRequest) => {
   const effectiveOptions = target.variant
     ? { ...requestOptions, userAgent: target.variant.userAgent }
     : requestOptions
 
   try {
-    const fetched = await fetchWithRedirects(target.url, effectiveOptions)
+    const fetched = await fetchWithRedirects(
+      target.url,
+      effectiveOptions,
+      requestContext => beforeRequest({ ...requestContext, target }),
+    )
     const headers = buildHeaderDetails(fetched.response, fetched.finalUrl)
     const report = {
       input: target.input,
@@ -234,25 +349,36 @@ export const runAudit = async (cliOptions, runtime = {}) => {
   const targets = runtimeOptions.variants
     ? baseTargets.flatMap(target => runtimeOptions.variants.map(variant => ({ ...target, variant })))
     : baseTargets
-  const onProgress = runtime.onProgress ?? null
+  const onProgress = createProgressEmitter(runtime.onProgress)
   let completedCount = 0
   const totalCount = targets.length
+  const waitForRequestStart = createRequestStartGate(
+    runtimeOptions.request.delayMs,
+    onProgress
+      ? state => onProgress(formatRequestProgress(completedCount, totalCount, state))
+      : null,
+  )
 
-  const pages = await mapWithConcurrency(targets, runtimeOptions.request.concurrency, async (target) => {
-    const page = await buildPageReport(target, runtimeOptions.request)
-    completedCount += 1
+  const pages = await mapWithConcurrency(
+    targets,
+    runtimeOptions.request.concurrency,
+    async (target) => {
+      const page = await buildPageReport(target, runtimeOptions.request, waitForRequestStart)
+      completedCount += 1
 
-    if (onProgress) {
-      const label = target.path ?? target.input ?? target.url
+      if (onProgress) {
+        const label = formatProgressTarget({ target })
+        const resultLabel = page.status ?? 'error'
 
-      onProgress(`[${ completedCount }/${ totalCount }] ${ label }`)
-    }
+        onProgress(`[${ completedCount }/${ totalCount }] Done ${ resultLabel } · ${ label }`)
+      }
 
-    return {
-      ...page,
-      issues: buildPageIssues(page, runtimeOptions.audit),
-    }
-  })
+      return {
+        ...page,
+        issues: buildPageIssues(page, runtimeOptions.audit),
+      }
+    },
+  )
   const summary = buildSummary(pages)
   const { hideTtfb, hidePreloadLinks, hidePreconnectLinks, hideDnsPrefetchLinks } = runtimeOptions.output
   const hideComparisonKeys = [
@@ -273,6 +399,7 @@ export const runAudit = async (cliOptions, runtime = {}) => {
       timeoutMs: runtimeOptions.request.timeoutMs,
       maxRedirects: runtimeOptions.request.maxRedirects,
       concurrency: runtimeOptions.request.concurrency,
+      delayMs: runtimeOptions.request.delayMs,
       userAgent: runtimeOptions.request.userAgent,
       variants: runtimeOptions.variants ? runtimeOptions.variants.map(v => v.label) : null,
       targetCount: targets.length,

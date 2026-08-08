@@ -4,10 +4,11 @@ import { pathToFileURL } from 'node:url'
 import {
   DEFAULT_CONFIG_PATH,
   DEFAULT_FORMATS,
+  MAX_DELAY_MS,
   SUPPORTED_FORMATS,
   buildHelpText,
 } from './constants.mjs'
-import { exitWithError, parsePositiveInt, readOptionValue } from './utils.mjs'
+import { exitWithError, parseNonNegativeInt, parsePositiveInt, readOptionValue } from './utils.mjs'
 
 const parseFormats = (value) => {
   const normalized = String(value || '')
@@ -60,6 +61,7 @@ export const parseArgs = (argv) => {
     timeoutMs: undefined,
     maxRedirects: undefined,
     concurrency: undefined,
+    delayMs: undefined,
     userAgent: undefined,
     formats: undefined,
     open: false,
@@ -100,6 +102,10 @@ export const parseArgs = (argv) => {
         break
       case '--concurrency':
         options.concurrency = parsePositiveInt(readOptionValue(argv, index, arg), arg)
+        index += 1
+        break
+      case '--delay-ms':
+        options.delayMs = parseNonNegativeInt(readOptionValue(argv, index, arg), arg, MAX_DELAY_MS)
         index += 1
         break
       case '--user-agent':

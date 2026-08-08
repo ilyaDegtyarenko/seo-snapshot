@@ -50,7 +50,7 @@ Typical local setup:
 
 The main config template is `config/seo-snapshot.example.mjs`.
 
-During the crawl the CLI writes per-target progress lines to `stderr`. After each run it prints a short English summary and a `file://` link to the main report. The process exits with code `1` if at least one page fails to fetch or returns `>= 400`.
+During the crawl the CLI writes live request states to `stderr`, including rate-limit waits, redirect fetches, and completed-page counts. After each run it prints a short English summary and a `file://` link to the main report. The process exits with code `1` if at least one page fails to fetch or returns `>= 400`.
 
 Direct CLI usage:
 
@@ -74,6 +74,7 @@ pnpm run snapshot -- \
   --timeout-ms 15000 \
   --max-redirects 10 \
   --concurrency 4 \
+  --delay-ms 250 \
   --profile staging \
   --compress \
   --open \
@@ -89,6 +90,7 @@ Additional CLI behaviors:
 - `--no-minify` disables HTML minification (enabled by default; reduces file size ~50–60%)
 - `--open` opens the generated HTML report in the default browser if HTML output is enabled
 - `--profile <name>` applies `config.profiles[name]` before env overrides
+- `--delay-ms <number>` sets the minimum interval between page request starts; the first request starts immediately and `0` disables the delay
 
 ## Environment Config
 
@@ -165,6 +167,7 @@ SEO_SNAPSHOT_COMPARE_URL=https://stage.example.com \
 SEO_SNAPSHOT_TARGETS="/,/news,/movies" \
 SEO_SNAPSHOT_OUTPUT_FORMATS=html,json \
 SEO_SNAPSHOT_REQUEST_CONCURRENCY=8 \
+SEO_SNAPSHOT_REQUEST_DELAY_MS=250 \
 node ./bin/seo-snapshot.mjs
 ```
 
@@ -184,6 +187,7 @@ Supported overrides:
 - `SEO_SNAPSHOT_REQUEST_TIMEOUT_MS`
 - `SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS`
 - `SEO_SNAPSHOT_REQUEST_CONCURRENCY`
+- `SEO_SNAPSHOT_REQUEST_DELAY_MS`
 - `SEO_SNAPSHOT_REQUEST_USER_AGENT` as a single string or a JSON array of `{ "label": "...", "userAgent": "..." }`
 - `SEO_SNAPSHOT_REQUEST_COOKIES` as a header string or `{ "key": "value" }` JSON object
 - `SEO_SNAPSHOT_REQUEST_HEADERS` as a JSON object
@@ -237,6 +241,7 @@ export default {
     timeoutMs: 15_000,
     maxRedirects: 10,
     concurrency: 4,
+    delayMs: 250, // minimum interval between page request starts; 0 disables the delay
     userAgent: [
       { label: 'Desktop', userAgent: 'Mozilla/5.0 (Macintosh...)' },
       { label: 'Mobile', userAgent: 'Mozilla/5.0 (iPhone...)' },

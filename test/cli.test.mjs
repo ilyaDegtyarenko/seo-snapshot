@@ -38,3 +38,9 @@ test('parseArgs recognizes --profile flag', () => {
 
   assert.equal(options.profile, 'staging')
 })
+
+test('parseArgs recognizes --delay-ms including zero', () => {
+  assert.equal(parseArgs([ '--delay-ms', '250' ]).delayMs, 250)
+  assert.equal(parseArgs([ '--delay-ms', '0' ]).delayMs, 0)
+  assert.equal(parseArgs([ '--delay-ms', '2147483647' ]).delayMs, 2_147_483_647)
+})

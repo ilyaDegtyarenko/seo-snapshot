@@ -71,6 +71,7 @@ test('runAudit records the expanded target count when variants are enabled', asy
   assert.equal(result.report.options.fullConfig.targetCount, 4)
   assert.deepEqual(result.report.options.fullConfig.targets, [ '/', '/catalog' ])
   assert.equal(result.report.options.fullConfig.request.timeoutMs, 5000)
+  assert.equal(result.report.options.fullConfig.request.delayMs, 0)
   assert.deepEqual(result.report.options.fullConfig.output.formats, [ 'json' ])
   assert.equal(result.summary.total, 4)
   assert.equal(requests.length, 4)
@@ -142,6 +143,57 @@ test('runAudit records the current resolved config in fullConfig', async (contex
   ])
   assert.equal('profiles' in result.report.options.fullConfig, false)
   assert.equal('targetsFile' in result.report.options.fullConfig, false)
+})
+
+test('runAudit spaces all request starts including redirects by request.delayMs', async (context) => {
+  const tempDir = await createTempDir()
+  const progressMessages = []
+  const requestStartedAt = []
+  const originalFetch = globalThis.fetch
+
+  context.after(async () => {
+    globalThis.fetch = originalFetch
+    await rm(tempDir, { recursive: true, force: true })
+  })
+
+  globalThis.fetch = async (url) => {
+    requestStartedAt.push(Date.now())
+
+    if (String(url).endsWith('/redirect')) {
+      return new Response(null, {
+        status: 302,
+        headers: { location: '/final' },
+      })
+    }
+
+    return new Response('<!doctype html><html><head><title>Test</title></head><body><h1>Hi</h1></body></html>', {
+      status: 200,
+      headers: { 'content-type': 'text/html' },
+    })
+  }
+
+  const result = await runAudit({}, {
+    cwd: tempDir,
+    env: {
+      SEO_SNAPSHOT_CONFIG: JSON.stringify({
+        baseUrl: 'https://example.com',
+        targets: [ '/redirect', '/about' ],
+        output: { dir: './reports', formats: [ 'json' ] },
+        request: { concurrency: 3, delayMs: 30 },
+      }),
+    },
+    onProgress: message => progressMessages.push(message),
+  })
+
+  assert.equal(result.report.options.delayMs, 30)
+  assert.equal(result.report.options.fullConfig.request.delayMs, 30)
+  assert.equal(requestStartedAt.length, 3)
+  assert.equal(result.report.pages[0].ttfbMs < 25, true)
+  assert.equal(requestStartedAt[1] - requestStartedAt[0] >= 25, true)
+  assert.equal(requestStartedAt[2] - requestStartedAt[1] >= 25, true)
+  assert.equal(progressMessages.some(message => /Waiting \d+ms/.test(message)), true)
+  assert.equal(progressMessages.some(message => /Fetching · redirect 1 · \/redirect → \/final/.test(message)), true)
+  assert.equal(progressMessages.some(message => /\[2\/2\] Done 200/.test(message)), true)
 })
 
 test('runAudit records ttfbMs for each page', async (context) => {
@@ -251,6 +303,7 @@ test('runAudit emits progress messages via onProgress callback', async (context)
   const tempDir = await createTempDir()
   const originalFetch = globalThis.fetch
   const progressMessages = []
+  let progressErrorThrown = false
 
   context.after(async () => {
     globalThis.fetch = originalFetch
@@ -264,7 +317,7 @@ test('runAudit emits progress messages via onProgress callback', async (context)
     })
   }
 
-  await runAudit({}, {
+  const result = await runAudit({}, {
     cwd: tempDir,
     env: {
       SEO_SNAPSHOT_CONFIG: JSON.stringify({
@@ -273,12 +326,25 @@ test('runAudit emits progress messages via onProgress callback', async (context)
         output: { dir: './reports', formats: [ 'json' ] },
       }),
     },
-    onProgress: (message) => progressMessages.push(message),
+    onProgress: (message) => {
+      progressMessages.push(message)
+
+      if (!progressErrorThrown) {
+        progressErrorThrown = true
+        throw new Error('Progress output failed')
+      }
+    },
   })
 
-  assert.equal(progressMessages.length, 2)
-  assert.match(progressMessages[0], /\[1\/2\]/)
-  assert.match(progressMessages[1], /\[2\/2\]/)
+  assert.equal(result.summary.total, 2)
+  assert.equal(progressErrorThrown, true)
+  assert.equal(progressMessages.some(message => /\[0\/2\] Fetching/.test(message)), true)
+
+  const completedMessages = progressMessages.filter(message => message.includes(' Done '))
+
+  assert.equal(completedMessages.length, 2)
+  assert.match(completedMessages[0], /\[1\/2\] Done 200/)
+  assert.match(completedMessages[1], /\[2\/2\] Done 200/)
 })
 
 test('runAudit passes custom request headers to fetch', async (context) => {

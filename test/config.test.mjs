@@ -40,6 +40,7 @@ test('readSeoConfig merges file config with env overrides', async (context) => {
     SEO_SNAPSHOT_TARGETS: '/,/news',
     SEO_SNAPSHOT_OUTPUT_FORMATS: 'html,json',
     SEO_SNAPSHOT_REQUEST_CONCURRENCY: '6',
+    SEO_SNAPSHOT_REQUEST_DELAY_MS: '250',
   })
 
   assert.equal(result.absoluteConfigPath, configPath)
@@ -49,6 +50,7 @@ test('readSeoConfig merges file config with env overrides', async (context) => {
   assert.deepEqual(result.config.output.formats, [ 'html', 'json' ])
   assert.equal(result.config.request.timeoutMs, 3000)
   assert.equal(result.config.request.concurrency, 6)
+  assert.equal(result.config.request.delayMs, 250)
   assert.equal(result.config.audit.minTitleLength, 12)
 })
 

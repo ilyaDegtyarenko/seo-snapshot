@@ -3,6 +3,8 @@ export const DEFAULT_REPORTS_DIR = 'reports'
 export const DEFAULT_TIMEOUT_MS = 15_000
 export const DEFAULT_MAX_REDIRECTS = 10
 export const DEFAULT_CONCURRENCY = 4
+export const DEFAULT_DELAY_MS = 0
+export const MAX_DELAY_MS = 2_147_483_647
 export const DEFAULT_USER_AGENT = 'Mozilla/5.0 (compatible; SEO-Snapshot/1.0)'
 export const DEFAULT_FORMATS = [ 'html', 'json' ]
 export const HTML_CONTENT_TYPE_PATTERN = /^(text\/html|application\/xhtml\+xml)\b/i
@@ -33,6 +35,7 @@ Options:
   --timeout-ms <number>   Per-request timeout in milliseconds. Default: ${ DEFAULT_TIMEOUT_MS }.
   --max-redirects <n>     Maximum redirect hops to follow. Default: ${ DEFAULT_MAX_REDIRECTS }.
   --concurrency <n>       Maximum parallel requests. Default: ${ DEFAULT_CONCURRENCY }.
+  --delay-ms <number>     Minimum delay between page request starts. Default: ${ DEFAULT_DELAY_MS }.
   --user-agent <value>    Override the request User-Agent. Repeat the flag to enable variants; repeated values may use "Label=UA".
   --compress              Compress the report into a ZIP archive (saves as .zip).
   --no-minify             Disable HTML minification (enabled by default).
@@ -62,6 +65,7 @@ Environment:
   SEO_SNAPSHOT_REQUEST_TIMEOUT_MS
   SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS
   SEO_SNAPSHOT_REQUEST_CONCURRENCY
+  SEO_SNAPSHOT_REQUEST_DELAY_MS
   SEO_SNAPSHOT_REQUEST_USER_AGENT
   SEO_SNAPSHOT_REQUEST_COOKIES
   SEO_SNAPSHOT_REQUEST_HEADERS  Custom request headers as JSON object.
@@ -100,6 +104,7 @@ Config file format:
       timeoutMs: ${ DEFAULT_TIMEOUT_MS },
       maxRedirects: ${ DEFAULT_MAX_REDIRECTS },
       concurrency: ${ DEFAULT_CONCURRENCY },
+      delayMs: ${ DEFAULT_DELAY_MS },
       userAgent: '${ DEFAULT_USER_AGENT }',
       headers: { Authorization: 'Bearer token' },
       // Or multiple variants:

@@ -18,13 +18,33 @@ const toDurationMs = (startTime, endTime) => {
   return Math.max(0, Math.round(endTime - startTime))
 }
 
-export const fetchWithRedirects = async (url, options) => {
+export const fetchWithRedirects = async (url, options, beforeRequest = null) => {
   let currentUrl = url
   const redirectChain = []
-  const startTime = performance.now()
-  let requestStartTime = startTime
+  let startTime = null
+  let requestStartTime = null
+  let throttleWaitMs = 0
 
   for (let step = 0; step <= options.maxRedirects; step += 1) {
+    const throttleWaitStartedAt = beforeRequest && startTime !== null
+      ? performance.now()
+      : null
+
+    if (beforeRequest) {
+      await beforeRequest({
+        isRedirect: step > 0,
+        requestNumber: step + 1,
+        url: currentUrl,
+      })
+    }
+
+    requestStartTime = performance.now()
+    startTime ??= requestStartTime
+
+    if (throttleWaitStartedAt !== null) {
+      throttleWaitMs += requestStartTime - throttleWaitStartedAt
+    }
+
     const response = await fetch(currentUrl, {
       redirect: 'manual',
       headers: {
@@ -47,7 +67,7 @@ export const fetchWithRedirects = async (url, options) => {
 
     if (!locationHeader || ![ 301, 302, 303, 307, 308 ].includes(response.status)) {
       const responseHeadersTime = performance.now()
-      const ttfbMs = toDurationMs(startTime, responseHeadersTime)
+      const ttfbMs = toDurationMs(startTime + throttleWaitMs, responseHeadersTime)
       const finalResponseTtfbMs = toDurationMs(requestStartTime, responseHeadersTime)
 
       return {
@@ -65,7 +85,6 @@ export const fetchWithRedirects = async (url, options) => {
     }
 
     currentUrl = resolvedLocation
-    requestStartTime = performance.now()
   }
 
   throw new Error(`Failed to resolve ${ url }.`)

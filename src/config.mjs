@@ -6,6 +6,7 @@ import {
   DEFAULT_AUDIT_RULES,
   DEFAULT_CONCURRENCY,
   DEFAULT_CONFIG_PATH,
+  DEFAULT_DELAY_MS,
   DEFAULT_FORMATS,
   DEFAULT_MAX_REDIRECTS,
   DEFAULT_REPORTS_DIR,
@@ -13,6 +14,7 @@ import {
   DEFAULT_USER_AGENT,
   ENV_CONFIG_JSON_VAR,
   ENV_CONFIG_PATH_VAR,
+  MAX_DELAY_MS,
   SUPPORTED_FORMATS,
 } from './constants.mjs'
 import {
@@ -20,6 +22,7 @@ import {
   exitWithError,
   isNonEmptyString,
   normalizePathLikeValue,
+  parseNonNegativeInt,
   toAbsoluteUrl,
 } from './utils.mjs'
 
@@ -263,6 +266,7 @@ const ENV_OVERRIDE_MAPPINGS = [
   [ 'SEO_SNAPSHOT_REQUEST_TIMEOUT_MS', [ 'request', 'timeoutMs' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_MAX_REDIRECTS', [ 'request', 'maxRedirects' ], parseEnvPositiveInt ],
   [ 'SEO_SNAPSHOT_REQUEST_CONCURRENCY', [ 'request', 'concurrency' ], parseEnvPositiveInt ],
+  [ 'SEO_SNAPSHOT_REQUEST_DELAY_MS', [ 'request', 'delayMs' ], (value, envName) => parseNonNegativeInt(value, envName, MAX_DELAY_MS) ],
   [ 'SEO_SNAPSHOT_REQUEST_USER_AGENT', [ 'request', 'userAgent' ], parseEnvUserAgent ],
   [ 'SEO_SNAPSHOT_REQUEST_COOKIES', [ 'request', 'cookies' ], parseEnvCookies ],
   [ 'SEO_SNAPSHOT_REQUEST_HEADERS', [ 'request', 'headers' ], (value, envName) => parseJsonObjectEnv(value, envName) ],
@@ -654,6 +658,12 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions, cwd = proce
   const timeoutMs = cliOptions.timeoutMs ?? request.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const maxRedirects = cliOptions.maxRedirects ?? request.maxRedirects ?? DEFAULT_MAX_REDIRECTS
   const concurrency = cliOptions.concurrency ?? request.concurrency ?? DEFAULT_CONCURRENCY
+  const delayMs = parseNonNegativeInt(
+    cliOptions.delayMs ?? request.delayMs ?? DEFAULT_DELAY_MS,
+    'config.request.delayMs',
+    MAX_DELAY_MS,
+  )
+
   const userAgentRaw = cliOptions.userAgent ?? request.userAgent ?? DEFAULT_USER_AGENT
   const variants = normalizeVariants(userAgentRaw)
   const userAgent = variants !== null
@@ -678,6 +688,7 @@ export const buildRuntimeOptions = ({ config, configDir, cliOptions, cwd = proce
       timeoutMs,
       maxRedirects,
       concurrency,
+      delayMs,
       userAgent,
       ...(cookies !== null ? { cookies } : {}),
       ...(headers !== null ? { headers } : {}),

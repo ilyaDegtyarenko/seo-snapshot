@@ -32,6 +32,7 @@ export default {
     timeoutMs: 15_000,
     maxRedirects: 10,
     concurrency: 4,
+    delayMs: 0, // minimum delay between page request starts; e.g. 250 to limit request rate
     userAgent: [
       { label: 'Desktop', userAgent: 'Mozilla/5.0 (Macintosh...)' },
       { label: 'Mobile', userAgent: 'Mozilla/5.0 (iPhone...)' },

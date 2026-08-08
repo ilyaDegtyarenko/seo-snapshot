@@ -15,6 +15,21 @@ export const parsePositiveInt = (value, flagName) => {
   return parsed
 }
 
+export const parseNonNegativeInt = (value, flagName, max = Number.MAX_SAFE_INTEGER) => {
+  const normalizedValue = String(value ?? '').trim()
+  const parsed = Number(normalizedValue)
+
+  if (!/^\d+$/.test(normalizedValue) || !Number.isSafeInteger(parsed) || parsed > max) {
+    const expectation = max < Number.MAX_SAFE_INTEGER
+      ? `an integer between 0 and ${ max }`
+      : 'a non-negative integer'
+
+    exitWithError(`Expected ${ expectation } for ${ flagName }, received "${ value }".`)
+  }
+
+  return parsed
+}
+
 export const readOptionValue = (argv, index, flagName) => {
   const value = argv[index + 1]
 
